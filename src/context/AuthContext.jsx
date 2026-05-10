@@ -10,19 +10,14 @@ export function AuthProvider({ children }) {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // --- 🤖 SOURCE CON BOT: GỬI THÔNG BÁO TELEGRAM ---
-  // TRONG FILE AuthContext.jsx
-const notifyAdmin = async (name, email) => {
-  // Mình chỉ gọi cái nhãn ra thôi, không để lộ mã thật ở đây
-  const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
-  const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
-  
-  // Dùng link động để mai mốt lên web thật nó tự nhận diện link
-  const baseUrl = window.location.origin;
-  const adminUrl = `${baseUrl}/#/admin-secret`; 
-  
-  // Phần fetch gửi tin nhắn giữ nguyên...
-}; 
+  // --- 🤖 SOURCE CON BOT: GỬI THÔNG BÁO TELEGRAM (ĐÃ FIX LỖI SYNTAX) ---
+  const notifyAdmin = async (name, email) => {
+    // Gọi biến từ Environment Variables (Vercel/ .env)
+    const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+    
+    const baseUrl = window.location.origin;
+    const adminUrl = `${baseUrl}/#/admin-secret`; 
     
     const messageText = `<b>🍿 CÓ KHÁCH MỚI ĐĂNG KÝ!</b>\n\n` +
                         `👤 <b>Tên:</b> ${name}\n` +
@@ -54,7 +49,7 @@ const notifyAdmin = async (name, email) => {
     } catch (error) {
       console.error("❌ Lỗi mạng khi gọi Bot Telegram:", error);
     }
-  };
+  }; // Dấu đóng ngoặc chuẩn ở đây!
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
