@@ -10,6 +10,38 @@ export function AuthProvider({ children }) {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // --- 🤖 CON BOT TELEGRAM (BẢN CHUẨN) ---
+  const notifyAdmin = async (name, email) => {
+    const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
+    const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
+    const baseUrl = window.location.origin;
+    const adminUrl = `${baseUrl}/#/admin-secret`; 
+
+    const messageText = `<b>🍿 CÓ KHÁCH MỚI ĐĂNG KÝ!</b>\n\n` +
+                        `👤 <b>Tên:</b> ${name}\n` +
+                        `📧 <b>Email:</b> ${email}\n\n` +
+                        `<i>Ông giáo Khôi vào duyệt cho họ nhé!</i>`;
+
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: messageText,
+          parse_mode: "HTML",
+          reply_markup: {
+            inline_keyboard: [[{ text: "🚀 MỞ TRANG DUYỆT NGAY", url: adminUrl }]]
+          }
+        }),
+      });
+      const result = await response.json();
+      if (result.ok) console.log("✅ Bot báo thành công!");
+    } catch (error) {
+      console.error("❌ Lỗi Bot:", error);
+    }
+  }; // <--- NGOẶC KẾT THÚC HÀM PHẢI Ở ĐÂY!
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
@@ -19,7 +51,6 @@ export function AuthProvider({ children }) {
           const userDoc = await getDoc(userDocRef);
           
           if (!userDoc.exists()) {
-            // Lần đầu đăng ký: Chỉ lưu Firestore, không gọi Bot nữa
             await setDoc(userDocRef, {
               uid: currentUser.uid,
               email: currentUser.email,
@@ -29,6 +60,8 @@ export function AuthProvider({ children }) {
               createdAt: new Date().toISOString()
             });
             setIsApproved(false);
+            // Gọi bot khi có user mới
+            await notifyAdmin(currentUser.displayName, currentUser.email);
           } else {
             setIsApproved(userDoc.data().isApproved || false);
           }
