@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: "/xemnhanhlientay/", 
+  base: "/", 
   server: {
     proxy: {
       // Mỗi khi code gọi đến /api, nó sẽ trỏ về máy chủ NguonC
