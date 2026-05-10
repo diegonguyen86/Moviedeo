@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;family=Poppins:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed": "#e4dfff",
+                    "background": "#0B0B12",
+                    "navbar-bg": "rgba(10, 10, 15, 0.65)",
+                    "on-secondary-fixed": "#191b26",
+                    "on-primary-fixed-variant": "#463f79",
+                    "inverse-on-surface": "#313034",
+                    "surface-container-high": "#2a292e",
+                    "on-primary": "#2f2861",
+                    "inverse-primary": "#5d5792",
+                    "tertiary-container": "#bdac54",
+                    "on-tertiary-fixed": "#211b00",
+                    "on-tertiary": "#383000",
+                    "on-tertiary-container": "#4a3f00",
+                    "primary-fixed-dim": "#c7bfff",
+                    "border-glass": "rgba(255, 255, 255, 0.12)",
+                    "surface-container-lowest": "#0e0e12",
+                    "text-primary": "#FFFFFF",
+                    "on-primary-fixed": "#19114b",
+                    "on-tertiary-fixed-variant": "#524700",
+                    "primary": "#c7bfff",
+                    "on-secondary": "#2e303b",
+                    "inverse-surface": "#e5e1e7",
+                    "on-error": "#690005",
+                    "surface": "#141317",
+                    "surface-glass": "rgba(255, 255, 255, 0.08)",
+                    "on-secondary-container": "#b7b7c6",
+                    "on-background": "#e5e1e7",
+                    "secondary-fixed": "#e2e1f1",
+                    "on-primary-container": "#282159",
+                    "error": "#ffb4ab",
+                    "surface-tint": "#c7bfff",
+                    "secondary-container": "#474855",
+                    "on-secondary-fixed-variant": "#454652",
+                    "secondary-fixed-dim": "#c5c5d4",
+                    "tertiary-fixed": "#f6e385",
+                    "primary-container": "#9089c8",
+                    "surface-dim": "#141317",
+                    "surface-container-highest": "#353439",
+                    "text-secondary": "#B8B8C7",
+                    "surface-variant": "#353439",
+                    "tertiary": "#d9c76c",
+                    "surface-bright": "#3a383d",
+                    "on-surface": "#e5e1e7",
+                    "hover-glow": "rgba(143, 136, 199, 0.35)",
+                    "outline-variant": "#47454f",
+                    "surface-container-low": "#1c1b1f",
+                    "tertiary-fixed-dim": "#d9c76c",
+                    "surface-container": "#201f23",
+                    "outline": "#928f9a",
+                    "secondary": "#c5c5d4",
+                    "on-surface-variant": "#c9c5d1",
+                    "on-error-container": "#ffdad6",
+                    "error-container": "#93000a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "section-gap": "64px",
+                    "margin-x": "48px",
+                    "container-max": "1440px",
+                    "header-height": "72px"
+            },
+            "fontFamily": {
+                    "display-md": ["Montserrat"],
+                    "title-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Montserrat"],
+                    "headline-lg": ["Montserrat"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Montserrat"],
+                    "label-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "poppins": ["Poppins"]
+            },
+            "fontSize": {
+                    "display-md": ["40px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "display-lg": ["56px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+        }
+        .hero-gradient {
+            background: linear-gradient(0deg, #0B0B12 0%, rgba(11, 11, 18, 0.8) 40%, rgba(11, 11, 18, 0) 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full h-header-height z-50 backdrop-blur-xl border-b border-border-glass bg-navbar-bg">
+<div class="flex items-center justify-between px-margin-x max-w-container-max mx-auto h-full">
+<div class="flex items-center gap-4">
+<button class="p-2 text-primary hover:bg-hover-glow rounded-full transition-all duration-300 scale-95 active:scale-90">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter">XemNhanhLienTay</h1>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-primary font-bold font-label-md text-label-md hover:text-primary transition-all" href="#">Phim Mới</a>
+<a class="text-text-secondary font-medium font-label-md text-label-md hover:text-primary transition-all" href="#">Thể Loại</a>
+<a class="text-text-secondary font-medium font-label-md text-label-md hover:text-primary transition-all" href="#">Quốc Gia</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-primary font-body-md text-body-md hover:text-primary hover:bg-hover-glow px-4 py-2 rounded-lg transition-all duration-300">
+                    Search
+                </button>
+</div>
+</div>
+</header>
+<main class="pb-section-gap">
+<!-- Hero Section -->
+<section class="relative w-full h-[751px] overflow-hidden">
+<div class="absolute inset-0">
+<img class="w-full h-full object-cover" data-alt="A sprawling, high-fantasy cinematic landscape showing a majestic dark fortress nestled between jagged, snow-capped mountains under a stormy violet sky. The scene is rendered in a premium dark cinematic style with atmospheric fog and ethereal glowing embers floating in the air. Deep purple and cool blue tones dominate the color palette, creating an immersive theater-like mood with high-contrast lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXu8Up5miwLxPGWjhP_9SrDeXd9KnEU2HYbbGoDEZCZUP-NcfSTBo0ZVktgRfrYdo4zFcaOpmOjOaMSOAsOCzehpCp7fSh5welAWwFJyyj_m1my5eAl55RyrndY8k5Cmdf7kA5dTyRsWYlLJskROsb4F_StzxwNeX-UEv62yA72nWLgs24Ye0o9IE68AjiNPD2vvSCzuj38601hgGi09BinGUdbbnqQFbe2xqIccwFCKvgDNrh4SmvCJ3bUhkCw8jBuuQihF5sljA"/>
+<div class="absolute inset-0 hero-gradient"></div>
+</div>
+<!-- Play Overlay -->
+<div class="absolute inset-0 flex items-center justify-center">
+<button class="group relative flex items-center justify-center w-24 h-24 rounded-full bg-primary/20 backdrop-blur-md border-2 border-primary/50 hover:bg-primary/40 transition-all duration-500 hover:scale-110">
+<span class="material-symbols-outlined text-primary text-6xl translate-x-1" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+<div class="absolute inset-0 rounded-full animate-ping bg-primary/20"></div>
+</button>
+</div>
+<!-- Content Anchor -->
+<div class="absolute bottom-0 left-0 w-full px-margin-x pb-12 max-w-container-max mx-auto left-1/2 -translate-x-1/2">
+<div class="flex flex-col gap-6 max-w-3xl">
+<div class="flex items-center gap-3">
+<span class="bg-primary/20 text-primary px-3 py-1 rounded-lg font-label-sm text-label-sm border border-primary/30">4K Ultra HD</span>
+<span class="flex items-center gap-1 text-tertiary">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-bold font-title-lg text-title-lg">9.8</span>
+</span>
+</div>
+<h2 class="font-poppins text-[64px] leading-tight font-semibold text-text-primary tracking-tight">Vương Quốc Cuối Cùng</h2>
+<div class="flex items-center gap-6 text-text-secondary font-label-md text-label-md">
+<span class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">calendar_today</span> 2024</span>
+<span class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">schedule</span> 2h 15m</span>
+<span class="flex items-center gap-2"><span class="material-symbols-outlined text-sm">movie</span> Hành Động / Fantasy</span>
+</div>
+<div class="flex items-center gap-4 mt-4">
+<button class="flex items-center gap-3 bg-[#8F88C7] text-on-primary-fixed px-10 py-4 rounded-xl font-headline-md text-headline-md font-bold hover:brightness-110 transition-all duration-300 shadow-[0_0_20px_rgba(143,136,199,0.4)] active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">play_circle</span>
+                            Xem Ngay
+                        </button>
+<button class="flex items-center gap-3 glass-panel px-10 py-4 rounded-xl font-headline-md text-headline-md font-bold hover:bg-white/10 transition-all duration-300 active:scale-95">
+<span class="material-symbols-outlined">bookmark</span>
+                            Yêu Thích
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Movie Details Content -->
+<section class="max-w-container-max mx-auto px-margin-x mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+<div class="lg:col-span-2 space-y-12">
+<!-- Description -->
+<div class="space-y-4">
+<h3 class="font-poppins font-semibold text-headline-md text-primary">Nội dung phim</h3>
+<p class="text-text-secondary font-body-lg text-body-lg leading-relaxed opacity-90">
+                        Trong một thế giới bị chia cắt bởi những lời nguyền cổ xưa và sự trỗi dậy của các vị thần sa ngã, Vương Quốc Cuối Cùng đứng vững như thành trì cuối cùng của nhân loại. Một chiến binh trẻ mang trong mình dòng máu bị lãng quên phải dấn thân vào hành trình vượt qua vực thẳm linh hồn để tìm lại báu vật có khả năng hàn gắn thế giới. Phim là một thiên sử thi tráng lệ về lòng dũng cảm, sự hy sinh và những trận chiến huyền thoại định đoạt vận mệnh của tất cả sinh linh.
+                    </p>
+</div>
+<!-- Episode List -->
+<div class="space-y-6">
+<div class="flex items-center justify-between">
+<h3 class="font-poppins font-semibold text-headline-md text-text-primary">Danh sách tập</h3>
+<div class="flex items-center gap-3 glass-panel px-4 py-2 rounded-full">
+<span class="font-label-sm text-label-sm text-text-secondary">Tự động chuyển tập</span>
+<div class="w-10 h-5 bg-primary/40 rounded-full relative cursor-pointer">
+<div class="absolute right-0.5 top-0.5 w-4 h-4 bg-primary rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="flex overflow-x-auto gap-gutter pb-4 hide-scrollbar">
+<!-- Episode Card 1 Active -->
+<div class="flex-none w-[280px] group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden border-2 border-primary shadow-[0_0_15px_rgba(199,191,255,0.2)]">
+<img class="w-full h-full object-cover" data-alt="Cinematic frame of a protagonist standing on a cliff overlooking a glowing mystical valley at twilight. The scene is saturated with deep violets and glowing cyan magic particles, following the dark cinematic design system. A high-quality wide-angle shot with professional depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxbmfu0lB51WcMES2HFL3V4cuZ4kGIpSTpuUdVsls0r1yKTdLBseRYbLDnAeN7zKIVOKNS6u_kTJXsSpM2QWYhdK02md-vUQLYeSea715JMNZJqEwCfarJioC-mqRkHZliyVu05-b-NncSzyJNB_0kdaCYtY6DHuo8jnROfLnD0XtFe5z4yVI6j2STD0AFzNFnTMQZBLNNIc-O1EawTGC8oOxX45BmGcSQkniYSJdJcUtRXWlZFK5eQEqy0hJASDgbVCfdLdKOiQs"/>
+<div class="absolute inset-0 bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-4xl" style="font-variation-settings: 'FILL' 1;">equalizer</span>
+</div>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-primary"></div>
+</div>
+<div class="mt-3">
+<h4 class="font-bold font-title-lg text-title-lg text-primary">Tập 1: Khởi Đầu</h4>
+<p class="text-label-sm text-text-secondary mt-1">45 phút • Đang xem</p>
+</div>
+</div>
+<!-- Episode Card 2 -->
+<div class="flex-none w-[280px] group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden border border-border-glass group-hover:border-primary/50 transition-all">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A dark forest interior with beams of ethereal blue light cutting through ancient trees and floating spores. The visual style is premium fantasy cinematography with deep shadows and vibrant cool-toned highlights, maintaining the dark cinematic theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_rNZ7BDympdFhgNuRjnDsjW1qcHlY58oGqY4Pra2wmPyPUs7xWTCW_h3OKA_tnOumxwzYyw4prB1WXgOMJudyf6RiQcC5FVS2oKycN0GSjkfKnvvDM5TL5WG5wj4iX11vQlezBER55OtUgeH54aWZrT-vo5tetDttPjMhTei7hf40WSrw-OwSi4Ij9UfLL-GHTfTbN1reAXJMUd4ZxFF_iDA9Yg5oNRU2DWudteZQl0oO4GQkWyRvn_RzKFNRlFnakx5ohHsqZXM"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-4xl">play_circle</span>
+</div>
+</div>
+<div class="mt-3">
+<h4 class="font-bold font-title-lg text-title-lg text-text-primary group-hover:text-primary transition-colors">Tập 2: Lời Nguyền</h4>
+<p class="text-label-sm text-text-secondary mt-1">42 phút</p>
+</div>
+</div>
+<!-- Episode Card 3 -->
+<div class="flex-none w-[280px] group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden border border-border-glass group-hover:border-primary/50 transition-all">
+<img class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A massive stone dragon statue glowing with internal amber light in a dark subterranean chamber. Atmospheric lighting with dramatic shadows and a cinematic purple hue, consistent with the overall theater-like premium dark interface aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUsUmB4BwOvuxNMzMAbk7kPEaQyDx42VDa-GVMZ_DxNBZ-QMsq8q7_JOmaQThmXvQLPpjY82fHzWH6XPHQRgsizA0ZSgvN_iTgf8BF7RyyE4x-JjbBI2xZnIOOrB7WFd1yjrJZOjV_aOlPNtQtIXn40mQHEIgSZpO_y5MwjAGw4YR9TvU7qGz7rdR-rsxffjV_8ePdY2fiBiC-eeFRQMtNGSoBU1fuYthnktzj3uSOZtJjAeeLkgmKIc4hLps5rvjEdpt4E2Ui6nI"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="material-symbols-outlined text-white text-4xl">play_circle</span>
+</div>
+</div>
+<div class="mt-3">
+<h4 class="font-bold font-title-lg text-title-lg text-text-primary group-hover:text-primary transition-colors">Tập 3: Hội Ngộ</h4>
+<p class="text-label-sm text-text-secondary mt-1">48 phút</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Sidebar / Related -->
+<div class="space-y-10">
+<div>
+<h3 class="font-poppins font-semibold text-headline-md text-text-primary mb-6">Gợi ý cho bạn</h3>
+<div class="space-y-6">
+<!-- Recommendation Item 1 -->
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-24 h-36 flex-none rounded-lg overflow-hidden border border-border-glass group-hover:translate-y-[-4px] transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(143,136,199,0.3)]">
+<img class="w-full h-full object-cover" data-alt="Abstract cinematic movie poster with a focus on a glowing artifact in a dark, high-contrast environment. Deep violet and golden accents create a premium, high-tech fantasy feel that aligns with the overall cinematic theater branding." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCumgZ2LrnLpKdG9tr-nbTS2S0UUDGNHO1_O3TWQa6iDPoi1jzFqOCYb8ADrqSSCeoJAWeBIOaNvciqwMxg4M-s1Y3XD4vB9fTDESP2Q0_qp8zBIkp3GmCxfY_7l29Q8DUDePZcFLvMos9OimUEaBcsOPKfi_tW_r8YrY2A7hkP9vM-HQJsk4xt75q9tvu28Ua73ThmOHxKLL4eePaN-6NbddVwMYESO_nrk6ArFhzaQXu-8ssGXWI0225iejRxNTxVeWzyYpHYkLE"/>
+</div>
+<div class="flex flex-col justify-center gap-1">
+<h4 class="font-bold font-title-lg text-title-lg text-text-primary group-hover:text-primary transition-colors">Bóng Đêm Trường Tồn</h4>
+<div class="flex items-center gap-2 text-label-sm text-text-secondary">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span> 9.2 • 2023
+                                </div>
+<span class="text-label-sm text-text-secondary/70">Action / Drama</span>
+</div>
+</div>
+<!-- Recommendation Item 2 -->
+<div class="flex gap-4 group cursor-pointer">
+<div class="w-24 h-36 flex-none rounded-lg overflow-hidden border border-border-glass group-hover:translate-y-[-4px] transition-all duration-300 group-hover:shadow-[0_0_15px_rgba(143,136,199,0.3)]">
+<img class="w-full h-full object-cover" data-alt="Sci-fi cinematic poster featuring a lone figure looking at a colossal glowing neon city from a distance. The color scheme features deep blacks, neon purples, and high-tech cyan glows, maintaining a consistent professional movie streaming UI aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCrSnt00Re5L6ukyAtTwP_JG05dKLD5wAeHjeZYQ2EpeohN1c-zHlHIqvdAovBIZiJGIwgL-cuR06W5x9o0MkYICnl9sOjEKIkXqcYL7ccb8vLniJtRiHDwJdwB-CjnYOsQnoGvHopajveLFTsb0mHcJ8lcr73W2qSupHKJ57RuS0EIk6nAINYV2IkJ_UGcRs1lJm2VYZfCGGbPbGutCphD3cBkKiyG0aUbyl4M0RXo7Z4kUpzU6Me8xbnSkX0NPgZVGVM2wlWf78U"/>
+</div>
+<div class="flex flex-col justify-center gap-1">
+<h4 class="font-bold font-title-lg text-title-lg text-text-primary group-hover:text-primary transition-colors">Vệ Binh Cuối Cùng</h4>
+<div class="flex items-center gap-2 text-label-sm text-text-secondary">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">star</span> 8.9 • 2024
+                                </div>
+<span class="text-label-sm text-text-secondary/70">Sci-fi / Adventure</span>
+</div>
+</div>
+</div>
+</div>
+<div class="glass-panel p-6 rounded-2xl space-y-4">
+<h4 class="font-bold font-title-lg text-title-lg text-primary">Thông tin thêm</h4>
+<div class="space-y-3">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-text-secondary">Đạo diễn</span>
+<span class="text-text-primary">Christopher Nolan</span>
+</div>
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-text-secondary">Phát hành</span>
+<span class="text-text-primary">Mar 24, 2024</span>
+</div>
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-text-secondary">Ngôn ngữ</span>
+<span class="text-text-primary">Tiếng Việt, English</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-section-gap mt-auto border-t border-border-glass bg-surface-container-lowest">
+<div class="max-w-container-max mx-auto px-margin-x flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex flex-col gap-2">
+<span class="font-headline-md text-headline-md text-primary font-bold">XemNhanhLienTay</span>
+<p class="font-body-md text-body-md text-text-secondary">© 2024 XemNhanhLienTay. Premium Cinematic Experience.</p>
+</div>
+<div class="flex gap-8">
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md opacity-80 hover:opacity-100" href="#">Help Center</a>
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md opacity-80 hover:opacity-100" href="#">Cookie Settings</a>
+</div>
+</div>
+</footer>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 backdrop-blur-xl border-t border-border-glass bg-navbar-bg md:hidden h-16 flex justify-around items-center">
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl px-4 py-1 translate-y-[-2px] duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-sm text-label-sm">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-sm text-label-sm">Trending</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">live_tv</span>
+<span class="font-label-sm text-label-sm">Live</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">video_library</span>
+<span class="font-label-sm text-label-sm">Library</span>
+</a>
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#191b26",
+                    "on-primary-fixed": "#19114b",
+                    "text-primary": "#FFFFFF",
+                    "error-container": "#93000a",
+                    "surface-container-high": "#2a292e",
+                    "on-primary-fixed-variant": "#463f79",
+                    "on-surface-variant": "#c9c5d1",
+                    "outline-variant": "#47454f",
+                    "inverse-on-surface": "#313034",
+                    "on-error-container": "#ffdad6",
+                    "hover-glow": "rgba(143, 136, 199, 0.35)",
+                    "secondary": "#c5c5d4",
+                    "on-secondary": "#2e303b",
+                    "inverse-surface": "#e5e1e7",
+                    "tertiary": "#d9c76c",
+                    "on-tertiary-container": "#4a3f00",
+                    "surface-tint": "#c7bfff",
+                    "surface-container": "#201f23",
+                    "navbar-bg": "rgba(10, 10, 15, 0.65)",
+                    "tertiary-fixed-dim": "#d9c76c",
+                    "primary-container": "#9089c8",
+                    "on-primary": "#2f2861",
+                    "on-secondary-fixed-variant": "#454652",
+                    "primary-fixed-dim": "#c7bfff",
+                    "on-secondary-container": "#b7b7c6",
+                    "tertiary-fixed": "#f6e385",
+                    "on-surface": "#e5e1e7",
+                    "on-error": "#690005",
+                    "inverse-primary": "#5d5792",
+                    "outline": "#928f9a",
+                    "surface-variant": "#353439",
+                    "tertiary-container": "#bdac54",
+                    "surface-container-low": "#1c1b1f",
+                    "text-secondary": "#B8B8C7",
+                    "on-primary-container": "#282159",
+                    "surface": "#141317",
+                    "surface-bright": "#3a383d",
+                    "background": "#0B0B12",
+                    "border-glass": "rgba(255, 255, 255, 0.12)",
+                    "on-tertiary": "#383000",
+                    "on-tertiary-fixed-variant": "#524700",
+                    "surface-container-lowest": "#0e0e12",
+                    "secondary-container": "#474855",
+                    "surface-dim": "#141317",
+                    "surface-container-highest": "#353439",
+                    "surface-glass": "rgba(255, 255, 255, 0.08)",
+                    "primary": "#c7bfff",
+                    "on-background": "#e5e1e7",
+                    "on-tertiary-fixed": "#211b00",
+                    "error": "#ffb4ab",
+                    "secondary-fixed-dim": "#c5c5d4",
+                    "secondary-fixed": "#e2e1f1",
+                    "primary-fixed": "#e4dfff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-x": "48px",
+                    "gutter": "24px",
+                    "container-max": "1440px",
+                    "section-gap": "64px",
+                    "header-height": "72px"
+            },
+            "fontFamily": {
+                    "display-lg": ["Montserrat"],
+                    "headline-md": ["Montserrat"],
+                    "body-md": ["Inter"],
+                    "title-lg": ["Inter"],
+                    "headline-lg": ["Montserrat"],
+                    "label-md": ["Inter"],
+                    "display-md": ["Montserrat"],
+                    "label-sm": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "display-lg": ["56px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "title-lg": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "display-md": ["40px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-text-primary font-body-md selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full h-header-height z-50 backdrop-blur-xl border-b border-border-glass bg-navbar-bg">
+<div class="flex items-center justify-between px-6 h-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="menu">menu</span>
+<h1 class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter">XemNhanhLienTay</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-hover-glow transition-all duration-300 active:scale-90">
+<span class="material-symbols-outlined text-primary" data-icon="search">search</span>
+</button>
+</div>
+</div>
+</header>
+<main class="pb-24">
+<!-- Hero Section -->
+<section class="relative w-full h-[707px] flex items-end">
+<div class="absolute inset-0 z-0">
+<img alt="Chiến Binh Cuối Cùng" class="w-full h-full object-cover" data-alt="A cinematic widescreen landscape of a futuristic warrior standing on a cliff edge overlooking a neon-drenched cyberpunk city at night. The lighting is moody with deep blues and striking purple highlights reflecting off the character's armor. The atmosphere is epic and immersive, following a premium dark cinematic aesthetic with high contrast and sharp digital details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByxteHXmz-RSP73Uo80KDRASl4M319xSLrZCrMWn4HWWwg73Ayv65Qydzzn4XiYVL72s4YmbvbomNq-PUxeyZkY2F8mOCkV2PyMSaSJRhI1iVSRp4VHQyDSX8fkUAS1nbLwxUc4ubp76Us8vkRXgz7HfpOQmKnbsUNbFY5-fnMCSSIJgIL09UErIYjwisoZjeRLTMJscw1Y_Rd16tUu5GtqtxjKRKUpUJy4GpewXXgwJ4hYZiRfKxfRJ9br6XSzhMfQ_hPsVTmLUE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent"></div>
+</div>
+<div class="relative z-10 px-6 pb-12 w-full max-w-container-max mx-auto">
+<div class="space-y-4 max-w-md">
+<div class="flex items-center gap-2">
+<span class="bg-primary/20 text-primary px-3 py-1 rounded-full font-label-sm text-label-sm border border-primary/30 uppercase tracking-widest">Trending Now</span>
+</div>
+<h2 class="font-display-md text-display-md text-text-primary">Chiến Binh Cuối Cùng</h2>
+<p class="text-text-secondary font-body-md line-clamp-2">Trong một thế giới sụp đổ, người chiến binh duy nhất còn sót lại phải đối mặt với định mệnh của mình để cứu lấy nhân loại.</p>
+<div class="flex items-center gap-4 pt-4">
+<button class="flex items-center gap-2 bg-primary text-on-primary px-8 py-3 rounded-xl font-label-md hover:shadow-[0_0_20px_rgba(143,136,199,0.5)] transition-all transform active:scale-95">
+<span class="material-symbols-outlined fill" data-icon="play_arrow" style="font-variation-settings: 'FILL' 1;">play_arrow</span>
+                            Xem Ngay
+                        </button>
+<button class="flex items-center gap-2 bg-surface-glass border border-border-glass backdrop-blur-md text-text-primary px-8 py-3 rounded-xl font-label-md hover:bg-surface-variant transition-all transform active:scale-95">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+                            Chi tiết
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- Continue Watching Carousel -->
+<section class="mt-8 px-6">
+<h3 class="font-headline-md text-headline-md text-text-primary mb-6 flex items-center justify-between">
+                Tiếp tục xem
+                <span class="material-symbols-outlined text-text-secondary cursor-pointer hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+</h3>
+<div class="flex gap-4 overflow-x-auto hide-scrollbar pb-4 -mx-6 px-6">
+<!-- Item 1 -->
+<div class="flex-none w-64 group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden mb-2">
+<img alt="Tiếp tục xem 1" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A dynamic wide shot of a high-speed chase scene featuring sleek futuristic vehicles racing through a rain-slicked neon street. The visual style is dark cinematic with vibrant cyan and magenta light reflections on wet pavement. The overall mood is high-stakes and technologically advanced, echoing a premium streaming platform interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR-Npp2Ecm1uXmjfyNcmatuQE1Kl0ZUMewG6r2pGJ75fs9_e8OX--QB8eVr_zf0WW0ml0i4qPjpdwPvSERn8wJqzUAr8df60AqtcG5sJiHNc4SR-LSI3VRnyXM0KyQAnBN4VkmzUqL76Cw6LUvEyU7vdw0Gkw780yKiCKsfziTVsQaffzypWZ7Jm29SM31jvoAcf27t8BUGkIVuFbwBQCu_VnBzz6jJxDmGWbUWF8fJibwLfYHAUA9gFQEOwE-s-BApPByOx3TdFs"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-surface-container">
+<div class="h-full bg-primary" style="width: 75%"></div>
+</div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-12 h-12 rounded-full bg-primary/80 backdrop-blur-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" data-icon="play_arrow">play_arrow</span>
+</div>
+</div>
+</div>
+<p class="font-label-md text-text-primary group-hover:text-primary transition-colors truncate">Kẻ Hủy Diệt Thế Giới</p>
+<p class="font-label-sm text-text-secondary">Tập 04 • Còn 15 phút</p>
+</div>
+<!-- Item 2 -->
+<div class="flex-none w-64 group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden mb-2">
+<img alt="Tiếp tục xem 2" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="A moody interior shot of a sophisticated dark laboratory where a scientist is examining a glowing biological specimen. The scene is illuminated by soft lavender and deep violet ambient light, creating a mysterious and premium cinematic atmosphere. High-tech equipment and glass panels dominate the background with elegant depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7_6pM58J18N_lqHXVDqQBu1aNySiqIyBs7BZQRepXzy3VOdzBQscOIXxEQs1JsAFzdo9sFioZzl5ZYmEs4xssnRjlY_nlY-09LPBcnb0aABUdGvheSHVpl1LkKcNCnbklMdbZvCCAfwFp9bR5U5szXw2S1s3r6gyYvLxveiOQXmoV_SYv0BML-yaLPTHYEoe_oUc4jIj7_Xy94C9cM0XWRUOYLL4PslKx4bxwOrmHhF2ukglIotKhaoKtLkhGLX8XHD9buz3H6G8"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-surface-container">
+<div class="h-full bg-primary" style="width: 30%"></div>
+</div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-12 h-12 rounded-full bg-primary/80 backdrop-blur-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" data-icon="play_arrow">play_arrow</span>
+</div>
+</div>
+</div>
+<p class="font-label-md text-text-primary group-hover:text-primary transition-colors truncate">Ảo Ảnh Đêm Trắng</p>
+<p class="font-label-sm text-text-secondary">Tập 02 • Còn 42 phút</p>
+</div>
+<!-- Item 3 -->
+<div class="flex-none w-64 group cursor-pointer">
+<div class="relative aspect-video rounded-xl overflow-hidden mb-2">
+<img alt="Tiếp tục xem 3" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" data-alt="An expansive panoramic view of a massive interstellar spaceship docked at a circular space station orbiting a ringed planet. The lighting style is dramatic and high-contrast, featuring deep cosmic blacks and brilliant stellar white highlights. The mood is epic and grand, conveying a sense of vast exploration and premium science-fiction cinema quality." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnNWNcKthRNve2tFVLgNm8aEv6eXXjE8dFkMcrDdCr0KB-uIWv3SjXI7J2nalU2y0kFxYP3VblU95KTqA41ybtGLe1Zw5R9RkUQKF4ISRjrMmPfgxhldE9yDauROuSApqMMJHrvET24zGNMfmzdyOa_xFv33vSh_j8kW5wt0cRe1Vy3c6vIsaBaieTHfO9RppNGKcBBMaG959oOsWjQHD9GYfstMK6goyYjBhuTDsHRffKZXb6WFXBpMGJQgMvwPfFKUXJmC0hUgs"/>
+<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
+<div class="absolute bottom-0 left-0 w-full h-1 bg-surface-container">
+<div class="h-full bg-primary" style="width: 90%"></div>
+</div>
+<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+<div class="w-12 h-12 rounded-full bg-primary/80 backdrop-blur-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" data-icon="play_arrow">play_arrow</span>
+</div>
+</div>
+</div>
+<p class="font-label-md text-text-primary group-hover:text-primary transition-colors truncate">Hành Trình Vô Tận</p>
+<p class="font-label-sm text-text-secondary">Tập 12 • Còn 5 phút</p>
+</div>
+</div>
+</section>
+<!-- Trending Grid -->
+<section class="mt-8 px-6">
+<h3 class="font-headline-md text-headline-md text-text-primary mb-6">Thịnh hành</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- Poster Card 1 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-xl overflow-hidden mb-2 transition-all duration-300 transform group-hover:scale-[1.02] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_-10px_rgba(143,136,199,0.5)]">
+<img alt="Thịnh hành 1" class="w-full h-full object-cover" data-alt="A vertical cinematic movie poster depicting a mysterious hooded figure walking through a misty dark forest. Ethereal purple light filters through the trees, casting long shadows. The visual aesthetic is highly polished and atmospheric, featuring rich textures and professional color grading common in premium horror-thriller films." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAm6fwJXglg1asjxDIdekOfOV3I_ngqvh5UDJbjhIp6GGw2X-tq47miOok5ypCvQPNj-Q9P2BToNUGvy7Oe37Do2lv9f4ZFfb3yHMhvuKURxI86xQia-FYyHVWk03fuucBz57BFwjoiZOrgnzwKd853V3J5vbtlSvWCZ9ZedIfET3XAfsOuKKB-SHGIvuNAeqNhzwsfULIEZ4GEByC3susZc00Aibp4QAebIooBMCVyb2zNIRVG_cZRFu0F-pfQ5_LIp_kLZYwBSTI"/>
+<div class="absolute top-2 right-2 bg-primary text-on-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">4K</div>
+</div>
+<p class="font-label-md text-text-primary truncate">Bóng Ma Trong Rừng</p>
+<div class="flex items-center gap-2">
+<span class="text-tertiary material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs text-text-secondary">8.9 • Hành Động</span>
+</div>
+</div>
+<!-- Poster Card 2 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-xl overflow-hidden mb-2 transition-all duration-300 transform group-hover:scale-[1.02] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_-10px_rgba(143,136,199,0.5)]">
+<img alt="Thịnh hành 2" class="w-full h-full object-cover" data-alt="A striking movie poster showing a close-up profile of an android face with visible glowing circuitry underneath translucent synthetic skin. The background is a clean, minimal dark laboratory with subtle bokeh effects. The lighting is sophisticated, using cool blue and soft violet tones to emphasize a high-fidelity, futuristic sci-fi aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAq8oW9r_4QzaJxDYaCR1m_rbDmRQnJk0E-s1QSCHC35zLfeFUVfHHS1HD7tExZGxKFUFzLT1O7ECROM8WHd7feS_AFjeXfiXqrtspUB5iielPU1ZPewMefFRvyzopk0KPeo3azPE8dgb09WEWoDq_KmEOvrOc5r-GSnbDf44gMmS8cjNtieeB1Lp2AtX6jmaq94oL2BLSv84BEZ1DHqI5nDSsGJN-hkpTxKDfWeRnjRT5hehyjGh9mhoeEMsPjQ2-JiVzEk6WJpVw"/>
+<div class="absolute top-2 right-2 bg-primary text-on-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase">Top 1</div>
+</div>
+<p class="font-label-md text-text-primary truncate">Thế Giới Người Máy</p>
+<div class="flex items-center gap-2">
+<span class="text-tertiary material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs text-text-secondary">9.2 • Viễn Tưởng</span>
+</div>
+</div>
+<!-- Poster Card 3 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-xl overflow-hidden mb-2 transition-all duration-300 transform group-hover:scale-[1.02] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_-10px_rgba(143,136,199,0.5)]">
+<img alt="Thịnh hành 3" class="w-full h-full object-cover" data-alt="A cinematic poster for a period drama showing a dramatic ballroom scene in slow motion. Gold and crimson velvet textures dominate the frame with warm, candle-lit illumination creating an opulent yet moody atmosphere. The visual style is rich and detailed with a filmic grain, suitable for a premium cinematic historical production." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAk0YvzPGVleybxsRAtjO0crpDSnqdGg53kle6lqE67GPP0ew13OzbypshHM9VSc9vtKqf6TA49m0gDAMVS2NK3ZU0XN-sX2d35HBLASOaINflJ6684h90Q-HZBuQbs78KOOFROupJToTwvMhkJ70GX3sCC0_cE6petPHCnRmdw2-Gw8T9uD_C74h-6E03bEG7FNuvFjEZfhWio3clQnJx8LzwIaXA36XXYKfub-sgsuJEwHqVAVInIiuXW9vnk5YwKplIarxwIkQ"/>
+</div>
+<p class="font-label-md text-text-primary truncate">Vương Triều Sụp Đổ</p>
+<div class="flex items-center gap-2">
+<span class="text-tertiary material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs text-text-secondary">8.5 • Chính Kịch</span>
+</div>
+</div>
+<!-- Poster Card 4 -->
+<div class="group cursor-pointer">
+<div class="relative aspect-[2/3] rounded-xl overflow-hidden mb-2 transition-all duration-300 transform group-hover:scale-[1.02] group-hover:-translate-y-1 group-hover:shadow-[0_10px_30px_-10px_rgba(143,136,199,0.5)]">
+<img alt="Thịnh hành 4" class="w-full h-full object-cover" data-alt="A haunting cinematic poster featuring a vast frozen arctic wasteland under a brilliant aurora borealis sky. The palette is dominated by deep teals, ice blues, and vibrant green cosmic light. The mood is lonely and breathtakingly beautiful, reflecting a high-end cinematic adventure set in an extreme environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWQzhmi1fYXM-lUY4Sy7Fjxsm7aHZV-3v-5PcPzYzHa6RP18wiTri9YurFBFN2ingoGiB9-t-IM4hr4-pSIKeiNxNqiprH9gDybMduDaCnxlSm8QkZuE7Rb-hjifbcBPkriCwEoA6vVYnsI7TeEoMeIbfBdZtkQnWJP8JxfGU9btcICA4Bttty7HY6KvaxJ_JjgyVOsVBHnz3U81F1pyeKjGUkI73VW16PiLNMaxshP9FvUkZMQ64PVLzgZxE1ruIu3aa4J6V5DMA"/>
+</div>
+<p class="font-label-md text-text-primary truncate">Vùng Đất Băng Giá</p>
+<div class="flex items-center gap-2">
+<span class="text-tertiary material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="text-xs text-text-secondary">8.7 • Phiêu Lưu</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 w-full z-50 backdrop-blur-xl border-t border-border-glass bg-navbar-bg">
+<div class="flex justify-around items-center h-16 md:hidden max-w-container-max mx-auto">
+<!-- Home (Active) -->
+<a class="flex flex-col items-center justify-center text-primary bg-primary-container/20 rounded-xl px-4 py-1 translate-y-[-2px] duration-200 transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-sm text-label-sm mt-0.5">Trang chủ</span>
+</a>
+<!-- Search -->
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+<span class="font-label-sm text-label-sm mt-0.5">Tìm kiếm</span>
+</a>
+<!-- Favorites -->
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="favorite">favorite</span>
+<span class="font-label-sm text-label-sm mt-0.5">Yêu thích</span>
+</a>
+<!-- Profile -->
+<a class="flex flex-col items-center justify-center text-text-secondary hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm mt-0.5">Hồ sơ</span>
+</a>
+</div>
+</nav>
+<!-- Footer for Web View (Hidden on mobile by design request but included for shell integrity) -->
+<footer class="hidden md:block w-full py-section-gap mt-auto bg-surface-container-lowest border-t border-border-glass">
+<div class="max-w-container-max mx-auto px-margin-x flex flex-col md:flex-row justify-between items-center gap-4">
+<span class="font-headline-md text-headline-md text-primary">XemNhanhLienTay</span>
+<div class="flex gap-6">
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md" href="#">Terms of Service</a>
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md" href="#">Privacy Policy</a>
+<a class="text-text-secondary hover:text-primary transition-colors underline font-body-md text-body-md" href="#">Help Center</a>
+</div>
+<p class="font-body-md text-body-md text-text-secondary">© 2024 XemNhanhLienTay. Premium Cinematic Experience.</p>
+</div>
+</footer>
+</body></html>
