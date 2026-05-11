@@ -12,7 +12,7 @@ export default function Layout() {
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
         <div className="max-w-md text-center space-y-8">
           <h1 className="text-5xl font-black text-primary uppercase tracking-tighter">PHIM HAY QUÁ TRỜI</h1>
-          <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để khám phá kho phim siêu cấp của ông giáo Khôi!</p>
+          <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để khám phá bộ sưu tập thư viện ảnh nhé!</p>
           <button 
             onClick={loginWithGoogle}
             className="w-full bg-primary hover:bg-primary-fixed text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(var(--primary-rgb),0.3)] active:scale-95"
@@ -30,11 +30,11 @@ export default function Layout() {
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
         <div className="max-w-xl text-center space-y-6">
           <span className="material-symbols-outlined text-8xl text-primary animate-pulse">lock_person</span>
-          <h2 className="text-4xl font-black uppercase tracking-tighter text-primary">DỪNG LẠI ÔNG GIÁO ƠI!</h2>
+          <h2 className="text-4xl font-black uppercase tracking-tighter text-primary">DỪNG LẠI NÍ ƠI!</h2>
           
           <div className="space-y-2">
             <p className="text-xl text-zinc-300 font-bold">Tài khoản của bạn đang chờ phê duyệt.</p>
-            <p className="text-zinc-500">Vì lý do bảo mật và tránh share tràn lan, vui lòng liên hệ Admin (Nguyễn Duy Khôi) để được cấp quyền xem phim nhé!</p>
+            <p className="text-zinc-500">Vì lý do bảo mật và tránh share tràn lan, vui lòng liên hệ Admin để được cấp quyền truy cập nhé!</p>
           </div>
 
           <div className="flex flex-col gap-4 mt-8">
