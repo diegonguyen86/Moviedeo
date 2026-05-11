@@ -115,7 +115,7 @@ function Home() {
     return (
       <div className="pt-32 min-h-screen bg-black text-center text-white flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-xl font-bold animate-pulse text-primary">🍿 Đang chuẩn bị phim hay...</p>
+        <p className="text-xl font-bold animate-pulse text-primary">🍿 Đang chuẩn bị phim, đợi tí nha ní...</p>
       </div>
     );
   }
