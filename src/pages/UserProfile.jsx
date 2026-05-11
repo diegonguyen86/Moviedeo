@@ -46,7 +46,7 @@ export default function UserProfile() {
   const deleteOneHistory = async (e, docId) => {
     e.preventDefault(); // Ngăn không cho nhảy vào trang xem phim khi bấm nút xóa
     e.stopPropagation(); 
-    if (window.confirm("Xóa phim này khỏi lịch sử nhé ông giáo?")) {
+    if (window.confirm("Xóa phim này khỏi lịch sử?")) {
       try {
         await deleteDoc(doc(db, "users", user.uid, "watchHistory", docId));
       } catch (error) {
@@ -57,7 +57,7 @@ export default function UserProfile() {
 
   // 3. Hàm xóa TẤT CẢ
   const clearAllHistory = async () => {
-    if (window.confirm("Ông giáo muốn 'tẩy trắng' toàn bộ lịch sử xem phim sao?")) {
+    if (window.confirm("Bạn thật sự muốn tẩy trắng' toàn bộ lịch sử xem phim sao?")) {
       try {
         const q = query(collection(db, "users", user.uid, "watchHistory"));
         const snapshot = await getDocs(q);
@@ -141,7 +141,7 @@ export default function UserProfile() {
             </div>
           ) : (
             <div className="py-32 text-center bg-zinc-900/20 rounded-[2.5rem] border border-dashed border-white/10">
-              <p className="text-zinc-600 font-bold uppercase tracking-widest">Lịch sử trống trải quá ông giáo ơi!</p>
+              <p className="text-zinc-600 font-bold uppercase tracking-widest">Lịch sử phim của bạn còn trong trắng quá!</p>
             </div>
           )}
         </section>
