@@ -1,1 +1,1 @@
-/api/* https://phim.nguonc.com/api/:splat  200
+/* https://phim.nguonc.com/:splat  200
