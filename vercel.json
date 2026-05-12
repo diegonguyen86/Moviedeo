@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/bot",
+      "destination": "/api/bot"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://phim.nguonc.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
