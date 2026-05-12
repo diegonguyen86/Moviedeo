@@ -25,6 +25,7 @@ export default function VideoPlayer() {
   // STATE ĐẶC NHIỆM: Tự động bật Iframe nếu m3u8 bị chặn
   const [useIframe, setUseIframe] = useState(false);
 
+  // Khắc phục: Tính toán episodes an toàn hơn
   const currentEpisodes = allServers?.[activeServerIdx]?.server_data || [];
 
   useEffect(() => {
@@ -116,14 +117,13 @@ export default function VideoPlayer() {
                 localStorage.setItem(`progress_${id}_${currentEpName}`, progress.playedSeconds);
               }}
               onPause={saveToFirebase}
-              // KHẮC PHỤC LỖI TỐI THƯỢNG: Nếu mạng hoặc Safari chặn m3u8 -> Tự động xoay sang Iframe
+              // KHẮC PHỤC LỖI TỐI THƯỢNG: Nếu mạng chặn m3u8 -> Tự động xoay sang Iframe
               onError={(e) => {
                 console.warn("⚠️ Không thể phát m3u8, tự động chuyển sang Iframe dự phòng!", e);
                 setUseIframe(true);
               }}
               config={{
                 file: {
-                  // ĐÃ XÓA forceHLS để iOS tự xử lý luồng
                   attributes: { poster: posterUrl, playsInline: true }
                 }
               }}
@@ -139,7 +139,6 @@ export default function VideoPlayer() {
                 <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
                 Tập {currentEpName}
               </span>
-              {/* Nút thủ công cho user nếu muốn ép đổi sang Iframe */}
               {!useIframe && (
                  <button onClick={() => setUseIframe(true)} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-colors">
                    🔄 Bật Server Dự Phòng
