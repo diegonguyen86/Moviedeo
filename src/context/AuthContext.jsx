@@ -10,16 +10,17 @@ export function AuthProvider({ children }) {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // --- 🤖 CON BOT TELEGRAM (BẢN DUYỆT TRỰC TIẾP) ---
-  // Đã thêm uid vào đây để Bot biết cần duyệt ai
+  // --- 🤖 CON BOT TELEGRAM (ĐÃ FIX LINK VERCEL) ---
   const notifyAdmin = async (name, email, uid) => {
     const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
     const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
-    const baseUrl = window.location.origin; // Tự động lấy link trang web
+    
+    // Tự động lấy domain hiện tại (ví dụ: phimhayquatroi.vercel.app)
+    const baseUrl = window.location.origin; 
 
-    // Link gọi đến "Trạm trung chuyển" Netlify Function
-    const approveUrl = `${baseUrl}/.netlify/functions/bot?action=approve&uid=${uid}`;
-    const declineUrl = `${baseUrl}/.netlify/functions/bot?action=decline&uid=${uid}`;
+    // SỬA LẠI ĐƯỜNG DẪN: Trỏ về /api/bot của Vercel thay vì Netlify
+    const approveUrl = `${baseUrl}/api/bot?action=approve&uid=${uid}`;
+    const declineUrl = `${baseUrl}/api/bot?action=decline&uid=${uid}`;
 
     const messageText = `<b>🍿 CÓ KHÁCH MỚI ĐĂNG KÝ!</b>\n\n` +
                         `👤 <b>Tên:</b> ${name}\n` +
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
                         `<i>Ông giáo Khôi bấm nút dưới đây để xử lý nhé:</i>`;
 
     try {
-      const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -44,8 +45,7 @@ export function AuthProvider({ children }) {
           }
         }),
       });
-      const result = await response.json();
-      if (result.ok) console.log("✅ Bot báo thành công!");
+      console.log("✅ Đã gửi báo cáo cho ông giáo!");
     } catch (error) {
       console.error("❌ Lỗi Bot:", error);
     }
@@ -60,6 +60,7 @@ export function AuthProvider({ children }) {
           const userDoc = await getDoc(userDocRef);
           
           if (!userDoc.exists()) {
+            // TẠO MỚI KHI LẦN ĐẦU ĐĂNG NHẬP
             await setDoc(userDocRef, {
               uid: currentUser.uid,
               email: currentUser.email,
@@ -69,9 +70,10 @@ export function AuthProvider({ children }) {
               createdAt: new Date().toISOString()
             });
             setIsApproved(false);
-            // Quan trọng: Truyền uid vào để Bot nhận diện
+            // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
             await notifyAdmin(currentUser.displayName, currentUser.email, currentUser.uid);
           } else {
+            // ĐÃ CÓ TÀI KHOẢN -> Chỉ lấy trạng thái duyệt
             setIsApproved(userDoc.data().isApproved || false);
           }
           setUser(currentUser);
