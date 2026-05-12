@@ -45,12 +45,16 @@ function Home() {
       );
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
-        const movies = snapshot.docs.map(doc => ({
-          id: doc.data().movieId,
-          title: doc.data().title,
-          image: doc.data().image,
-          year: `Tập: ${doc.data().epName}` 
-        }));
+        const movies = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            // FIX LỖI 404: Ưu tiên lấy field 'slug', nếu không có thì lấy chính ID của document
+            id: data.slug || doc.id, 
+            title: data.title,
+            image: data.image,
+            year: data.epName ? `Tập: ${data.epName}` : (data.year || "2024")
+          };
+        });
         setWatchingHistory(movies);
       });
 
