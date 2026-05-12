@@ -87,13 +87,13 @@ export default function BrowsePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  // FIX 1: Lấy từ khóa tìm kiếm từ bộ nhớ tạm (nếu có)
-  const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem("savedSearch") || "");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  // FIX 1: Lấy từ khóa tìm kiếm từ bộ nhớ tạm (nhớ luôn cho cả 2 state để gọi API 1 phát ăn ngay)
+  const savedKeyword = sessionStorage.getItem("savedSearch") || "";
+  const [searchQuery, setSearchQuery] = useState(savedKeyword);
+  const [debouncedQuery, setDebouncedQuery] = useState(savedKeyword);
+  
   const [advancedFilters, setAdvancedFilters] = useState([]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
-  
-  // State để đóng/mở toàn bộ cột Filter trên Mobile
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   // FIX 2: Bỏ location.key để không bị reset khi bấm nút Quay lại (Back)
