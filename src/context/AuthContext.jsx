@@ -10,17 +10,21 @@ export function AuthProvider({ children }) {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // --- 🤖 CON BOT TELEGRAM (BẢN CHUẨN) ---
-  const notifyAdmin = async (name, email) => {
+  // --- 🤖 CON BOT TELEGRAM (BẢN DUYỆT TRỰC TIẾP) ---
+  // Đã thêm uid vào đây để Bot biết cần duyệt ai
+  const notifyAdmin = async (name, email, uid) => {
     const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
     const CHAT_ID = import.meta.env.VITE_TELEGRAM_CHAT_ID;
-    const baseUrl = window.location.origin;
-    const adminUrl = `${baseUrl}/#/admin-secret`; 
+    const baseUrl = window.location.origin; // Tự động lấy link trang web
+
+    // Link gọi đến "Trạm trung chuyển" Netlify Function
+    const approveUrl = `${baseUrl}/.netlify/functions/bot?action=approve&uid=${uid}`;
+    const declineUrl = `${baseUrl}/.netlify/functions/bot?action=decline&uid=${uid}`;
 
     const messageText = `<b>🍿 CÓ KHÁCH MỚI ĐĂNG KÝ!</b>\n\n` +
                         `👤 <b>Tên:</b> ${name}\n` +
                         `📧 <b>Email:</b> ${email}\n\n` +
-                        `<i>Ông giáo Khôi vào duyệt cho họ nhé!</i>`;
+                        `<i>Ông giáo Khôi bấm nút dưới đây để xử lý nhé:</i>`;
 
     try {
       const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -31,7 +35,12 @@ export function AuthProvider({ children }) {
           text: messageText,
           parse_mode: "HTML",
           reply_markup: {
-            inline_keyboard: [[{ text: "🚀 MỞ TRANG DUYỆT NGAY", url: adminUrl }]]
+            inline_keyboard: [
+              [
+                { text: "✅ DUYỆT NGAY", url: approveUrl },
+                { text: "❌ CÚT", url: declineUrl }
+              ]
+            ]
           }
         }),
       });
@@ -40,7 +49,7 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error("❌ Lỗi Bot:", error);
     }
-  }; // <--- NGOẶC KẾT THÚC HÀM PHẢI Ở ĐÂY!
+  }; 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -60,8 +69,8 @@ export function AuthProvider({ children }) {
               createdAt: new Date().toISOString()
             });
             setIsApproved(false);
-            // Gọi bot khi có user mới
-            await notifyAdmin(currentUser.displayName, currentUser.email);
+            // Quan trọng: Truyền uid vào để Bot nhận diện
+            await notifyAdmin(currentUser.displayName, currentUser.email, currentUser.uid);
           } else {
             setIsApproved(userDoc.data().isApproved || false);
           }
