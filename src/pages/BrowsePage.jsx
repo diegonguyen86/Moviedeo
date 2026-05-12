@@ -86,14 +86,17 @@ export default function BrowsePage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
+  
+  // FIX 1: Lấy từ khóa tìm kiếm từ bộ nhớ tạm (nếu có)
+  const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem("savedSearch") || "");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [advancedFilters, setAdvancedFilters] = useState([]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   
-  // THÊM: State để đóng/mở toàn bộ cột Filter trên Mobile
+  // State để đóng/mở toàn bộ cột Filter trên Mobile
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
+  // FIX 2: Bỏ location.key để không bị reset khi bấm nút Quay lại (Back)
   useEffect(() => {
     if (location.state) {
       setActiveFilter({
@@ -101,12 +104,11 @@ export default function BrowsePage() {
         slug: location.state.slug,
         type: location.state.type
       });
-    } else {
-      setActiveFilter(null);
+      // Nếu có location.state (nghĩa là vừa bấm vào Thể loại/Danh sách), thì mới xóa từ khóa
+      setSearchQuery("");
+      sessionStorage.removeItem("savedSearch");
     }
-    setSearchQuery("");
-    setPage(1);
-  }, [location.state, location.key]);
+  }, [location.state]); 
 
   const toggleAdvancedFilterItem = (item) => {
     setAdvancedFilters(prev =>
@@ -128,7 +130,9 @@ export default function BrowsePage() {
     }
   };
 
+  // FIX 3: Lưu từ khóa vào bộ nhớ tạm mỗi khi gõ
   useEffect(() => {
+    sessionStorage.setItem("savedSearch", searchQuery);
     const timer = setTimeout(() => { setDebouncedQuery(searchQuery); }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -305,7 +309,7 @@ export default function BrowsePage() {
           </button>
         </div>
 
-        {/* Sidebar Bộ Lọc - Ẩn trên Mobile nếu chưa bấm nút, và gỡ sticky trên Mobile */}
+        {/* Sidebar Bộ Lọc */}
         <aside className={`w-full md:w-1/4 lg:w-1/5 shrink-0 h-fit bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 backdrop-blur-md md:sticky md:top-24 ${isMobileFilterOpen ? "block" : "hidden md:block"}`}>
           <div className="flex items-center gap-2 mb-6 text-primary font-bold hidden md:flex">
             <span className="material-symbols-outlined">filter_alt</span>
