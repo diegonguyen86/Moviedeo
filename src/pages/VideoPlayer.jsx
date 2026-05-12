@@ -1,52 +1,48 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom"; // ĐÃ THÊM useParams
 import { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext"; // Import để nhận diện user
-import { db } from "../firebase"; // Import database
-import { doc, setDoc, serverTimestamp } from "firebase/firestore"; // Import các hàm xử lý dữ liệu
+import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function VideoPlayer() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth(); // Lấy thông tin người dùng đang đăng nhập
+  const { id } = useParams(); // ĐÂY CHÍNH LÀ CÁI SLUG LẤY TRỰC TIẾP TỪ URL!
+  const { user } = useAuth();
   
-  // Nhận dữ liệu từ MovieDetail gửi sang
   const { embedUrl, movieName, epName, allEpisodes, posterUrl } = location.state || {};
 
-  // Quản lý tập đang chiếu
   const [currentEmbed, setCurrentEmbed] = useState(embedUrl);
   const [currentEpName, setCurrentEpName] = useState(epName);
 
-  // 1. Logic tự động lưu lịch sử vào Firebase mỗi khi xem phim hoặc đổi tập
   useEffect(() => {
     if (user && movieName && currentEmbed) {
       const saveToFirebase = async () => {
         try {
-          // Lưu vào collection "watchHistory" của riêng từng user
-          // Dùng movieName làm ID để mỗi phim chỉ có 1 bản ghi (không bị lưu trùng nhiều lần 1 phim)
-          const historyRef = doc(db, "users", user.uid, "watchHistory", movieName);
+          // FIX 1: Dùng 'id' (slug) làm tên Document thay vì Tên tiếng Việt
+          const historyRef = doc(db, "users", user.uid, "watchHistory", id);
           
           await setDoc(historyRef, {
-            movieId: location.state.slug || movieName,
+            slug: id,        // FIX 2: Lưu chính xác slug vào database
+            movieId: id,     // Lưu backup luôn
             title: movieName,
             epName: currentEpName,
             image: posterUrl,
-            lastWatched: serverTimestamp() // Lưu thời gian xem để sắp xếp phim mới nhất lên đầu
+            lastWatched: serverTimestamp() 
           });
-          console.log("Đã lưu lịch sử xem phim cho ông giáo!");
+          console.log("✅ Đã lưu lịch sử xem phim chuẩn xác!");
         } catch (error) {
-          console.error("Lỗi lưu lịch sử lên Firebase:", error);
+          console.error("❌ Lỗi lưu lịch sử lên Firebase:", error);
         }
       };
       saveToFirebase();
     }
-  }, [currentEmbed, user, movieName, currentEpName, posterUrl, location.state.slug]);
+  }, [currentEmbed, user, movieName, currentEpName, posterUrl, id]);
 
-  // 2. Cuộn lên đầu trang khi đổi tập
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [currentEmbed]);
 
-  // Xử lý trường hợp không có link phim
   if (!embedUrl) return (
     <div className="h-screen bg-black flex flex-col items-center justify-center text-white">
       <span className="material-symbols-outlined text-6xl text-red-500 mb-4">error</span>
@@ -55,20 +51,16 @@ export default function VideoPlayer() {
     </div>
   );
 
-  // Hàm chuyển tập phim nhanh
   const handleSwitchEpisode = (ep) => {
     setCurrentEmbed(ep.embed);
     setCurrentEpName(ep.name);
   };
 
-  // Logic tìm tập tiếp theo
   const currentIndex = allEpisodes?.findIndex(e => e.embed === currentEmbed);
   const nextEpisode = allEpisodes && currentIndex < allEpisodes.length - 1 ? allEpisodes[currentIndex + 1] : null;
 
   return (
     <main className="relative min-h-screen bg-black text-white pt-24 pb-20 overflow-hidden font-sans">
-      
-      {/* 1. LỚP NỀN CINEMATIC (Dựa trên posterUrl gửi sang) */}
       <div className="absolute inset-0 z-0">
         <img 
           src={posterUrl} 
@@ -79,8 +71,6 @@ export default function VideoPlayer() {
       </div>
 
       <div className="relative z-10 max-w-[1260px] mx-auto px-4 md:px-8">
-        
-        {/* 2. KHU VỰC PLAYER */}
         <div className="relative w-full aspect-video bg-black rounded-[2rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.9)] border border-white/10">
           <iframe
             src={currentEmbed}
@@ -92,7 +82,6 @@ export default function VideoPlayer() {
           />
         </div>
 
-        {/* 3. THÔNG TIN PHIM & NÚT ĐIỀU KHIỂN */}
         <div className="mt-12 flex flex-col md:flex-row md:items-end justify-between gap-10 pb-12 border-b border-white/10">
           <div className="space-y-5">
             <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight drop-shadow-lg">
@@ -127,7 +116,6 @@ export default function VideoPlayer() {
           </div>
         </div>
 
-        {/* 4. DANH SÁCH TẬP PHIM */}
         <div className="mt-16">
           <div className="flex items-center gap-4 mb-10">
             <div className="w-1.5 h-10 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.8)]"></div>
@@ -153,7 +141,6 @@ export default function VideoPlayer() {
             })}
           </div>
         </div>
-
       </div>
     </main>
   );
