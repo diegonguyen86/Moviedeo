@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+const admin = require('firebase-admin');
 
 // Khởi tạo quyền Admin Firebase để chọc vào Database
 if (!admin.apps.length) {

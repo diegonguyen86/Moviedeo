@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// CHỈNH SỬA: Luôn dùng /api để lách luật CORS qua Netlify Proxy
-const baseURL = '/api'; 
+// CHỈNH SỬA: GỌI THẲNG SANG NGUONC TỪ TRÌNH DUYỆT (Né lỗi 403 của máy chủ Vercel)
+const baseURL = 'https://phim.nguonc.com/api'; 
 const apiClient = axios.create({ baseURL });
 
 // --- LOGIC CACHE (Lưu 1 ngày để web mượt, giữ nguyên khi tắt trình duyệt) ---
