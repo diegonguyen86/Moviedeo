@@ -4,17 +4,25 @@ import axios from "axios";
 const baseURL = '/api'; 
 const apiClient = axios.create({ baseURL });
 
-// --- LOGIC CACHE (Lưu 10 phút để web mượt) ---
-const CACHE_TIME = 10 * 60 * 1000; 
+// --- LOGIC CACHE (Lưu 1 ngày để web mượt, giữ nguyên khi tắt trình duyệt) ---
+const CACHE_TIME = 24 * 60 * 60 * 1000; // 24 giờ x 60 phút x 60 giây x 1000 ms
 const getCachedData = (key) => {
-  const cached = sessionStorage.getItem("cache_" + key);
+  // Dùng localStorage thay vì sessionStorage
+  const cached = localStorage.getItem("cache_" + key);
   if (!cached) return null;
+  
   const { data, timestamp } = JSON.parse(cached);
-  if (Date.now() - timestamp > CACHE_TIME) return null;
+  
+  // Nếu dữ liệu đã cũ hơn 1 ngày, dọn rác và báo là chưa có cache
+  if (Date.now() - timestamp > CACHE_TIME) {
+    localStorage.removeItem("cache_" + key);
+    return null;
+  }
   return data;
 };
 const setCachedData = (key, data) => {
-  sessionStorage.setItem("cache_" + key, JSON.stringify({ data, timestamp: Date.now() }));
+  // Dùng localStorage để lưu
+  localStorage.setItem("cache_" + key, JSON.stringify({ data, timestamp: Date.now() }));
 };
 
 // Hàm GET an toàn
@@ -33,7 +41,7 @@ const safeGet = async (url) => {
   }
 };
 
-// --- CÁC HÀM EXPORT (Ông giáo nhớ kiểm tra tên hàm cho khớp với trang Home nhé) ---
+// --- CÁC HÀM EXPORT (Đã có đầy đủ cả hàm Search by Title) ---
 export const apiGetPhimMoiCapNhat = (page = 1) => safeGet(`/films/phim-moi-cap-nhat?page=${page}`);
 export const apiGetPhimTheoDanhSach = (slug, page = 1) => safeGet(`/films/danh-sach/${slug}?page=${page}`);
 export const apiGetPhimDetail = (slug) => safeGet(`/film/${slug}`);
@@ -41,8 +49,6 @@ export const apiGetPhimTheoTheLoai = (slug, page = 1) => safeGet(`/films/the-loa
 export const apiGetPhimTheoQuocGia = (slug, page = 1) => safeGet(`/films/quoc-gia/${slug}?page=${page}`);
 export const apiGetPhimTheoNam = (slug, page = 1) => safeGet(`/films/nam-phat-hanh/${slug}?page=${page}`);
 export const apiSearchPhim = (keyword, page = 1) => safeGet(`/films/search?keyword=${encodeURIComponent(keyword)}&page=${page}`);
-
-// ĐÂY LÀ HÀM BỊ THIẾU NÈ:
 export const apiSearchByTitle = (title) => safeGet(`/films/search?keyword=${encodeURIComponent(title)}&page=1`);
 
 // TMDB
