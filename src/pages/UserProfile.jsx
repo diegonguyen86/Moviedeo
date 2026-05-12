@@ -28,8 +28,9 @@ export default function UserProfile() {
 
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({
-          docId: doc.id, // Đây chính là tên phim dùng làm ID để xóa
-          id: doc.data().movieId,
+          docId: doc.id, 
+          // FIX 1: Lấy chuẩn slug từ dữ liệu mới lưu, back up bằng ID document
+          id: doc.data().slug || doc.id, 
           title: doc.data().title,
           image: doc.data().image,
           year: doc.data().epName
@@ -44,7 +45,7 @@ export default function UserProfile() {
 
   // 2. Hàm xóa TỪNG phim
   const deleteOneHistory = async (e, docId) => {
-    e.preventDefault(); // Ngăn không cho nhảy vào trang xem phim khi bấm nút xóa
+    e.preventDefault(); 
     e.stopPropagation(); 
     if (window.confirm("Xóa phim này khỏi lịch sử?")) {
       try {
@@ -57,7 +58,7 @@ export default function UserProfile() {
 
   // 3. Hàm xóa TẤT CẢ
   const clearAllHistory = async () => {
-    if (window.confirm("Bạn thật sự muốn tẩy trắng' toàn bộ lịch sử xem phim sao?")) {
+    if (window.confirm("Bạn thật sự muốn tẩy trắng toàn bộ lịch sử xem phim sao?")) {
       try {
         const q = query(collection(db, "users", user.uid, "watchHistory"));
         const snapshot = await getDocs(q);
@@ -69,7 +70,7 @@ export default function UserProfile() {
     }
   };
 
-  if (!user) return null; // Layout đã chặn rồi nhưng cứ để đây cho chắc
+  if (!user) return null; 
 
   return (
     <main className="pt-24 pb-20 min-h-screen bg-black text-white px-6">
@@ -110,9 +111,10 @@ export default function UserProfile() {
                 <div 
                   key={movie.docId} 
                   className="relative group cursor-pointer"
-                  onClick={() => navigate(`/play/${movie.id}`)}
+                  // FIX 2: Điều hướng về trang /movie/ để load lại API an toàn tuyệt đối
+                  onClick={() => navigate(`/movie/${movie.id}`)}
                 >
-                  {/* NÚT XÓA LẺ (Nổi lên khi hover) */}
+                  {/* NÚT XÓA LẺ */}
                   <button 
                     onClick={(e) => deleteOneHistory(e, movie.docId)}
                     className="absolute top-2 right-2 z-30 w-8 h-8 bg-black/80 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10"
@@ -125,7 +127,6 @@ export default function UserProfile() {
                     <img src={movie.image} alt={movie.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
                     
-                    {/* Badge Tập phim */}
                     <div className="absolute bottom-3 left-3 right-3">
                       <p className="text-[10px] text-primary font-black uppercase tracking-widest truncate bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-primary/20">
                         {movie.year}
