@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // ĐÃ CHUYỂN NHÀ SANG KKPHIM (PhimAPI)
-const baseURL = 'https://phimapi.com'; 
+const baseURL = '/api'; 
 const apiClient = axios.create({ baseURL });
 
 // --- LOGIC CACHE (Lưu 1 ngày để web mượt, giữ nguyên khi tắt trình duyệt) ---
