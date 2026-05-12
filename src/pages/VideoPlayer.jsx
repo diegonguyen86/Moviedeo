@@ -4,7 +4,7 @@ import ReactPlayer from "react-player";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-console.log("Link phim đang phát:", videoUrl);
+
 export default function VideoPlayer() {
   const navigate = useNavigate();
   const location = useLocation();
