@@ -90,6 +90,9 @@ export default function BrowsePage() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [advancedFilters, setAdvancedFilters] = useState([]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  
+  // THÊM: State để đóng/mở toàn bộ cột Filter trên Mobile
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   useEffect(() => {
     if (location.state) {
@@ -117,7 +120,11 @@ export default function BrowsePage() {
     if (advancedFilters.length > 0) {
       const keyword = advancedFilters.map(f => f.name).join(" ");
       setSearchQuery(keyword);
-      if (window.innerWidth < 768) setIsAdvancedOpen(false);
+      // Tự động đóng cả bộ lọc nâng cao lẫn bộ lọc mobile khi tìm kiếm xong
+      if (window.innerWidth < 768) {
+        setIsAdvancedOpen(false);
+        setIsMobileFilterOpen(false); 
+      }
     }
   };
 
@@ -155,7 +162,6 @@ export default function BrowsePage() {
             apiSearchPhim(debouncedQuery, apiPage1),
             apiSearchPhim(debouncedQuery, apiPage2)
           ]);
-          // THAY ĐỔI: Kiểm tra res1 có tồn tại và có items không (Bỏ qua status success gắt gao)
           if (res1 && res1.items) {
             combinedItems = [...res1.items];
             apiTotalPages = res1.paginate?.total_page || 1;
@@ -166,7 +172,6 @@ export default function BrowsePage() {
             fetchFilterPage(apiPage1),
             fetchFilterPage(apiPage2)
           ]);
-          // THAY ĐỔI: Kiểm tra res1 có tồn tại và có items không
           if (res1 && res1.items) {
             combinedItems = [...res1.items];
             apiTotalPages = res1.paginate?.total_page || 1;
@@ -195,6 +200,10 @@ export default function BrowsePage() {
       setActiveFilter(filter);
     }
     setSearchQuery("");
+    // Tự động đóng bộ lọc trên mobile sau khi chọn xong
+    if (window.innerWidth < 768) {
+      setIsMobileFilterOpen(false);
+    }
   };
 
   const handlePageChange = (newPage) => {
@@ -270,7 +279,7 @@ export default function BrowsePage() {
   return (
     <div className="pt-24 min-h-screen px-6 max-w-container-max mx-auto pb-20 bg-black">
       {/* Search Bar */}
-      <div className="relative mb-8 w-full md:w-2/3 lg:w-1/2 mx-auto">
+      <div className="relative mb-6 w-full md:w-2/3 lg:w-1/2 mx-auto">
         <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-2xl">search</span>
         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Tìm kiếm phim, diễn viên, đạo diễn..."
           className="w-full bg-zinc-900 border border-zinc-800 focus:border-primary text-white rounded-full pl-12 pr-12 py-4 outline-none transition-all" />
@@ -281,16 +290,30 @@ export default function BrowsePage() {
         )}
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar */}
-        <aside className="w-full md:w-1/4 lg:w-1/5 shrink-0 h-fit bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 backdrop-blur-md sticky top-24">
-          <div className="flex items-center gap-2 mb-6 text-primary font-bold">
+      <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+        
+        {/* NÚT TẮT/MỞ BỘ LỌC TRÊN MOBILE */}
+        <div className="md:hidden w-full">
+          <button 
+            onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
+            className="w-full flex items-center justify-center gap-2 p-3.5 bg-zinc-900 border border-zinc-800 rounded-xl text-primary font-bold hover:bg-zinc-800 transition-colors"
+          >
+            <span className="material-symbols-outlined">
+              {isMobileFilterOpen ? "close" : "filter_alt"}
+            </span>
+            {isMobileFilterOpen ? "Đóng Bộ Lọc" : "Mở Bộ Lọc Phim"}
+          </button>
+        </div>
+
+        {/* Sidebar Bộ Lọc - Ẩn trên Mobile nếu chưa bấm nút, và gỡ sticky trên Mobile */}
+        <aside className={`w-full md:w-1/4 lg:w-1/5 shrink-0 h-fit bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 backdrop-blur-md md:sticky md:top-24 ${isMobileFilterOpen ? "block" : "hidden md:block"}`}>
+          <div className="flex items-center gap-2 mb-6 text-primary font-bold hidden md:flex">
             <span className="material-symbols-outlined">filter_alt</span>
             <span className="text-xl">Bộ Lọc Phim</span>
           </div>
           <div className="max-h-[70vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
             <AdvancedFilterSection />
-            <div className="h-[1px] w-full bg-zinc-800 mb-6"></div>
+            <div className="h-[1px] w-full bg-zinc-800 mb-6 hidden md:block"></div>
             <FilterSection title="Định Đạng" items={types} />
             <FilterSection title="Thể Loại" items={categories} />
             <FilterSection title="Quốc Gia" items={countries} />
@@ -300,7 +323,7 @@ export default function BrowsePage() {
 
         {/* Movie Grid */}
         <section className="flex-1 flex flex-col">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <h2 className="text-2xl font-bold text-white uppercase tracking-tight">
               {debouncedQuery.trim().length > 0
                 ? `Kết quả cho: "${debouncedQuery}"`
@@ -316,14 +339,14 @@ export default function BrowsePage() {
             </div>
           ) : movies.length > 0 ? (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-10">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 mb-10">
                 {movies.map((movie) => <MovieCard key={movie.id} movie={movie} />)}
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-auto pt-8 border-t border-zinc-800">
-                  <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-primary disabled:opacity-30 transition-colors">
+                <div className="flex justify-center items-center gap-1 md:gap-2 mt-auto pt-8 border-t border-zinc-800 flex-wrap">
+                  <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-primary disabled:opacity-30 transition-colors flex items-center justify-center">
                     <span className="material-symbols-outlined">chevron_left</span>
                   </button>
                   {getPaginationGroup().map((p) => (
@@ -331,7 +354,7 @@ export default function BrowsePage() {
                       {p}
                     </button>
                   ))}
-                  <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-primary disabled:opacity-30 transition-colors">
+                  <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-primary disabled:opacity-30 transition-colors flex items-center justify-center">
                     <span className="material-symbols-outlined">chevron_right</span>
                   </button>
                 </div>
@@ -340,7 +363,7 @@ export default function BrowsePage() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center py-32 bg-zinc-900/30 rounded-xl border border-zinc-800">
               <span className="material-symbols-outlined text-5xl mb-4 text-zinc-700">movie_off</span>
-              <p className="text-zinc-500 font-medium">Kho phim hiện chưa có phim này, bạn quay lại sau nhé!</p>
+              <p className="text-zinc-500 font-medium text-center px-4">Kho phim hiện chưa có phim này, bạn quay lại sau nhé!</p>
             </div>
           )}
         </section>
