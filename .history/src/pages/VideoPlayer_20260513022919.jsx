@@ -1,0 +1,174 @@
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import ReactPlayer from "react-player";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
+export default function VideoPlayer() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams(); 
+  const { user } = useAuth();
+  
+  // Nhận dữ liệu từ trang MovieDetail gửi sang
+  const { videoUrl, embedFallback, movieName, epName, allServers, currentServerIndex, posterUrl } = location.state || {};
+
+  const playerRef = useRef(null);
+  const [activeServerIdx, setActiveServerIdx] = useState(currentServerIndex || 0);
+  const [currentVideo, setCurrentVideo] = useState(videoUrl);
+  const [currentEmbed, setCurrentEmbed] = useState(embedFallback);
+  const [currentEpName, setCurrentEpName] = useState(epName);
+  
+  const [playedSeconds, setPlayedSeconds] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const [useIframe, setUseIframe] = useState(false);
+
+  // Tính toán danh sách tập an toàn
+  const currentEpisodes = Array.isArray(allServers?.[activeServerIdx]?.server_data) 
+    ? allServers[activeServerIdx].server_data 
+    : [];
+
+  // Logic lưu tiến độ vào Firebase
+  const saveToFirebase = async () => {
+    if (!user || !movieName) return;
+    try {
+      const historyRef = doc(db, "users", user.uid, "watchHistory", id);
+      await setDoc(historyRef, {
+        slug: id,
+        movieId: id,
+        title: movieName,
+        epName: currentEpName,
+        image: posterUrl,
+        progress: playedSeconds,
+        lastWatched: serverTimestamp() 
+      });
+    } catch (error) { console.error(error); }
+  };
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    saveToFirebase();
+  }, [currentVideo, useIframe]);
+
+  // Logic tua đến đoạn đang xem dở
+  useEffect(() => {
+    const savedTime = localStorage.getItem(`progress_${id}_${currentEpName}`);
+    if (savedTime && playerRef.current && isReady && !useIframe) {
+      playerRef.current.seekTo(parseFloat(savedTime), 'seconds');
+    }
+  }, [id, currentEpName, isReady, useIframe]);
+
+  if (!videoUrl && !currentEmbed) return (
+    <div className="h-screen bg-black flex flex-col items-center justify-center text-white">
+      <p className="text-xl font-bold">Lỗi: Không tìm thấy link phim!</p>
+      <button onClick={() => navigate(-1)} className="mt-6 bg-primary px-8 py-3 rounded-xl">Quay lại</button>
+    </div>
+  );
+
+  const handleSwitchEpisode = (ep) => {
+    saveToFirebase();
+    setCurrentVideo(ep.link_m3u8); 
+    setCurrentEmbed(ep.link_embed);
+    setCurrentEpName(ep.name);
+    setIsReady(false);
+    setUseIframe(false); // Thử lại m3u8 cho tập mới
+  };
+
+  const handleSwitchServer = (idx) => {
+    setActiveServerIdx(idx);
+    const newServerEpisodes = allServers[idx].server_data;
+    const equivalentEp = newServerEpisodes.find(e => e.name === currentEpName) || newServerEpisodes[0];
+    handleSwitchEpisode(equivalentEp);
+  };
+
+  const currentIndex = currentEpisodes.findIndex(e => e.name === currentEpName);
+  const nextEpisode = currentIndex < currentEpisodes.length - 1 ? currentEpisodes[currentIndex + 1] : null;
+
+  return (
+    <main className="relative min-h-screen bg-black text-white pt-24 pb-20 font-sans">
+      <div className="absolute inset-0 z-0">
+        <img src={posterUrl} alt="Bg" className="w-full h-full object-cover opacity-20 blur-[100px] scale-150" />
+      </div>
+
+      <div className="relative z-10 max-w-[1260px] mx-auto px-4">
+        {/* KHUNG PHÁT VIDEO */}
+        <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+          {useIframe ? (
+            <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
+          ) : (
+            <ReactPlayer
+              ref={playerRef}
+              url={currentVideo}
+              controls width="100%" height="100%"
+              playing={true}
+              style={{ position: 'absolute', top: 0, left: 0 }}
+              onReady={() => setIsReady(true)}
+              onProgress={(p) => {
+                setPlayedSeconds(p.playedSeconds);
+                localStorage.setItem(`progress_${id}_${currentEpName}`, p.playedSeconds);
+              }}
+              onPause={saveToFirebase}
+              onError={() => {
+                console.warn("M3U8 lỗi, tự động chuyển sang Server dự phòng...");
+                setUseIframe(true);
+              }}
+              config={{ file: { attributes: { playsInline: true } } }}
+            />
+          )}
+        </div>
+
+        <div className="mt-12 flex flex-col md:flex-row justify-between gap-6 pb-8 border-b border-white/10">
+          <div className="space-y-4">
+            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter">{movieName}</h1>
+            <div className="flex gap-3">
+               <span className="bg-primary/20 text-primary px-4 py-1.5 rounded-xl border border-primary/30 text-sm font-bold uppercase tracking-widest">
+                Tập {currentEpName}
+              </span>
+              {!useIframe && (
+                <button onClick={() => setUseIframe(true)} className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-colors">
+                  🔄 Đổi Server dự phòng
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <button onClick={() => navigate(-1)} className="px-8 py-4 bg-white/5 hover:bg-white/10 rounded-2xl font-black">QUAY LẠI</button>
+            {nextEpisode && (
+              <button onClick={() => handleSwitchEpisode(nextEpisode)} className="px-8 py-4 bg-primary rounded-2xl font-black">TẬP TIẾP THEO</button>
+            )}
+          </div>
+        </div>
+
+        {/* DANH SÁCH TẬP */}
+        <div className="mt-12">
+          <h3 className="text-2xl font-black uppercase mb-6 tracking-tighter">Chọn tập khác</h3>
+          
+          {allServers?.length > 1 && (
+            <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-black/50 rounded-xl w-fit border border-white/5">
+              {allServers.map((server, index) => (
+                <button key={index} onClick={() => handleSwitchServer(index)}
+                  className={`px-5 py-2 rounded-lg font-bold text-sm transition-all ${activeServerIdx === index ? "bg-primary text-white" : "text-zinc-500 hover:text-white"}`}
+                >
+                  {server.server_name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-4">
+            {currentEpisodes.map((ep) => (
+              <button key={ep.slug} onClick={() => handleSwitchEpisode(ep)}
+                className={`min-w-[70px] h-14 px-5 flex items-center justify-center rounded-2xl font-black transition-all border-2 ${
+                  ep.name === currentEpName ? "bg-primary border-primary text-white scale-110 shadow-lg" : "bg-white/5 border-white/5 text-zinc-500 hover:text-white"
+                }`}
+              >
+                {ep.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
