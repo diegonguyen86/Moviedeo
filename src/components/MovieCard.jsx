@@ -23,9 +23,15 @@ export default function MovieCard({ movie }) {
           {movie.duration}
         </div>
       </div>
-      <h4 className="font-label-md text-[14px] text-text-primary group-hover:text-primary transition-colors truncate">
+      
+      {/* ĐÃ THÊM THUỘC TÍNH title VÀO ĐÂY ĐỂ HIỆN TOOLTIP KHI HOVER */}
+      <h4 
+        title={movie.title} 
+        className="font-label-md text-[14px] text-text-primary group-hover:text-primary transition-colors truncate"
+      >
         {movie.title}
       </h4>
+      
       <p className="font-label-sm text-[12px] text-text-secondary">
         {movie.year} • {movie.genre}
       </p>
