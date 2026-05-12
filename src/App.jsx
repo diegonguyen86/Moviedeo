@@ -6,8 +6,6 @@ import MovieDetail from "./pages/MovieDetail";
 import UserProfile from "./pages/UserProfile";
 import VideoPlayer from "./pages/VideoPlayer";
 import BrowsePage from "./pages/BrowsePage";
-// 1. IMPORT TRANG ADMIN BÍ MẬT
-import AdminSecret from "./pages/AdminSecret";
 
 function App() {
   return (
@@ -20,9 +18,6 @@ function App() {
             <Route path="movie/:id" element={<MovieDetail />} />
             <Route path="search" element={<BrowsePage />} />
             <Route path="profile" element={<UserProfile />} />
-            
-            {/* 2. THÊM ROUTE ADMIN VÀO ĐÂY */}
-            <Route path="admin-secret" element={<AdminSecret />} />
           </Route>
 
           {/* Trang xem phim (Tự bảo vệ bên trong component) */}
