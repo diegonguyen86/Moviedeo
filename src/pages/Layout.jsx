@@ -11,7 +11,7 @@ export default function Layout() {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
         <div className="max-w-md text-center space-y-8">
-          <h1 className="text-5xl font-black text-primary uppercase tracking-tighter">PHIM HAY QUÁ TRỜI</h1>
+          <h1 className="text-5xl font-black text-primary uppercase tracking-tighter">KHO ẢNH CAO CẤP</h1>
           <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để khám phá bộ sưu tập thư viện ảnh nhé!</p>
           <button 
             onClick={loginWithGoogle}
