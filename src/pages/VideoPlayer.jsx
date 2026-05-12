@@ -15,9 +15,8 @@ export default function VideoPlayer() {
   const [currentEmbed, setCurrentEmbed] = useState(embedUrl);
   const [currentEpName, setCurrentEpName] = useState(epName);
 
-  // --- 🛡️ CHIÊU THỨC CHỐNG LỖI SAFARI MOBILE ---
-  // Ép link phim sang HTTPS để Safari không chặn đường
-  const secureEmbed = currentEmbed?.replace("http://", "https://");
+  // XÓA BỎ ÉP HTTPS ĐỂ LINK HTTP GỐC ĐƯỢC CHẠY BÌNH THƯỜNG
+  // const secureEmbed = currentEmbed?.replace("http://", "https://");
 
   useEffect(() => {
     if (user && movieName && currentEmbed) {
@@ -74,25 +73,35 @@ export default function VideoPlayer() {
       </div>
 
       <div className="relative z-10 max-w-[1260px] mx-auto px-4 md:px-8">
-        {/* KHUNG PHÁT VIDEO - ĐÃ FIX CHO SAFARI MOBILE */}
+        
+        {/* KHUNG PHÁT VIDEO - TRẢ VỀ NGUYÊN BẢN */}
         <div className="relative w-full aspect-video bg-black rounded-[2rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.9)] border border-white/10">
           <iframe
-            src={secureEmbed} // Dùng link đã ép HTTPS
+            src={currentEmbed} // Dùng thẳng link gốc của API
             className="absolute inset-0 w-full h-full"
             frameBorder="0"
             allowFullScreen
-            // allow cho phép Safari chạy các tính năng video
             allow="autoplay; encrypted-media; picture-in-picture"
-            // referrerPolicy giúp Safari "nhận người quen" từ server phim
-            referrerPolicy="no-referrer-when-downgrade"
-            // sandbox để trình phát phim bên trong không bị bó tay bó chân
-            sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
             title={movieName}
+            // Đã xóa sạch sandbox và referrerPolicy để không bị vướng
           />
         </div>
 
+        {/* 🆘 NÚT PHAO CỨU SINH CHO SAFARI Ở ĐÂY */}
+        <div className="mt-6 flex justify-center">
+          <a 
+            href={currentEmbed} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="px-8 py-4 bg-red-600 animate-pulse hover:bg-red-700 hover:animate-none text-white font-black rounded-2xl shadow-[0_0_30px_rgba(220,38,38,0.6)] flex items-center gap-3 transition-all active:scale-95 text-lg"
+          >
+            <span className="material-symbols-outlined text-3xl">play_circle</span>
+            MỞ TRÌNH PHÁT TRỰC TIẾP TRÊN SAFARI
+          </a>
+        </div>
+
         {/* Thông tin phim */}
-        <div className="mt-12 flex flex-col md:flex-row md:items-end justify-between gap-10 pb-12 border-b border-white/10">
+        <div className="mt-8 flex flex-col md:flex-row md:items-end justify-between gap-10 pb-12 border-b border-white/10">
           <div className="space-y-5">
             <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight drop-shadow-lg">
               {movieName}
