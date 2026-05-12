@@ -1,4 +1,4 @@
-import { useNavigate, useLocation, useParams } from "react-router-dom"; // ĐÃ THÊM useParams
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
@@ -7,7 +7,7 @@ import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 export default function VideoPlayer() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id } = useParams(); // ĐÂY CHÍNH LÀ CÁI SLUG LẤY TRỰC TIẾP TỪ URL!
+  const { id } = useParams(); 
   const { user } = useAuth();
   
   const { embedUrl, movieName, epName, allEpisodes, posterUrl } = location.state || {};
@@ -15,24 +15,26 @@ export default function VideoPlayer() {
   const [currentEmbed, setCurrentEmbed] = useState(embedUrl);
   const [currentEpName, setCurrentEpName] = useState(epName);
 
+  // --- 🛡️ CHIÊU THỨC CHỐNG LỖI SAFARI MOBILE ---
+  // Ép link phim sang HTTPS để Safari không chặn đường
+  const secureEmbed = currentEmbed?.replace("http://", "https://");
+
   useEffect(() => {
     if (user && movieName && currentEmbed) {
       const saveToFirebase = async () => {
         try {
-          // FIX 1: Dùng 'id' (slug) làm tên Document thay vì Tên tiếng Việt
           const historyRef = doc(db, "users", user.uid, "watchHistory", id);
-          
           await setDoc(historyRef, {
-            slug: id,        // FIX 2: Lưu chính xác slug vào database
-            movieId: id,     // Lưu backup luôn
+            slug: id,
+            movieId: id,
             title: movieName,
             epName: currentEpName,
             image: posterUrl,
             lastWatched: serverTimestamp() 
           });
-          console.log("✅ Đã lưu lịch sử xem phim chuẩn xác!");
+          console.log("✅ Đã lưu lịch sử xem phim!");
         } catch (error) {
-          console.error("❌ Lỗi lưu lịch sử lên Firebase:", error);
+          console.error("❌ Lỗi lưu lịch sử:", error);
         }
       };
       saveToFirebase();
@@ -61,6 +63,7 @@ export default function VideoPlayer() {
 
   return (
     <main className="relative min-h-screen bg-black text-white pt-24 pb-20 overflow-hidden font-sans">
+      {/* Background Blur */}
       <div className="absolute inset-0 z-0">
         <img 
           src={posterUrl} 
@@ -71,17 +74,24 @@ export default function VideoPlayer() {
       </div>
 
       <div className="relative z-10 max-w-[1260px] mx-auto px-4 md:px-8">
+        {/* KHUNG PHÁT VIDEO - ĐÃ FIX CHO SAFARI MOBILE */}
         <div className="relative w-full aspect-video bg-black rounded-[2rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.9)] border border-white/10">
           <iframe
-            src={currentEmbed}
+            src={secureEmbed} // Dùng link đã ép HTTPS
             className="absolute inset-0 w-full h-full"
             frameBorder="0"
             allowFullScreen
-            allow="autoplay; encrypted-media"
+            // allow cho phép Safari chạy các tính năng video
+            allow="autoplay; encrypted-media; picture-in-picture"
+            // referrerPolicy giúp Safari "nhận người quen" từ server phim
+            referrerPolicy="no-referrer-when-downgrade"
+            // sandbox để trình phát phim bên trong không bị bó tay bó chân
+            sandbox="allow-forms allow-pointer-lock allow-same-origin allow-scripts allow-top-navigation"
             title={movieName}
           />
         </div>
 
+        {/* Thông tin phim */}
         <div className="mt-12 flex flex-col md:flex-row md:items-end justify-between gap-10 pb-12 border-b border-white/10">
           <div className="space-y-5">
             <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-tight drop-shadow-lg">
@@ -95,6 +105,7 @@ export default function VideoPlayer() {
             </div>
           </div>
 
+          {/* Điều hướng tập */}
           <div className="flex items-center gap-4 w-full md:w-auto">
             <button 
               onClick={() => navigate(-1)}
@@ -116,6 +127,7 @@ export default function VideoPlayer() {
           </div>
         </div>
 
+        {/* Danh sách tập */}
         <div className="mt-16">
           <div className="flex items-center gap-4 mb-10">
             <div className="w-1.5 h-10 bg-primary rounded-full shadow-[0_0_15px_rgba(var(--primary-rgb),0.8)]"></div>
