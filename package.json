@@ -13,6 +13,7 @@
     "axios": "^1.16.0",
     "firebase": "^12.13.0",
     "firebase-admin": "^13.9.0",
+    "hls.js": "^1.6.16",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-player": "^3.4.0",
