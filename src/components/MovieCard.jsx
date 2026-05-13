@@ -60,40 +60,45 @@ export default function MovieCard({ movie }) {
       onClick={movie.isHistory ? handleResume : undefined}
       className="group cursor-pointer block relative"
     >
-      <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(var(--primary-rgb),0.5)] border border-white/5 group-hover:border-primary/50">
+      {/* THIẾT KẾ CARD: Bọc viền trắng mờ xịn xò khi Hover */}
+      <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.15)] border border-white/5 group-hover:border-white/30">
         
         <img alt={movie.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src={movie.image} />
         
+        {/* LỚP LOADING ĐỒNG BỘ TRẮNG */}
         {isResuming && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-             <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+             <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
              <span className="text-[10px] text-white font-bold mt-3 animate-pulse tracking-widest uppercase">Đang nạp...</span>
           </div>
         )}
 
+        {/* 4K BADGE KÍNH MỜ */}
         {movie.is4K && (
-          <div className="absolute top-2 right-2 bg-primary/90 backdrop-blur-md text-white px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider shadow-lg">
+          <div className="absolute top-2 right-2 bg-white/20 backdrop-blur-md border border-white/20 text-white px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider shadow-lg">
             4K
           </div>
         )}
 
+        {/* 👇 FIX: LỚP PHỦ KHI HOVER VÀ NÚT PLAY KÍNH MỜ (WHITE GLASS) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/90 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-md shadow-[0_0_30px_rgba(var(--primary-rgb),0.8)]">
-            <span className="material-symbols-outlined text-3xl md:text-4xl ml-1">
+          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 border border-white/30 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <span className="material-symbols-outlined text-3xl md:text-4xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">
               {movie.isHistory ? "resume" : "play_arrow"}
             </span>
           </div>
         </div>
         
-        {/* 👇 FIX: THANH PROGRESS LƠ LỬNG KÍNH MỜ (FLOATING GLASS) */}
+        {/* 👇 FIX: THANH PROGRESS LƠ LỬNG KÍNH MỜ (WHITE GLOW) */}
         {movie.isHistory && (
           <div className="absolute bottom-2 left-2 right-2 h-1.5 bg-white/20 backdrop-blur-md z-20 rounded-full overflow-hidden border border-white/10 shadow-lg">
-             <div className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),1)] rounded-full" style={{ width: '50%' }}></div>
+             <div className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,1)] rounded-full" style={{ width: '50%' }}></div>
           </div>
         )}
       </div>
       
-      <h4 title={movie.title} className="font-bold text-sm md:text-[15px] text-white group-hover:text-primary transition-colors truncate tracking-tight">
+      {/* THÔNG TIN PHIM */}
+      <h4 title={movie.title} className="font-bold text-sm md:text-[15px] text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all truncate tracking-tight">
         {movie.title}
       </h4>
       <p className="font-medium text-[11px] md:text-xs text-zinc-400 mt-1 uppercase tracking-widest">

@@ -11,7 +11,6 @@ import {
   formatMovieItem
 } from "../api/api";
 
-// --- CÁC HẰNG SỐ DỮ LIỆU ĐÃ ĐỒNG BỘ VỚI KKPHIM ---
 const types = [
   { name: "Phim Chiếu Rạp", slug: "phim-chieu-rap", type: 'danh-sach' },
   { name: "Phim Lẻ", slug: "phim-le", type: 'danh-sach' },
@@ -154,14 +153,12 @@ export default function BrowsePage() {
         };
 
         let res;
-        // Gọi API tương ứng với page hiện tại
         if (debouncedQuery.trim().length > 0) {
           res = await apiSearchPhim(debouncedQuery, page);
         } else {
           res = await fetchFilterPage(page);
         }
 
-        // Tương thích cấu trúc JSON của KKPhim
         const items = res?.data?.items || res?.items || [];
         const apiTotalPages = res?.data?.params?.pagination?.totalPages || res?.pagination?.totalPages || 1;
 
@@ -169,7 +166,6 @@ export default function BrowsePage() {
         setTotalPages(apiTotalPages);
 
       } catch (error) {
-        console.error("Lỗi fetch phim:", error);
         setMovies([]);
       } finally {
         setLoading(false);
@@ -201,24 +197,25 @@ export default function BrowsePage() {
     return new Array(5).fill().map((_, idx) => start + idx + 1).filter(p => p <= totalPages);
   };
 
+  // 👇 ĐÃ FIX: Chuyển màu Thẻ Lọc sang Trắng/Kính Mờ
   const FilterSection = ({ title, items }) => {
     const isActiveGroup = items.some(item => item.slug === activeFilter?.slug);
     const [isOpen, setIsOpen] = useState(isActiveGroup);
     useEffect(() => { if (isActiveGroup) setIsOpen(true); }, [isActiveGroup]);
 
     return (
-      <div className="mb-4 bg-zinc-900/30 border border-zinc-800 rounded-xl overflow-hidden transition-all duration-300 text-white">
-        <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-3.5 bg-zinc-900/40 hover:bg-zinc-800 transition-colors">
-          <span className="font-semibold text-[15px]">{title}</span>
+      <div className="mb-4 bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all duration-300 text-white backdrop-blur-md">
+        <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-3.5 bg-white/5 hover:bg-white/10 transition-colors">
+          <span className="font-bold text-[15px]">{title}</span>
           <span className={`material-symbols-outlined transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>expand_more</span>
         </button>
         {isOpen && (
-          <div className="p-4 border-t border-zinc-800/30 flex flex-wrap gap-2 bg-zinc-900/10">
+          <div className="p-4 border-t border-white/5 flex flex-wrap gap-2">
             {items.map((item) => (
               <button key={item.slug} onClick={() => handleFilterClick(item)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${activeFilter?.slug === item.slug
-                  ? "bg-primary text-white border-primary"
-                  : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-primary/50"}`}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFilter?.slug === item.slug
+                  ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.4)]"
+                  : "bg-transparent border-white/20 text-zinc-400 hover:border-white/50 hover:text-white"}`}
               >
                 {item.name}
               </button>
@@ -229,32 +226,33 @@ export default function BrowsePage() {
     );
   };
 
+  // 👇 ĐÃ FIX: Chuyển Lọc Nâng Cao sang Trắng/Kính Mờ
   const AdvancedFilterSection = () => (
-    <div className="mb-6 bg-primary/10 border border-primary/30 rounded-xl overflow-hidden">
-      <button onClick={() => setIsAdvancedOpen(!isAdvancedOpen)} className="w-full flex items-center justify-between p-3.5 bg-primary/20 hover:bg-primary/30 text-primary">
-        <span className="font-bold text-[15px] flex items-center gap-2">
+    <div className="mb-6 bg-white/5 border border-white/20 rounded-xl overflow-hidden backdrop-blur-md">
+      <button onClick={() => setIsAdvancedOpen(!isAdvancedOpen)} className="w-full flex items-center justify-between p-3.5 bg-white/10 hover:bg-white/20 text-white transition-colors">
+        <span className="font-bold text-[15px] flex items-center gap-2 drop-shadow-md">
           <span className="material-symbols-outlined text-[18px]">tune</span> Lọc Nâng Cao
         </span>
         <span className={`material-symbols-outlined transition-transform ${isAdvancedOpen ? "rotate-180" : ""}`}>expand_more</span>
       </button>
       {isAdvancedOpen && (
-        <div className="p-4 border-t border-primary/20 flex flex-col gap-4">
+        <div className="p-4 border-t border-white/10 flex flex-col gap-5">
           {[ {t: "Thể Loại", d: categories}, {t: "Quốc Gia", d: countries}, {t: "Năm", d: years} ].map(sec => (
             <div key={sec.t} className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-zinc-500 uppercase">{sec.t}</span>
+              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sec.t}</span>
               <div className="flex flex-wrap gap-1.5">
                 {sec.d.map(item => {
                   const isSelected = advancedFilters.some(f => f.slug === item.slug);
                   return (
                     <button key={`adv-${item.slug}`} onClick={() => toggleAdvancedFilterItem(item)}
-                      className={`px-2 py-1 rounded-md text-xs font-medium border ${isSelected ? "bg-primary text-white border-primary shadow-sm" : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}
+                      className={`px-2 py-1 rounded-md text-xs font-bold border transition-all ${isSelected ? "bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" : "bg-transparent border-white/20 text-zinc-400 hover:text-white hover:border-white/50"}`}
                     > {item.name} </button>
                   )
                 })}
               </div>
             </div>
           ))}
-          <button onClick={applyAdvancedSearch} disabled={advancedFilters.length === 0} className="w-full mt-2 py-2 rounded-lg font-bold bg-primary text-white hover:bg-primary-fixed disabled:opacity-50 flex items-center justify-center gap-2 text-sm uppercase">
+          <button onClick={applyAdvancedSearch} disabled={advancedFilters.length === 0} className="w-full mt-2 py-3 rounded-lg font-black bg-white text-black hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 text-sm uppercase shadow-[0_0_15px_rgba(255,255,255,0.2)]">
             <span className="material-symbols-outlined text-[18px]">search</span> Bắt đầu lọc phim
           </button>
         </div>
@@ -264,14 +262,15 @@ export default function BrowsePage() {
 
   return (
     <div className="pt-24 min-h-screen px-6 max-w-container-max mx-auto pb-20 bg-black">
-      {/* Search Bar */}
-      <div className="relative mb-6 w-full md:w-2/3 lg:w-1/2 mx-auto">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-2xl">search</span>
+      
+      {/* 👇 ĐÃ FIX: Search Bar chuẩn Kính Mờ */}
+      <div className="relative mb-8 w-full md:w-2/3 lg:w-1/2 mx-auto">
+        <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-white/50 text-2xl">search</span>
         <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Tìm kiếm phim, diễn viên, đạo diễn..."
-          className="w-full bg-zinc-900 border border-zinc-800 focus:border-primary text-white rounded-full pl-12 pr-12 py-4 outline-none transition-all" />
+          className="w-full bg-white/10 border border-white/20 focus:border-white/60 focus:bg-white/15 text-white placeholder-white/40 rounded-full pl-14 pr-14 py-4 outline-none transition-all shadow-lg backdrop-blur-md font-medium" />
         {searchQuery && (
-          <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white">
-            <span className="material-symbols-outlined">close</span>
+          <button onClick={() => setSearchQuery("")} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full p-1 flex items-center">
+            <span className="material-symbols-outlined text-lg">close</span>
           </button>
         )}
       </div>
@@ -282,7 +281,7 @@ export default function BrowsePage() {
         <div className="md:hidden w-full">
           <button 
             onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-            className="w-full flex items-center justify-center gap-2 p-3.5 bg-zinc-900 border border-zinc-800 rounded-xl text-primary font-bold hover:bg-zinc-800 transition-colors"
+            className="w-full flex items-center justify-center gap-2 p-3.5 bg-white/10 border border-white/20 rounded-xl text-white font-bold hover:bg-white/20 transition-all backdrop-blur-md shadow-lg"
           >
             <span className="material-symbols-outlined">
               {isMobileFilterOpen ? "close" : "filter_alt"}
@@ -292,14 +291,14 @@ export default function BrowsePage() {
         </div>
 
         {/* Sidebar Bộ Lọc */}
-        <aside className={`w-full md:w-1/4 lg:w-1/5 shrink-0 h-fit bg-zinc-900/50 border border-zinc-800 rounded-2xl p-5 backdrop-blur-md md:sticky md:top-24 ${isMobileFilterOpen ? "block" : "hidden md:block"}`}>
-          <div className="flex items-center gap-2 mb-6 text-primary font-bold hidden md:flex">
+        <aside className={`w-full md:w-1/4 lg:w-1/5 shrink-0 h-fit bg-white/5 border border-white/10 rounded-[2rem] p-5 backdrop-blur-2xl shadow-2xl md:sticky md:top-24 ${isMobileFilterOpen ? "block" : "hidden md:block"}`}>
+          <div className="flex items-center gap-2 mb-6 text-white font-black hidden md:flex drop-shadow-md">
             <span className="material-symbols-outlined">filter_alt</span>
-            <span className="text-xl">Bộ Lọc Phim</span>
+            <span className="text-xl uppercase tracking-tighter">Bộ Lọc Phim</span>
           </div>
           <div className="max-h-[70vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
             <AdvancedFilterSection />
-            <div className="h-[1px] w-full bg-zinc-800 mb-6 hidden md:block"></div>
+            <div className="h-[1px] w-full bg-white/10 mb-6 hidden md:block"></div>
             <FilterSection title="Định Đạng" items={types} />
             <FilterSection title="Thể Loại" items={categories} />
             <FilterSection title="Quốc Gia" items={countries} />
@@ -309,19 +308,19 @@ export default function BrowsePage() {
 
         {/* Movie Grid */}
         <section className="flex-1 flex flex-col">
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <h2 className="text-2xl font-bold text-white uppercase tracking-tight">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
+            <h2 className="text-2xl font-black text-white uppercase tracking-tighter drop-shadow-md">
               {debouncedQuery.trim().length > 0
                 ? `Kết quả cho: "${debouncedQuery}"`
                 : activeFilter ? activeFilter.name : `TẤT CẢ PHIM`}
             </h2>
-            <span className="text-sm text-zinc-500 font-bold">Trang {page} / {totalPages}</span>
+            <span className="text-xs text-white/50 font-bold uppercase tracking-widest bg-white/5 px-3 py-1 rounded-md">Trang {page} / {totalPages}</span>
           </div>
 
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center py-32">
-              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-              <div className="mt-4 text-zinc-500 font-medium italic animate-pulse">Đang lục kho phim...</div>
+              <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+              <div className="mt-4 text-white/50 font-bold uppercase tracking-widest animate-pulse">Đang lục kho phim...</div>
             </div>
           ) : movies.length > 0 ? (
             <>
@@ -329,27 +328,27 @@ export default function BrowsePage() {
                 {movies.map((movie) => <MovieCard key={movie.id} movie={movie} />)}
               </div>
 
-              {/* Pagination */}
+              {/* 👇 ĐÃ FIX: Phân trang (Pagination) chuẩn Kính Mờ Trắng */}
               {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-1 md:gap-2 mt-auto pt-8 border-t border-zinc-800 flex-wrap">
-                  <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-primary disabled:opacity-30 transition-colors flex items-center justify-center">
+                <div className="flex justify-center items-center gap-2 mt-auto pt-8 flex-wrap">
+                  <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/20 hover:border-white/30 disabled:opacity-30 transition-all flex items-center justify-center backdrop-blur-md">
                     <span className="material-symbols-outlined">chevron_left</span>
                   </button>
                   {getPaginationGroup().map((p) => (
-                    <button key={p} onClick={() => handlePageChange(p)} className={`w-10 h-10 rounded-full font-bold transition-all ${page === p ? "bg-primary text-white scale-110 shadow-lg" : "bg-zinc-900 text-zinc-400 hover:text-white"}`}>
+                    <button key={p} onClick={() => handlePageChange(p)} className={`w-10 h-10 rounded-full font-bold transition-all backdrop-blur-md border ${page === p ? "bg-white text-black border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.4)]" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:border-white/30 hover:bg-white/10"}`}>
                       {p}
                     </button>
                   ))}
-                  <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 text-white hover:bg-primary disabled:opacity-30 transition-colors flex items-center justify-center">
+                  <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/20 hover:border-white/30 disabled:opacity-30 transition-all flex items-center justify-center backdrop-blur-md">
                     <span className="material-symbols-outlined">chevron_right</span>
                   </button>
                 </div>
               )}
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center py-32 bg-zinc-900/30 rounded-xl border border-zinc-800">
-              <span className="material-symbols-outlined text-5xl mb-4 text-zinc-700">movie_off</span>
-              <p className="text-zinc-500 font-medium text-center px-4">Kho phim hiện chưa có phim này, bạn quay lại sau nhé!</p>
+            <div className="flex-1 flex flex-col items-center justify-center py-32 bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 shadow-xl">
+              <span className="material-symbols-outlined text-6xl mb-4 text-white/30 drop-shadow-md">movie_off</span>
+              <p className="text-white/60 font-bold uppercase tracking-widest text-center px-4">Kho phim hiện chưa có phim này, bạn quay lại sau nhé!</p>
             </div>
           )}
         </section>

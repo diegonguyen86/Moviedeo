@@ -20,7 +20,8 @@ export default function HeroBanner({ movie }) {
         <div className="space-y-6 max-w-2xl">
           
           <div className="flex items-center gap-2">
-            <span className="bg-primary/20 text-primary px-4 py-1.5 rounded-md font-black text-xs border border-primary/30 uppercase tracking-widest backdrop-blur-sm">
+            {/* 👇 FIX: Chuyển Badge Trending sang Kính mờ Trắng, bỏ màu Tím */}
+            <span className="bg-white/10 text-white px-4 py-1.5 rounded-md font-black text-xs border border-white/30 uppercase tracking-widest backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.1)]">
               ✨ Trending Now
             </span>
           </div>
@@ -34,15 +35,15 @@ export default function HeroBanner({ movie }) {
           </p>
           
           <div className="flex items-center gap-4 pt-4">
-            {/* NÚT PHÁT NGAY - TÔNG TRẮNG ĐEN QUYỀN LỰC */}
-            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white text-black px-8 py-3.5 rounded-full font-black text-sm hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95">
+            {/* NÚT PHÁT NGAY - TÔNG TRẮNG ĐEN GLOW QUYỀN LỰC */}
+            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white text-black px-8 py-3.5 rounded-full font-black text-sm hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95">
               <span className="material-symbols-outlined filled text-[24px] group-hover:animate-pulse">play_circle</span>
               PHÁT NGAY
             </Link>
             
-            {/* NÚT CHI TIẾT - KÍNH MỜ VIỀN SÁNG */}
-            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white/10 text-white px-8 py-3.5 rounded-full font-bold text-sm border border-white/20 hover:bg-white/20 hover:border-white/50 transition-all duration-300 active:scale-95 backdrop-blur-md">
-              <span className="material-symbols-outlined text-[24px] group-hover:rotate-12 transition-transform">info</span>
+            {/* NÚT CHI TIẾT - KÍNH MỜ TRẮNG VIỀN SÁNG */}
+            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white/10 text-white px-8 py-3.5 rounded-full font-bold text-sm border border-white/20 hover:bg-white/20 hover:border-white/50 transition-all duration-300 active:scale-95 backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+              <span className="material-symbols-outlined text-[24px] group-hover:rotate-12 transition-transform drop-shadow-md">info</span>
               CHI TIẾT
             </Link>
           </div>
