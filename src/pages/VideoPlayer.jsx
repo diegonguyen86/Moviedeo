@@ -17,7 +17,6 @@ export default function VideoPlayer() {
   const playerWrapperRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
   const progressBarRef = useRef(null);
-  const clickTimeoutRef = useRef(null); // 👇 BỘ ĐẾM NHẬN DIỆN CLICK
 
   const [activeServerIdx, setActiveServerIdx] = useState(currentServerIndex || 0);
   const [currentVideo, setCurrentVideo] = useState(videoUrl);
@@ -35,6 +34,7 @@ export default function VideoPlayer() {
   const [showControls, setShowControls] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   
+  // Các Menu Pop-up Kính mờ
   const [showSettings, setShowSettings] = useState(false);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false); 
@@ -218,26 +218,25 @@ export default function VideoPlayer() {
     }
   };
 
-  // 👇 THUẬT TOÁN NHẬN DIỆN SINGLE CLICK / DOUBLE CLICK TRÊN MÀN HÌNH VIDEO
-  const handleVideoInteraction = (e) => {
-    if (clickTimeoutRef.current) {
-      // Đã có 1 click trước đó (Double Click) -> Phát / Dừng phim
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-      togglePlay();
-    } else {
-      // Bấm lần 1 (Single Click) -> Chờ 250ms xem có bấm thêm phát nữa không
-      clickTimeoutRef.current = setTimeout(() => {
-        // Nếu không bấm thêm -> Chỉ Bật/Tắt thanh điều khiển
-        setShowControls((prev) => !prev);
-        handleUserActivity(); 
-        clickTimeoutRef.current = null;
-      }, 250); 
-    }
+  // 👇 THUẬT TOÁN MỚI: Bấm vào video để Bật/Tắt Menu (Toggle Controls)
+  const toggleControls = (e) => {
+    e?.stopPropagation();
+    setShowControls((prev) => {
+      const willShow = !prev;
+      if (willShow) {
+        clearTimeout(controlsTimeoutRef.current);
+        if (isPlaying && !showSettings && !showEpisodes && !showLangMenu) {
+          controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+        }
+      } else {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      return willShow;
+    });
   };
 
   useEffect(() => {
-    handleUserActivity();
+    if (showControls) handleUserActivity();
     return () => clearTimeout(controlsTimeoutRef.current);
   }, [isPlaying, showSettings, showEpisodes, showLangMenu]);
 
@@ -314,20 +313,24 @@ export default function VideoPlayer() {
         <div 
           ref={playerWrapperRef}
           className="relative w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] border border-white/10 group flex items-center justify-center"
-          onMouseMove={handleUserActivity}
+          onMouseMove={(e) => { 
+            // Chống nhiễu loạn vuốt chạm (fake mousemove) trên Mobile
+            if (e.movementX === 0 && e.movementY === 0) return;
+            handleUserActivity(); 
+          }}
           onMouseLeave={() => { if (isPlaying && !showEpisodes && !showLangMenu && !showSettings) setShowControls(false); }}
         >
           {useIframe ? (
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
-              {/* 👇 GẮN HÀM XỬ LÝ CLICK THÔNG MINH VÀO ĐÂY */}
+              {/* VIDEO BẮT SỰ KIỆN CLICK ĐỂ ẨN/HIỆN THANH CÔNG CỤ */}
               <video
                 ref={videoRef}
                 playsInline
                 poster={posterUrl}
                 className="w-full h-full object-contain cursor-pointer"
-                onClick={handleVideoInteraction}
+                onClick={toggleControls}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                 onPlay={() => setIsPlaying(true)}
@@ -335,16 +338,26 @@ export default function VideoPlayer() {
                 onEnded={() => setIsPlaying(false)}
               />
 
-              {/* NÚT PLAY LỚN (Chỉ hiển thị để báo hiệu, không bắt click) */}
-              {!isPlaying && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20 transition-all">
-                  <div className="w-16 h-16 md:w-24 md:h-24 bg-white/10 border border-white/30 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-xl animate-pulse">
-                    <span className="material-symbols-outlined text-4xl md:text-6xl ml-1 md:ml-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">play_arrow</span>
-                  </div>
-                </div>
-              )}
+              {/* 👇 MỚI: LỚP PHỦ MỜ KHI TẠM DỪNG HOẶC KHI BẬT MENU */}
+              <div className={`absolute inset-0 bg-black/40 pointer-events-none transition-opacity duration-300 z-10 ${!isPlaying || showControls ? 'opacity-100' : 'opacity-0'}`}></div>
 
-              {/* PANEL CHỌN TẬP */}
+              {/* 👇 FIX: NÚT PLAY/PAUSE Ở GIỮA ĐỂ BẤM TRỰC TIẾP */}
+              <div className={`absolute inset-0 flex items-center justify-center pointer-events-none z-20 transition-all duration-300 ${!isPlaying || showControls ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                <button 
+                  className="pointer-events-auto w-16 h-16 md:w-24 md:h-24 bg-white/10 border border-white/30 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-xl hover:bg-white/20 hover:scale-110 active:scale-95 transition-all"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                    handleUserActivity();
+                  }}
+                >
+                  <span className={`material-symbols-outlined text-4xl md:text-6xl drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] ${isPlaying ? '' : 'ml-1 md:ml-2'}`}>
+                    {isPlaying ? 'pause' : 'play_arrow'}
+                  </span>
+                </button>
+              </div>
+
+              {/* PANEL CHỌN TẬP BÊN TRONG VIDEO */}
               <div className={`absolute top-0 right-0 bottom-0 w-[80%] sm:w-[350px] bg-black/70 backdrop-blur-3xl border-l border-white/10 z-40 flex flex-col transition-transform duration-300 ease-in-out ${showEpisodes ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="p-4 md:p-6 flex justify-between items-center border-b border-white/10 bg-gradient-to-b from-black/60 to-transparent">
                   <h3 className="text-white font-black text-base md:text-xl tracking-tighter uppercase drop-shadow-md">Danh sách tập</h3>
@@ -371,13 +384,13 @@ export default function VideoPlayer() {
                 </div>
               </div>
 
-              {/* BẢNG ĐIỀU KHIỂN */}
+              {/* BẢNG ĐIỀU KHIỂN BÊN DƯỚI (Sẽ tàng hình khi showControls = false) */}
               <div className={`absolute bottom-2 left-2 right-2 md:bottom-6 md:left-6 md:right-6 px-3 py-3 md:px-6 md:pt-5 md:pb-5 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-[1.5rem] transition-all duration-300 z-30 ${showControls || !isPlaying ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                 
                 {/* THANH TUA PROGRESS BAR */}
                 <div 
                   ref={progressBarRef}
-                  className="w-full h-1.5 md:h-2 bg-white/20 rounded-full cursor-pointer relative group/progress mb-3 md:mb-5 flex items-center" 
+                  className={`w-full h-1.5 md:h-2 bg-white/20 rounded-full cursor-pointer relative group/progress mb-3 md:mb-5 flex items-center ${showControls || !isPlaying ? 'pointer-events-auto' : 'pointer-events-none'}`} 
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                 >
@@ -387,7 +400,7 @@ export default function VideoPlayer() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className={`flex items-center justify-between ${showControls || !isPlaying ? 'pointer-events-auto' : 'pointer-events-none'}`}>
                   <div className="flex items-center gap-2 md:gap-6">
                     <button onClick={togglePlay} className="text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
                       <span className="material-symbols-outlined text-3xl md:text-[40px]">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
