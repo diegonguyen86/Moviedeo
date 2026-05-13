@@ -23,6 +23,9 @@ export default function VideoPlayer() {
   const [isReady, setIsReady] = useState(false);
   const [useIframe, setUseIframe] = useState(false);
 
+  // 🛡️ NHẬN DIỆN THIẾT BỊ APPLE ĐỂ TỐI ƯU TRÌNH PHÁT VÀ FIX MÀN HÌNH ĐEN
+  const isAppleDevice = /Mac|iPod|iPhone|iPad/.test(navigator.userAgent) || /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
   // BẮT LỖI TỐI THƯỢNG: Tránh F5 bay mất phim
   useEffect(() => {
     if (!videoUrl && !embedFallback) {
@@ -78,19 +81,29 @@ export default function VideoPlayer() {
 
   if (!currentVideo && !currentEmbed) return null; // Ẩn lỗi nhấp nháy khi bị F5
 
+  // Hàm xử lý chữ "Tập" bị lặp (Fix lỗi "Tập Tập 01")
+  const renderEpisodeName = (name) => {
+    if (!name) return "";
+    return name.toLowerCase().includes("tập") ? name : `Tập ${name}`;
+  };
+
   return (
-    <main className="relative min-h-screen bg-black text-white pt-24 pb-20 font-sans">
+    // THÊM overflow-hidden Ở ĐÂY ĐỂ FIX LỖI MOBILE BỊ THANH CUỘN NGANG
+    <main className="relative min-h-screen bg-black text-white pt-24 pb-20 font-sans overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img src={posterUrl} alt="Bg" className="w-full h-full object-cover opacity-20 blur-[100px] scale-150" />
       </div>
 
       <div className="relative z-10 max-w-[1260px] mx-auto px-4">
-        <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+        <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center group">
           {useIframe ? (
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <ReactPlayer
-              ref={playerRef} url={currentVideo} controls width="100%" height="100%" playing={true}
+              ref={playerRef} 
+              // ÉP HTTPS ĐỂ TRÁNH SAFARI CHẶN MIXED CONTENT
+              url={currentVideo ? currentVideo.replace("http://", "https://") : ""} 
+              controls width="100%" height="100%" playing={true}
               style={{ position: 'absolute', top: 0, left: 0 }}
               onReady={() => setIsReady(true)}
               onProgress={(p) => {
@@ -102,8 +115,22 @@ export default function VideoPlayer() {
                 console.warn("⚠️ M3U8 bị chặn, bật Iframe dự phòng!");
                 setUseIframe(true);
               }}
-              // ĐÃ BỎ forceHLS ĐỂ SAFARI PHÁT NATIVE MƯỢT MÀ NHẤT
-              config={{ file: { attributes: { playsInline: true } } }}
+              
+              // 👇 BỘ ĐÔI FIX MÀN HÌNH ĐEN SAFARI (HIỆN ẢNH BÌA VÀ NÚT PLAY) 👇
+              light={posterUrl}
+              playIcon={
+                <div className="w-20 h-20 md:w-24 md:h-24 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-[0_0_40px_rgba(var(--primary-rgb),0.8)] z-50 animate-pulse group-hover:animate-none">
+                  <span className="material-symbols-outlined text-6xl ml-2">play_arrow</span>
+                </div>
+              }
+
+              // EDGE DÙNG HLS, APPLE DÙNG NATIVE
+              config={{ 
+                file: { 
+                  forceHLS: !isAppleDevice,
+                  attributes: { playsInline: true } 
+                } 
+              }}
             />
           )}
         </div>
@@ -113,7 +140,7 @@ export default function VideoPlayer() {
             <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter">{movieName}</h1>
             <div className="flex gap-3">
                <span className="bg-primary/20 text-primary px-4 py-1.5 rounded-xl border border-primary/30 text-sm font-bold uppercase tracking-widest">
-                Tập {currentEpName}
+                {renderEpisodeName(currentEpName)}
               </span>
               {!useIframe && (
                 <button onClick={() => setUseIframe(true)} className="px-4 py-1.5 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-colors">

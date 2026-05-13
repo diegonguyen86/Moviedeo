@@ -44,7 +44,8 @@ export default function MovieDetail() {
 
   return (
     <main className="pb-20 bg-black min-h-screen text-white">
-      <section className="relative w-full h-[50vh] md:h-[65vh]">
+      {/* 👇 ĐÃ THÊM overflow-hidden Ở ĐÂY ĐỂ FIX LỖI TRÀN MÀN HÌNH ĐIỆN THOẠI 👇 */}
+      <section className="relative w-full h-[50vh] md:h-[65vh] overflow-hidden">
         <img className="w-full h-full object-cover opacity-30 scale-105" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute inset-0 flex items-end px-6 md:px-20 pb-16">
