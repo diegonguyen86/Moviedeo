@@ -51,8 +51,8 @@ function Home() {
             id: data.slug || doc.id, 
             title: data.title,
             image: data.image,
-            year: data.epName ? `Tập: ${data.epName}` : (data.year || "2024"),
-            // 👇 3 DÒNG NÀY ĐỂ KÍCH HOẠT BAY THẲNG VÀO PHIM ĐANG XEM DỞ
+            // 👇 FIX TRỊ ĐÚNG BỆNH LẶP CHỮ TẬP Ở ĐÂY: Trả về data gốc, MovieCard sẽ tự format lại cho đẹp
+            year: data.epName || data.year || "2024",
             isHistory: true, 
             rawEpName: data.epName,
             progress: data.progress
@@ -87,7 +87,7 @@ function Home() {
           setTmdbTrending(mappedResults);
         }
 
-        // 2. 👇 ĐÃ SỬA THÀNH PHIM CHIẾU RẠP NHƯ YÊU CẦU
+        // 2. Lấy Phim Chiếu Rạp
         const trendingRes = await apiGetPhimTheoDanhSach('phim-chieu-rap', 1);
         const trendingItems = trendingRes?.data?.items || trendingRes?.items || [];
         if (trendingItems.length > 0) {
@@ -126,8 +126,9 @@ function Home() {
   if (loading) {
     return (
       <div className="pt-32 min-h-screen bg-black text-center text-white flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-xl font-bold animate-pulse text-primary">🍿 Đang chuẩn bị phim, đợi tí nha Khôi...</p>
+        {/* Nâng cấp loading cho tông tông Glass Trắng */}
+        <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
+        <p className="text-[13px] font-bold animate-pulse text-white/60 tracking-widest uppercase mt-2">Đang chuẩn bị rạp phim...</p>
       </div>
     );
   }
@@ -159,7 +160,7 @@ function Home() {
           />
         )}
 
-        {/* 👇 ĐÃ ĐỔI TÊN MỤC THÀNH PHIM CHIẾU RẠP */}
+        {/* Phim Chiếu Rạp */}
         {trending.length > 0 && (
           <MovieCarousel 
             title="🍿 Phim Chiếu Rạp" 

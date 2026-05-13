@@ -12,6 +12,17 @@ export default function MovieCard({ movie }) {
     return `https://phimimg.com/${url}`;
   };
 
+  // 👇 HÀM DỌN DẸP LỖI "TẬP: TẬP": Lọc mọi ký tự thừa, chỉ giữ lại đúng 1 chữ TẬP
+  const formatEpisodeText = (text) => {
+    if (!text) return "";
+    const str = text.toString();
+    // Nếu chỉ là số năm (ví dụ: 2024, 2023) thì để nguyên
+    if (/^\d{4}$/.test(str)) return str;
+    // Nếu là tập phim, xóa hết chữ "tập" và ":" bị lặp, sau đó ghép lại cho chuẩn
+    const cleanText = str.replace(/tập/gi, "").replace(/:/g, "").trim();
+    return `TẬP ${cleanText}`;
+  };
+
   const handleResume = async (e) => {
     e.preventDefault(); 
     if (isResuming) return;
@@ -80,7 +91,7 @@ export default function MovieCard({ movie }) {
           </div>
         )}
 
-        {/* 👇 FIX: LỚP PHỦ KHI HOVER VÀ NÚT PLAY KÍNH MỜ (WHITE GLASS) */}
+        {/* LỚP PHỦ KHI HOVER VÀ NÚT PLAY KÍNH MỜ (WHITE GLASS) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 border border-white/30 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.2)]">
             <span className="material-symbols-outlined text-3xl md:text-4xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">
@@ -89,7 +100,7 @@ export default function MovieCard({ movie }) {
           </div>
         </div>
         
-        {/* 👇 FIX: THANH PROGRESS LƠ LỬNG KÍNH MỜ (WHITE GLOW) */}
+        {/* THANH PROGRESS LƠ LỬNG KÍNH MỜ (WHITE GLOW) */}
         {movie.isHistory && (
           <div className="absolute bottom-2 left-2 right-2 h-1.5 bg-white/20 backdrop-blur-md z-20 rounded-full overflow-hidden border border-white/10 shadow-lg">
              <div className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,1)] rounded-full" style={{ width: '50%' }}></div>
@@ -102,7 +113,8 @@ export default function MovieCard({ movie }) {
         {movie.title}
       </h4>
       <p className="font-medium text-[11px] md:text-xs text-zinc-400 mt-1 uppercase tracking-widest">
-        {movie.year} {movie.genre ? `• ${movie.genre}` : ''}
+        {/* GỌI HÀM LỌC CHỮ TẬP Ở ĐÂY */}
+        {formatEpisodeText(movie.year)} {movie.genre ? `• ${movie.genre}` : ''}
       </p>
     </Link>
   );
