@@ -60,7 +60,6 @@ export default function MovieCard({ movie }) {
       onClick={movie.isHistory ? handleResume : undefined}
       className="group cursor-pointer block relative"
     >
-      {/* THIẾT KẾ CARD: Bọc viền xịn xò khi Hover */}
       <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(var(--primary-rgb),0.5)] border border-white/5 group-hover:border-primary/50">
         
         <img alt={movie.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src={movie.image} />
@@ -78,7 +77,6 @@ export default function MovieCard({ movie }) {
           </div>
         )}
 
-        {/* LỚP PHỦ KHI HOVER VÀ NÚT PLAY ĐỒNG BỘ VIDEOPLAYER */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
           <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/90 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-md shadow-[0_0_30px_rgba(var(--primary-rgb),0.8)]">
             <span className="material-symbols-outlined text-3xl md:text-4xl ml-1">
@@ -87,15 +85,14 @@ export default function MovieCard({ movie }) {
           </div>
         </div>
         
-        {/* THANH ĐANG XEM DỞ DƯỚI CÙNG CARD */}
+        {/* 👇 FIX: THANH PROGRESS LƠ LỬNG KÍNH MỜ (FLOATING GLASS) */}
         {movie.isHistory && (
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/50 backdrop-blur-md z-20">
-             <div className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),1)] rounded-r-full" style={{ width: '50%' }}></div>
+          <div className="absolute bottom-2 left-2 right-2 h-1.5 bg-white/20 backdrop-blur-md z-20 rounded-full overflow-hidden border border-white/10 shadow-lg">
+             <div className="h-full bg-primary shadow-[0_0_10px_rgba(var(--primary-rgb),1)] rounded-full" style={{ width: '50%' }}></div>
           </div>
         )}
       </div>
       
-      {/* THÔNG TIN PHIM */}
       <h4 title={movie.title} className="font-bold text-sm md:text-[15px] text-white group-hover:text-primary transition-colors truncate tracking-tight">
         {movie.title}
       </h4>
