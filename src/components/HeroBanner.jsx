@@ -4,39 +4,49 @@ export default function HeroBanner({ movie }) {
   if (!movie) return null;
 
   return (
-    <section className="relative w-full h-[707px] flex items-end">
+    <section className="relative w-full h-[60vh] md:h-[80vh] flex items-end overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
           alt={movie.title}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover scale-105"
           src={movie.image}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-transparent to-transparent"></div>
+        {/* Lớp phủ Gradient tạo chiều sâu điện ảnh */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent"></div>
       </div>
-      <div className="relative z-10 px-6 pb-12 w-full max-w-container-max mx-auto">
-        <div className="space-y-4 max-w-md">
+      
+      <div className="relative z-10 px-6 md:px-12 pb-16 md:pb-24 w-full max-w-container-max mx-auto">
+        <div className="space-y-6 max-w-2xl">
+          
           <div className="flex items-center gap-2">
-            <span className="bg-primary/20 text-primary px-3 py-1 rounded-full font-label-sm text-[12px] border border-primary/30 uppercase tracking-widest">
-              Trending Now
+            <span className="bg-primary/20 text-primary px-4 py-1.5 rounded-md font-black text-xs border border-primary/30 uppercase tracking-widest backdrop-blur-sm">
+              ✨ Trending Now
             </span>
           </div>
-          <h2 className="font-display-md text-[40px] leading-tight font-bold text-text-primary">
+          
+          <h2 className="text-4xl md:text-6xl leading-tight font-black text-white uppercase tracking-tighter drop-shadow-2xl">
             {movie.title}
           </h2>
-          <p className="text-text-secondary font-body-md text-[16px] line-clamp-2">
-            {movie.description}
+          
+          <p className="text-zinc-300 font-medium text-sm md:text-base line-clamp-3 leading-relaxed drop-shadow-md max-w-xl">
+            {movie.description || "Một siêu phẩm điện ảnh đang làm mưa làm gió trên các bảng xếp hạng. Khám phá ngay!"}
           </p>
-          <div className="flex items-center gap-3 pt-2">
-            <Link to={`/movie/${movie.id}`} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-full font-label-md text-[14px] hover:bg-primary-fixed transition-colors active:scale-95">
-              <span className="material-symbols-outlined filled">play_arrow</span>
-              Phát ngay
+          
+          <div className="flex items-center gap-4 pt-4">
+            {/* NÚT PHÁT NGAY - TÔNG TRẮNG ĐEN QUYỀN LỰC */}
+            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white text-black px-8 py-3.5 rounded-full font-black text-sm hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.3)] active:scale-95">
+              <span className="material-symbols-outlined filled text-[24px] group-hover:animate-pulse">play_circle</span>
+              PHÁT NGAY
             </Link>
-            <Link to={`/movie/${movie.id}`} className="flex items-center gap-2 bg-surface-glass text-text-primary px-6 py-3 rounded-full font-label-md text-[14px] border border-border-glass hover:bg-surface-glass/80 transition-colors active:scale-95 backdrop-blur-sm">
-              <span className="material-symbols-outlined">info</span>
-              Chi tiết
+            
+            {/* NÚT CHI TIẾT - KÍNH MỜ VIỀN SÁNG */}
+            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white/10 text-white px-8 py-3.5 rounded-full font-bold text-sm border border-white/20 hover:bg-white/20 hover:border-white/50 transition-all duration-300 active:scale-95 backdrop-blur-md">
+              <span className="material-symbols-outlined text-[24px] group-hover:rotate-12 transition-transform">info</span>
+              CHI TIẾT
             </Link>
           </div>
+          
         </div>
       </div>
     </section>
