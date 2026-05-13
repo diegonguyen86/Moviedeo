@@ -17,6 +17,7 @@ export default function VideoPlayer() {
   const playerWrapperRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
   const progressBarRef = useRef(null);
+  const clickTimeoutRef = useRef(null); // 👇 BỘ ĐẾM NHẬN DIỆN CLICK
 
   const [activeServerIdx, setActiveServerIdx] = useState(currentServerIndex || 0);
   const [currentVideo, setCurrentVideo] = useState(videoUrl);
@@ -34,7 +35,6 @@ export default function VideoPlayer() {
   const [showControls, setShowControls] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
   
-  // Các Menu Pop-up Kính mờ
   const [showSettings, setShowSettings] = useState(false);
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false); 
@@ -126,7 +126,6 @@ export default function VideoPlayer() {
     setShowSettings(false);
   };
 
-  // FULLSCREEN NÂNG CAO: TỰ ĐỘNG XOAY NGANG (LANDSCAPE) TRÊN MOBILE
   const toggleFullscreen = async () => {
     const elem = playerWrapperRef.current;
     const video = videoRef.current;
@@ -209,18 +208,44 @@ export default function VideoPlayer() {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  const handleMouseMove = () => {
+  const handleUserActivity = () => {
     setShowControls(true);
     clearTimeout(controlsTimeoutRef.current);
-    controlsTimeoutRef.current = setTimeout(() => {
-      if (isPlaying && !showSettings && !showEpisodes && !showLangMenu) setShowControls(false);
-    }, 3000);
+    if (isPlaying && !showSettings && !showEpisodes && !showLangMenu) {
+      controlsTimeoutRef.current = setTimeout(() => {
+        setShowControls(false);
+      }, 3000); 
+    }
   };
+
+  // 👇 THUẬT TOÁN NHẬN DIỆN SINGLE CLICK / DOUBLE CLICK TRÊN MÀN HÌNH VIDEO
+  const handleVideoInteraction = (e) => {
+    if (clickTimeoutRef.current) {
+      // Đã có 1 click trước đó (Double Click) -> Phát / Dừng phim
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+      togglePlay();
+    } else {
+      // Bấm lần 1 (Single Click) -> Chờ 250ms xem có bấm thêm phát nữa không
+      clickTimeoutRef.current = setTimeout(() => {
+        // Nếu không bấm thêm -> Chỉ Bật/Tắt thanh điều khiển
+        setShowControls((prev) => !prev);
+        handleUserActivity(); 
+        clickTimeoutRef.current = null;
+      }, 250); 
+    }
+  };
+
+  useEffect(() => {
+    handleUserActivity();
+    return () => clearTimeout(controlsTimeoutRef.current);
+  }, [isPlaying, showSettings, showEpisodes, showLangMenu]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (useIframe) return;
       const key = e.key.toLowerCase();
+      handleUserActivity(); 
       if (key === ' ' || key === 'k') { e.preventDefault(); togglePlay(); }
       if (key === 'f') toggleFullscreen();
       if (key === 'm') toggleMute();
@@ -229,7 +254,7 @@ export default function VideoPlayer() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, useIframe]);
+  }, [isPlaying, useIframe, showSettings, showEpisodes, showLangMenu]);
 
   const handleSwitchEpisode = (ep) => {
     saveToFirebase();
@@ -259,7 +284,7 @@ export default function VideoPlayer() {
   return (
     <main className="relative min-h-screen bg-[#050505] text-white pt-6 md:pt-12 pb-20 font-sans overflow-hidden select-none">
       
-      {/* AMBIENT ÁNH SÁNG TRÀN TOÀN BỘ TRANG WEB */}
+      {/* AMBIENT ÁNH SÁNG */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-40 blur-[100px] scale-110 saturate-150 transition-all duration-1000" 
@@ -268,7 +293,7 @@ export default function VideoPlayer() {
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
 
-      {/* 👇 FIX: BREADCRUMB RESPONSIVE - Hiển thị Tên phim trên Mobile */}
+      {/* BREADCRUMB */}
       <div className="relative z-20 max-w-[1260px] mx-auto px-2 md:px-4 mb-4 md:mb-6 flex items-center justify-between gap-4">
         <button 
           onClick={() => { saveToFirebase(); navigate(-1); }} 
@@ -289,19 +314,20 @@ export default function VideoPlayer() {
         <div 
           ref={playerWrapperRef}
           className="relative w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] border border-white/10 group flex items-center justify-center"
-          onMouseMove={handleMouseMove}
+          onMouseMove={handleUserActivity}
           onMouseLeave={() => { if (isPlaying && !showEpisodes && !showLangMenu && !showSettings) setShowControls(false); }}
         >
           {useIframe ? (
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
+              {/* 👇 GẮN HÀM XỬ LÝ CLICK THÔNG MINH VÀO ĐÂY */}
               <video
                 ref={videoRef}
                 playsInline
                 poster={posterUrl}
                 className="w-full h-full object-contain cursor-pointer"
-                onClick={togglePlay}
+                onClick={handleVideoInteraction}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                 onPlay={() => setIsPlaying(true)}
@@ -309,7 +335,7 @@ export default function VideoPlayer() {
                 onEnded={() => setIsPlaying(false)}
               />
 
-              {/* 👇 FIX: NÚT PLAY KHỔNG LỒ THU GỌN TRÊN MOBILE */}
+              {/* NÚT PLAY LỚN (Chỉ hiển thị để báo hiệu, không bắt click) */}
               {!isPlaying && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20 transition-all">
                   <div className="w-16 h-16 md:w-24 md:h-24 bg-white/10 border border-white/30 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-xl animate-pulse">
@@ -345,8 +371,8 @@ export default function VideoPlayer() {
                 </div>
               </div>
 
-              {/* 👇 FIX: BẢNG ĐIỀU KHIỂN TỐI ƯU SIÊU GỌN CHO MOBILE */}
-              <div className={`absolute bottom-2 left-2 right-2 md:bottom-6 md:left-6 md:right-6 px-3 py-3 md:px-6 md:pt-5 md:pb-5 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-[1.5rem] transition-all duration-300 z-30 ${showControls || !isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              {/* BẢNG ĐIỀU KHIỂN */}
+              <div className={`absolute bottom-2 left-2 right-2 md:bottom-6 md:left-6 md:right-6 px-3 py-3 md:px-6 md:pt-5 md:pb-5 bg-black/40 backdrop-blur-2xl border border-white/10 rounded-xl md:rounded-[1.5rem] transition-all duration-300 z-30 ${showControls || !isPlaying ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                 
                 {/* THANH TUA PROGRESS BAR */}
                 <div 
@@ -362,7 +388,6 @@ export default function VideoPlayer() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  {/* ICON PLAY, SKIP, TIME */}
                   <div className="flex items-center gap-2 md:gap-6">
                     <button onClick={togglePlay} className="text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
                       <span className="material-symbols-outlined text-3xl md:text-[40px]">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
@@ -394,7 +419,6 @@ export default function VideoPlayer() {
                     </span>
                   </div>
 
-                  {/* ICON MENU BÊN PHẢI ĐƯỢC THU NHỎ TRÊN MOBILE */}
                   <div className="flex items-center gap-2 md:gap-5 relative">
                     
                     {allServers?.length > 1 && (
@@ -457,7 +481,7 @@ export default function VideoPlayer() {
           )}
         </div>
 
-        {/* --- THANH "CONTROL CENTER" CỰC KỲ RÕ RÀNG VÀ CHUYÊN NGHIỆP --- */}
+        {/* --- THANH "CONTROL CENTER" --- */}
         <div className="mt-4 md:mt-8 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 bg-white/5 border border-white/10 rounded-xl md:rounded-[1.5rem] p-3 md:p-6 backdrop-blur-2xl shadow-2xl relative z-10">
           
           <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
