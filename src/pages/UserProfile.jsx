@@ -11,11 +11,13 @@ import {
   getDocs 
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { apiGetPhimDetail } from "../api/api"; // QUAN TRỌNG: Import hàm gọi API
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [resumingId, setResumingId] = useState(null); // State để hiện loading khi bấm vào phim
   const navigate = useNavigate();
 
   // 1. Lấy dữ liệu lịch sử từ Firebase (Real-time)
@@ -29,11 +31,13 @@ export default function UserProfile() {
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const data = snapshot.docs.map(doc => ({
           docId: doc.id, 
-          // FIX 1: Lấy chuẩn slug từ dữ liệu mới lưu, back up bằng ID document
           id: doc.data().slug || doc.id, 
           title: doc.data().title,
           image: doc.data().image,
-          year: doc.data().epName
+          year: doc.data().epName,
+          // 👇 Kéo thêm dữ liệu để làm Cloud Sync
+          rawEpName: doc.data().epName,
+          progress: doc.data().progress
         }));
         setHistory(data);
         setLoading(false);
@@ -67,6 +71,53 @@ export default function UserProfile() {
       } catch (error) {
         console.error("Lỗi dọn sạch lịch sử:", error);
       }
+    }
+  };
+
+  // 4. Hàm Resume 1-Click (Bay thẳng vào VideoPlayer)
+  const handleResume = async (e, movie) => {
+    e.preventDefault(); 
+    if (resumingId) return;
+    setResumingId(movie.id); // Bật loading cho card này
+
+    try {
+      const data = await apiGetPhimDetail(movie.id);
+      if (data && data.status) {
+        const allServers = data.episodes || [];
+        let targetEp = null;
+        let targetServerIdx = 0;
+
+        // Tìm tập phim đang xem dở
+        for (let i = 0; i < allServers.length; i++) {
+          const eps = allServers[i].server_data || allServers[i].items || [];
+          const found = eps.find(ep => ep.name === movie.rawEpName);
+          if (found) { targetEp = found; targetServerIdx = i; break; }
+        }
+
+        // Nếu không tìm thấy thì lấy tập 1
+        if (!targetEp) targetEp = (allServers[0]?.server_data || allServers[0]?.items || [])[0];
+
+        if (targetEp) {
+          navigate(`/play/${data.movie.slug}`, {
+            state: {
+              videoUrl: targetEp.link_m3u8 || targetEp.m3u8 || "",
+              embedFallback: targetEp.link_embed || targetEp.embed || "",
+              movieName: data.movie.name,
+              epName: targetEp.name,
+              allServers: allServers,
+              currentServerIndex: targetServerIdx,
+              posterUrl: data.movie.poster_url || movie.image,
+              cloudProgress: movie.progress // TRUYỀN PROGRESS QUA
+            }
+          });
+          return;
+        }
+      }
+      navigate(`/movie/${movie.id}`); // Lỗi thì trả về trang chi tiết
+    } catch (error) {
+      navigate(`/movie/${movie.id}`);
+    } finally {
+      setResumingId(null);
     }
   };
 
@@ -111,13 +162,12 @@ export default function UserProfile() {
                 <div 
                   key={movie.docId} 
                   className="relative group cursor-pointer"
-                  // FIX 2: Điều hướng về trang /movie/ để load lại API an toàn tuyệt đối
-                  onClick={() => navigate(`/movie/${movie.id}`)}
+                  onClick={(e) => handleResume(e, movie)} // 👇 GỌI HÀM BAY THẲNG VÀO PHIM
                 >
-                  {/* NÚT XÓA LẺ */}
+                  {/* FIX MOBILE: Nút xóa luôn hiện trên Mobile (opacity-100), chỉ ẩn trên Máy tính (md:opacity-0) */}
                   <button 
                     onClick={(e) => deleteOneHistory(e, movie.docId)}
-                    className="absolute top-2 right-2 z-30 w-8 h-8 bg-black/80 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10"
+                    className="absolute top-2 right-2 z-30 w-8 h-8 bg-black/80 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10"
                   >
                     <span className="material-symbols-outlined text-sm">close</span>
                   </button>
@@ -125,11 +175,20 @@ export default function UserProfile() {
                   {/* THIẾT KẾ CARD PHIM */}
                   <div className="relative aspect-[2/3] rounded-2xl overflow-hidden border border-white/5 group-hover:border-primary/50 transition-all">
                     <img src={movie.image} alt={movie.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
                     
-                    <div className="absolute bottom-3 left-3 right-3">
+                    {/* HIỆU ỨNG LOADING KHI BẤM VÀO */}
+                    {resumingId === movie.id ? (
+                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20">
+                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-[10px] text-white font-bold mt-2 animate-pulse">Đang nạp...</span>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80" />
+                    )}
+                    
+                    <div className="absolute bottom-3 left-3 right-3 z-10">
                       <p className="text-[10px] text-primary font-black uppercase tracking-widest truncate bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg border border-primary/20">
-                        {movie.year}
+                        {movie.year ? `Tập: ${movie.year}` : "Đang cập nhật"}
                       </p>
                     </div>
                   </div>

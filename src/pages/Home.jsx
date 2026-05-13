@@ -51,7 +51,11 @@ function Home() {
             id: data.slug || doc.id, 
             title: data.title,
             image: data.image,
-            year: data.epName ? `Tập: ${data.epName}` : (data.year || "2024")
+            year: data.epName ? `Tập: ${data.epName}` : (data.year || "2024"),
+            // 👇 3 DÒNG NÀY ĐỂ KÍCH HOẠT BAY THẲNG VÀO PHIM ĐANG XEM DỞ
+            isHistory: true, 
+            rawEpName: data.epName,
+            progress: data.progress
           };
         });
         setWatchingHistory(movies);
@@ -73,7 +77,6 @@ function Home() {
         if (tmdbRes?.results) {
           const mappingPromises = tmdbRes.results.slice(0, 10).map(async (movie) => {
             const searchRes = await apiSearchByTitle(movie.original_title || movie.title);
-            // THÍCH ỨNG KKPHIM: Lấy từ searchRes.data.items hoặc searchRes.items
             const items = searchRes?.data?.items || searchRes?.items || [];
             if (items.length > 0) {
               return formatMovieItem(items[0]);
@@ -84,8 +87,8 @@ function Home() {
           setTmdbTrending(mappedResults);
         }
 
-        // 2. Lấy Phim Đang Chiếu (KKPhim dùng 'phim-le' hoặc 'phim-bo')
-        const trendingRes = await apiGetPhimTheoDanhSach('phim-le', 1);
+        // 2. 👇 ĐÃ SỬA THÀNH PHIM CHIẾU RẠP NHƯ YÊU CẦU
+        const trendingRes = await apiGetPhimTheoDanhSach('phim-chieu-rap', 1);
         const trendingItems = trendingRes?.data?.items || trendingRes?.items || [];
         if (trendingItems.length > 0) {
           setTrending(trendingItems.map(formatMovieItem));
@@ -97,7 +100,6 @@ function Home() {
         const compiled = COUNTRY_LIST.map((country, index) => {
           const res = results[index];
           if (res.status === "fulfilled" && res.value) {
-            // THÍCH ỨNG KKPHIM: Tương tự, chui vào trong .data.items
             const items = res.value?.data?.items || res.value?.items || [];
             if (items.length > 0) {
               return {
@@ -157,12 +159,12 @@ function Home() {
           />
         )}
 
-        {/* Phim Lẻ Mới (Thay cho phim đang chiếu) */}
+        {/* 👇 ĐÃ ĐỔI TÊN MỤC THÀNH PHIM CHIẾU RẠP */}
         {trending.length > 0 && (
           <MovieCarousel 
-            title="🔥 Phim Lẻ Mới" 
+            title="🍿 Phim Chiếu Rạp" 
             movies={trending} 
-            viewAllState={{ type: 'danh-sach', slug: 'phim-le', title: 'Phim Lẻ Mới' }} 
+            viewAllState={{ type: 'danh-sach', slug: 'phim-chieu-rap', title: 'Phim Chiếu Rạp' }} 
           />
         )}
         
