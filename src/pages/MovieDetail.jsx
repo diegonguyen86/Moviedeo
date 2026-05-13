@@ -6,8 +6,6 @@ export default function MovieDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [movieDetails, setMovieDetails] = useState(null);
-  
-  // Quản lý danh sách Server theo chuẩn KKPhim
   const [movieServers, setMovieServers] = useState([]); 
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -19,9 +17,7 @@ export default function MovieDetail() {
   };
 
   useEffect(() => {
-    // Reset về server đầu tiên mỗi khi đổi phim để tránh lỗi index
     setSelectedServerIndex(0);
-    
     const fetchMovieData = async () => {
       setLoading(true);
       try {
@@ -42,14 +38,12 @@ export default function MovieDetail() {
   if (loading) return <div className="p-12 text-center text-white font-bold animate-pulse text-2xl mt-20">🍿 Đang chuẩn bị rạp phim...</div>;
   if (!movieDetails) return <div className="p-12 text-center text-white font-bold text-xl mt-20">Không tìm thấy phim này rồi!</div>;
 
-  // Lấy danh sách tập dựa trên server đang chọn (Bọc Array.isArray để chống sập web)
-  const currentEpisodes = Array.isArray(movieServers[selectedServerIndex]?.server_data) 
-    ? movieServers[selectedServerIndex].server_data 
-    : [];
+  // LẤY DỮ LIỆU AN TOÀN BAO THẦU CẢ 2 CHUẨN KKPHIM & NGUONC
+  const rawEpisodes = movieServers[selectedServerIndex]?.server_data || movieServers[selectedServerIndex]?.items || [];
+  const currentEpisodes = Array.isArray(rawEpisodes) ? rawEpisodes : [];
 
   return (
     <main className="pb-20 bg-black min-h-screen text-white">
-      {/* Banner */}
       <section className="relative w-full h-[50vh] md:h-[65vh]">
         <img className="w-full h-full object-cover opacity-30 scale-105" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
@@ -65,16 +59,13 @@ export default function MovieDetail() {
         </div>
       </section>
 
-      {/* Nội dung chi tiết */}
       <section className="px-6 md:px-20 py-12 grid grid-cols-1 md:grid-cols-4 gap-12">
-        {/* Poster */}
         <div className="md:col-span-1">
           <div className="sticky top-28">
             <img src={getFullImageUrl(movieDetails.thumb_url)} className="w-full rounded-2xl border border-white/5 shadow-2xl" alt="Poster" />
           </div>
         </div>
 
-        {/* Thông tin */}
         <div className="md:col-span-3 space-y-12">
           <div className="space-y-8">
             <div className="space-y-4">
@@ -89,23 +80,17 @@ export default function MovieDetail() {
             </div>
           </div>
 
-          {/* DANH SÁCH TẬP & CHỌN SERVER */}
           <div className="bg-zinc-900/50 p-8 rounded-3xl border border-white/5 shadow-inner">
             <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
               <span className="material-symbols-outlined text-primary">playlist_play</span>
               <h3 className="text-xl font-bold uppercase tracking-tight">Chọn tập phim</h3>
             </div>
             
-            {/* TABS SERVER */}
             {movieServers.length > 1 && (
               <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-black/50 rounded-xl w-fit border border-white/5">
                 {movieServers.map((server, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedServerIndex(index)}
-                    className={`px-5 py-2 rounded-lg font-bold text-sm transition-all duration-300 ${
-                      selectedServerIndex === index ? "bg-primary text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-zinc-800"
-                    }`}
+                  <button key={index} onClick={() => setSelectedServerIndex(index)}
+                    className={`px-5 py-2 rounded-lg font-bold text-sm transition-all duration-300 ${selectedServerIndex === index ? "bg-primary text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-zinc-800"}`}
                   >
                     {server.server_name}
                   </button>
@@ -113,19 +98,18 @@ export default function MovieDetail() {
               </div>
             )}
 
-            {/* DANH SÁCH TẬP */}
             <div className="flex flex-wrap gap-3">
               {currentEpisodes.map((ep) => (
-                <button
-                  key={ep.slug}
+                <button key={ep.slug}
                   onClick={() => {
                     navigate(`/play/${movieDetails.slug}`, { 
                       state: { 
-                        videoUrl: ep.link_m3u8, // Chỉ truyền link m3u8 vào đây
-                        embedFallback: ep.link_embed, // Truyền link embed để sơ cua
+                        // MAPPING CHUẨN XÁC BAO THẦU CẢ KKPHIM VÀ NGUONC
+                        videoUrl: ep.link_m3u8 || ep.m3u8 || "", 
+                        embedFallback: ep.link_embed || ep.embed || "", 
                         movieName: movieDetails.name, 
                         epName: ep.name,
-                        allServers: movieServers, // Truyền toàn bộ Server
+                        allServers: movieServers, 
                         currentServerIndex: selectedServerIndex, 
                         posterUrl: getFullImageUrl(movieDetails.poster_url)
                       } 

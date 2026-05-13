@@ -11,7 +11,6 @@ export default function VideoPlayer() {
   const { id } = useParams(); 
   const { user } = useAuth();
   
-  // Nhận dữ liệu từ trang MovieDetail gửi sang
   const { videoUrl, embedFallback, movieName, epName, allServers, currentServerIndex, posterUrl } = location.state || {};
 
   const playerRef = useRef(null);
@@ -24,24 +23,24 @@ export default function VideoPlayer() {
   const [isReady, setIsReady] = useState(false);
   const [useIframe, setUseIframe] = useState(false);
 
-  // Tính toán danh sách tập an toàn
-  const currentEpisodes = Array.isArray(allServers?.[activeServerIdx]?.server_data) 
-    ? allServers[activeServerIdx].server_data 
-    : [];
+  // BẮT LỖI TỐI THƯỢNG: Tránh F5 bay mất phim
+  useEffect(() => {
+    if (!videoUrl && !embedFallback) {
+      navigate(`/movie/${id}`, { replace: true });
+    }
+  }, [videoUrl, embedFallback, id, navigate]);
 
-  // Logic lưu tiến độ vào Firebase
+  // Hỗ trợ mảng 2 chuẩn
+  const rawEpisodes = allServers?.[activeServerIdx]?.server_data || allServers?.[activeServerIdx]?.items || [];
+  const currentEpisodes = Array.isArray(rawEpisodes) ? rawEpisodes : [];
+
   const saveToFirebase = async () => {
     if (!user || !movieName) return;
     try {
       const historyRef = doc(db, "users", user.uid, "watchHistory", id);
       await setDoc(historyRef, {
-        slug: id,
-        movieId: id,
-        title: movieName,
-        epName: currentEpName,
-        image: posterUrl,
-        progress: playedSeconds,
-        lastWatched: serverTimestamp() 
+        slug: id, movieId: id, title: movieName, epName: currentEpName,
+        image: posterUrl, progress: playedSeconds, lastWatched: serverTimestamp() 
       });
     } catch (error) { console.error(error); }
   };
@@ -51,7 +50,6 @@ export default function VideoPlayer() {
     saveToFirebase();
   }, [currentVideo, useIframe]);
 
-  // Logic tua đến đoạn đang xem dở
   useEffect(() => {
     const savedTime = localStorage.getItem(`progress_${id}_${currentEpName}`);
     if (savedTime && playerRef.current && isReady && !useIframe) {
@@ -59,31 +57,26 @@ export default function VideoPlayer() {
     }
   }, [id, currentEpName, isReady, useIframe]);
 
-  if (!videoUrl && !currentEmbed) return (
-    <div className="h-screen bg-black flex flex-col items-center justify-center text-white">
-      <p className="text-xl font-bold">Lỗi: Không tìm thấy link phim!</p>
-      <button onClick={() => navigate(-1)} className="mt-6 bg-primary px-8 py-3 rounded-xl">Quay lại</button>
-    </div>
-  );
-
   const handleSwitchEpisode = (ep) => {
     saveToFirebase();
-    setCurrentVideo(ep.link_m3u8); 
-    setCurrentEmbed(ep.link_embed);
+    setCurrentVideo(ep.link_m3u8 || ep.m3u8 || ""); 
+    setCurrentEmbed(ep.link_embed || ep.embed || "");
     setCurrentEpName(ep.name);
     setIsReady(false);
-    setUseIframe(false); // Thử lại m3u8 cho tập mới
+    setUseIframe(false);
   };
 
   const handleSwitchServer = (idx) => {
     setActiveServerIdx(idx);
-    const newServerEpisodes = allServers[idx].server_data;
+    const newServerEpisodes = allServers[idx].server_data || allServers[idx].items || [];
     const equivalentEp = newServerEpisodes.find(e => e.name === currentEpName) || newServerEpisodes[0];
     handleSwitchEpisode(equivalentEp);
   };
 
   const currentIndex = currentEpisodes.findIndex(e => e.name === currentEpName);
   const nextEpisode = currentIndex < currentEpisodes.length - 1 ? currentEpisodes[currentIndex + 1] : null;
+
+  if (!currentVideo && !currentEmbed) return null; // Ẩn lỗi nhấp nháy khi bị F5
 
   return (
     <main className="relative min-h-screen bg-black text-white pt-24 pb-20 font-sans">
@@ -92,16 +85,12 @@ export default function VideoPlayer() {
       </div>
 
       <div className="relative z-10 max-w-[1260px] mx-auto px-4">
-        {/* KHUNG PHÁT VIDEO */}
         <div className="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10">
           {useIframe ? (
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <ReactPlayer
-              ref={playerRef}
-              url={currentVideo}
-              controls width="100%" height="100%"
-              playing={true}
+              ref={playerRef} url={currentVideo} controls width="100%" height="100%" playing={true}
               style={{ position: 'absolute', top: 0, left: 0 }}
               onReady={() => setIsReady(true)}
               onProgress={(p) => {
@@ -110,10 +99,10 @@ export default function VideoPlayer() {
               }}
               onPause={saveToFirebase}
               onError={() => {
-                console.warn("M3U8 lỗi, tự động chuyển sang Server dự phòng...");
+                console.warn("⚠️ M3U8 bị chặn, bật Iframe dự phòng!");
                 setUseIframe(true);
               }}
-              config={{ file: { attributes: { playsInline: true } } }}
+              config={{ file: { forceHLS: true, attributes: { playsInline: true } } }}
             />
           )}
         </div>
@@ -140,10 +129,8 @@ export default function VideoPlayer() {
           </div>
         </div>
 
-        {/* DANH SÁCH TẬP */}
         <div className="mt-12">
           <h3 className="text-2xl font-black uppercase mb-6 tracking-tighter">Chọn tập khác</h3>
-          
           {allServers?.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-black/50 rounded-xl w-fit border border-white/5">
               {allServers.map((server, index) => (
@@ -155,7 +142,6 @@ export default function VideoPlayer() {
               ))}
             </div>
           )}
-
           <div className="flex flex-wrap gap-4">
             {currentEpisodes.map((ep) => (
               <button key={ep.slug} onClick={() => handleSwitchEpisode(ep)}

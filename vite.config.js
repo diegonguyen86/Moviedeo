@@ -40,13 +40,14 @@ export default defineConfig({
     })
   ],
   base: "/", 
+  // --- 🛠️ CẤU HÌNH PROXY ---
   server: {
     proxy: {
-      // Mỗi khi code gọi đến /api, nó sẽ trỏ về máy chủ mới của KKPhim
-      '/api': {
-        target: 'https://phimapi.com', // Đã chuyển sang KKPhim
+      // Đổi thành /phim-proxy để tuyệt đối không xung đột với /api/bot (Vercel Serverless)
+      '/phim-proxy': {
+        target: 'https://phimapi.com',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''), 
+        rewrite: (path) => path.replace(/^\/phim-proxy/, ''), 
       }
     }
   }

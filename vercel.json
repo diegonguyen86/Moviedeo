@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
+      "source": "/api/bot",
+      "destination": "/api/bot"
+    },
+    {
+      "source": "/phim-proxy/:path*",
       "destination": "https://phimapi.com/:path*"
     },
     {
