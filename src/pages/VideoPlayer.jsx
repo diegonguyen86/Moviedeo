@@ -102,7 +102,8 @@ export default function VideoPlayer() {
                 console.warn("⚠️ M3U8 bị chặn, bật Iframe dự phòng!");
                 setUseIframe(true);
               }}
-              config={{ file: { forceHLS: true, attributes: { playsInline: true } } }}
+              // ĐÃ BỎ forceHLS ĐỂ SAFARI PHÁT NATIVE MƯỢT MÀ NHẤT
+              config={{ file: { attributes: { playsInline: true } } }}
             />
           )}
         </div>
