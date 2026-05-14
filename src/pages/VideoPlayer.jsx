@@ -226,7 +226,7 @@ export default function VideoPlayer() {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  // QUẢN LÝ ẨN HIỆN THANH CÔNG CỤ
+  // QUẢN LÝ ẨN HIỆN THANH CÔNG CỤ THEO HOẠT ĐỘNG
   const handleUserActivity = () => {
     setShowControls(true);
     clearTimeout(controlsTimeoutRef.current);
@@ -235,6 +235,23 @@ export default function VideoPlayer() {
         setShowControls(false);
       }, 3000); 
     }
+  };
+
+  // 👇 ĐÃ KHÔI PHỤC: Thuật toán Toggle cực kỳ tốt từ code cũ (Hỗ trợ thêm isAutoNexting)
+  const toggleControls = (e) => {
+    e?.stopPropagation();
+    setShowControls((prev) => {
+      const willShow = !prev;
+      if (willShow) {
+        clearTimeout(controlsTimeoutRef.current);
+        if (isPlaying && !showSettings && !showEpisodes && !showLangMenu && !isAutoNexting) {
+          controlsTimeoutRef.current = setTimeout(() => setShowControls(false), 3000);
+        }
+      } else {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+      return willShow;
+    });
   };
 
   useEffect(() => {
@@ -264,7 +281,7 @@ export default function VideoPlayer() {
     setCurrentEpName(ep.name);
     setUseIframe(false);
     setShowEpisodes(false); 
-    setIsAutoNexting(false); // Reset auto-next
+    setIsAutoNexting(false); 
     setIsPlaying(true);
   };
 
@@ -296,7 +313,6 @@ export default function VideoPlayer() {
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
 
-      {/* 👇 TOP BAR "QUAY LẠI" ĐẶT HOÀN TOÀN BÊN NGOÀI KHUNG VIDEO */}
       <div className="relative z-20 max-w-[1260px] mx-auto px-2 md:px-4 mb-4 md:mb-6 flex items-center justify-between gap-4">
         <button 
           onClick={() => { saveToFirebase(); navigate(-1); }} 
@@ -321,23 +337,19 @@ export default function VideoPlayer() {
             if (e.movementX === 0 && e.movementY === 0) return;
             handleUserActivity(); 
           }}
-          onTouchStart={handleUserActivity}
           onMouseLeave={() => { if (isPlaying && !showEpisodes && !showLangMenu && !showSettings && !isAutoNexting) setShowControls(false); }}
         >
           {useIframe ? (
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
-              {/* 👇 CLICK TRỰC TIẾP VÀO VIDEO ĐỂ PLAY/PAUSE NHƯ PC CHUẨN */}
+              {/* 👇 ĐÃ FIX: Trả lại sự kiện onClick={toggleControls} chuẩn như cũ */}
               <video
                 ref={videoRef}
                 playsInline
                 poster={posterUrl}
                 className="w-full h-full object-contain cursor-pointer"
-                onClick={() => {
-                  togglePlay();
-                  handleUserActivity();
-                }}
+                onClick={toggleControls}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                 onPlay={() => setIsPlaying(true)}
