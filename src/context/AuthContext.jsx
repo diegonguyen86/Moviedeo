@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db, googleProvider } from "../firebase"; 
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth"; 
+// 👇 FIX Bệnh Mobile: Thay signInWithPopup thành signInWithRedirect
+import { onAuthStateChanged, signInWithRedirect, signOut } from "firebase/auth"; 
 import { doc, getDoc, setDoc } from "firebase/firestore"; 
 
 const AuthContext = createContext();
@@ -90,13 +91,15 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+  // 👇 SỬA HÀM NÀY: Dùng Redirect thay vì Popup
+  const loginWithGoogle = () => signInWithRedirect(auth, googleProvider);
   const logout = () => signOut(auth);
 
   return (
     <AuthContext.Provider value={{ user, isApproved, loginWithGoogle, logout }}>
       {!loading ? children : (
-        <div className="h-screen bg-black flex items-center justify-center">
+        // 👇 FIX Z-INDEX: Thêm relative z-[9999] để Loading không bị chìm
+        <div className="h-screen bg-black flex items-center justify-center relative z-[9999]">
           <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
