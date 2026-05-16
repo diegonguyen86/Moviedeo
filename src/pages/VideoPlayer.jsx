@@ -23,6 +23,9 @@ export default function VideoPlayer() {
   const [currentEmbed, setCurrentEmbed] = useState(embedFallback);
   const [currentEpName, setCurrentEpName] = useState(epName);
   
+  // 👇 FIX 1: Thêm state quản lý tiến trình Firebase (Trị Zombie Progress)
+  const [activeCloudProgress, setActiveCloudProgress] = useState(cloudProgress);
+
   const [useIframe, setUseIframe] = useState(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
@@ -76,7 +79,9 @@ export default function VideoPlayer() {
     let hls;
     const safeVideoUrl = currentVideo.replace("http://", "https://");
     const localTime = localStorage.getItem(`progress_${id}_${currentEpName}`);
-    const savedTime = cloudProgress || localTime;
+    
+    // 👇 FIX 1: Dùng activeCloudProgress thay vì cloudProgress
+    const savedTime = activeCloudProgress || localTime;
 
     if (Hls.isSupported()) {
       hls = new Hls({ debug: false, enableWorker: true });
@@ -97,7 +102,7 @@ export default function VideoPlayer() {
     }
 
     return () => { if (hls) hls.destroy(); };
-  }, [currentVideo, useIframe, currentEpName, id, cloudProgress]);
+  }, [currentVideo, useIframe, currentEpName, id, activeCloudProgress]); // Đổi dependency
 
   // ĐẾM NGƯỢC AUTO-NEXT
   useEffect(() => {
@@ -226,7 +231,6 @@ export default function VideoPlayer() {
     return `${m < 10 ? '0'+m : m}:${s < 10 ? '0'+s : s}`;
   };
 
-  // QUẢN LÝ ẨN HIỆN THANH CÔNG CỤ THEO HOẠT ĐỘNG
   const handleUserActivity = () => {
     setShowControls(true);
     clearTimeout(controlsTimeoutRef.current);
@@ -237,7 +241,6 @@ export default function VideoPlayer() {
     }
   };
 
-  // Vẫn giữ lại hàm này phòng khi muốn dùng nút tắt mở UI cụ thể
   const toggleControls = (e) => {
     e?.stopPropagation();
     setShowControls((prev) => {
@@ -275,14 +278,34 @@ export default function VideoPlayer() {
   }, [isPlaying, useIframe, showSettings, showEpisodes, showLangMenu, isAutoNexting]);
 
   const handleSwitchEpisode = (ep) => {
-    saveToFirebase();
-    setCurrentVideo(ep.link_m3u8 || ep.m3u8 || ""); 
-    setCurrentEmbed(ep.link_embed || ep.embed || "");
+    saveToFirebase(); // Lưu lại Firebase tiến trình tập cũ trước khi qua tập mới
+    
+    // 👇 FIX 1: Giết chết trí nhớ thời gian từ Firebase để tập mới chạy từ 0:00
+    setActiveCloudProgress(null); 
+    
+    const newVideo = ep.link_m3u8 || ep.m3u8 || "";
+    const newEmbed = ep.link_embed || ep.embed || "";
+
+    setCurrentVideo(newVideo); 
+    setCurrentEmbed(newEmbed);
     setCurrentEpName(ep.name);
     setUseIframe(false);
     setShowEpisodes(false); 
     setIsAutoNexting(false); 
     setIsPlaying(true);
+
+    // 👇 FIX 2: Cập nhật luôn gói hàng `location.state` của URL. 
+    // F5 một phát là nó nhớ luôn tập mới nhất chứ không bị thụt lùi nữa!
+    navigate(location.pathname, {
+      replace: true,
+      state: {
+        ...location.state,
+        videoUrl: newVideo,
+        embedFallback: newEmbed,
+        epName: ep.name,
+        cloudProgress: null // Đảm bảo F5 xong nó cũng tự xóa thời gian cũ
+      }
+    });
   };
 
   const handleSwitchLanguage = (idx) => {
@@ -343,7 +366,6 @@ export default function VideoPlayer() {
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
-              {/* 👇 ĐÃ FIX: Logic click xịn như Youtube / Netflix */}
               <video
                 ref={videoRef}
                 playsInline
@@ -372,7 +394,7 @@ export default function VideoPlayer() {
                 }}
               />
 
-              {/* MÀN HÌNH AUTO-NEXT (Chuyển tập tự động) */}
+              {/* MÀN HÌNH AUTO-NEXT */}
               {isAutoNexting && (
                 <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-40 backdrop-blur-sm pointer-events-auto">
                   <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-white/20 border-t-white rounded-full animate-spin flex items-center justify-center mb-4 md:mb-6">
@@ -436,7 +458,7 @@ export default function VideoPlayer() {
                 </div>
               </div>
 
-              {/* BOTTOM BAR (GRADIENT TRÀN VIỀN + SEEKBAR CO GIÃN) */}
+              {/* BOTTOM BAR */}
               <div className={`absolute bottom-0 left-0 right-0 pt-16 pb-4 px-4 md:px-6 bg-gradient-to-t from-black via-black/80 to-transparent z-30 transition-opacity duration-300 flex flex-col justify-end ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
                 
                 <div 
@@ -484,7 +506,6 @@ export default function VideoPlayer() {
                     </span>
                   </div>
 
-                  {/* CỤM NÚT BÊN PHẢI (SKIP NEXT NẰM ĐÂY) */}
                   <div className="flex items-center gap-2 md:gap-5 relative">
                     
                     {nextEpisode && (
