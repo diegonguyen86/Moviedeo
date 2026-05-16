@@ -237,7 +237,7 @@ export default function VideoPlayer() {
     }
   };
 
-  // 👇 ĐÃ KHÔI PHỤC: Thuật toán Toggle cực kỳ tốt từ code cũ (Hỗ trợ thêm isAutoNexting)
+  // Vẫn giữ lại hàm này phòng khi muốn dùng nút tắt mở UI cụ thể
   const toggleControls = (e) => {
     e?.stopPropagation();
     setShowControls((prev) => {
@@ -343,13 +343,21 @@ export default function VideoPlayer() {
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
-              {/* 👇 ĐÃ FIX: Trả lại sự kiện onClick={toggleControls} chuẩn như cũ */}
+              {/* 👇 ĐÃ FIX: Logic click xịn như Youtube / Netflix */}
               <video
                 ref={videoRef}
                 playsInline
                 poster={posterUrl}
                 className="w-full h-full object-contain cursor-pointer"
-                onClick={toggleControls}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!showControls) {
+                    handleUserActivity();
+                  } else {
+                    togglePlay();
+                    handleUserActivity();
+                  }
+                }}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                 onPlay={() => setIsPlaying(true)}
