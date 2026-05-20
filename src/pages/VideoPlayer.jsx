@@ -23,7 +23,7 @@ export default function VideoPlayer() {
   const [currentEmbed, setCurrentEmbed] = useState(embedFallback);
   const [currentEpName, setCurrentEpName] = useState(epName);
   
-  // 👇 FIX 1: Thêm state quản lý tiến trình Firebase (Trị Zombie Progress)
+  // Quản lý tiến trình Firebase (Trị Zombie Progress)
   const [activeCloudProgress, setActiveCloudProgress] = useState(cloudProgress);
 
   const [useIframe, setUseIframe] = useState(false);
@@ -80,7 +80,7 @@ export default function VideoPlayer() {
     const safeVideoUrl = currentVideo.replace("http://", "https://");
     const localTime = localStorage.getItem(`progress_${id}_${currentEpName}`);
     
-    // 👇 FIX 1: Dùng activeCloudProgress thay vì cloudProgress
+    // Dùng activeCloudProgress thay vì cloudProgress
     const savedTime = activeCloudProgress || localTime;
 
     if (Hls.isSupported()) {
@@ -102,7 +102,7 @@ export default function VideoPlayer() {
     }
 
     return () => { if (hls) hls.destroy(); };
-  }, [currentVideo, useIframe, currentEpName, id, activeCloudProgress]); // Đổi dependency
+  }, [currentVideo, useIframe, currentEpName, id, activeCloudProgress]);
 
   // ĐẾM NGƯỢC AUTO-NEXT
   useEffect(() => {
@@ -278,9 +278,7 @@ export default function VideoPlayer() {
   }, [isPlaying, useIframe, showSettings, showEpisodes, showLangMenu, isAutoNexting]);
 
   const handleSwitchEpisode = (ep) => {
-    saveToFirebase(); // Lưu lại Firebase tiến trình tập cũ trước khi qua tập mới
-    
-    // 👇 FIX 1: Giết chết trí nhớ thời gian từ Firebase để tập mới chạy từ 0:00
+    saveToFirebase(); 
     setActiveCloudProgress(null); 
     
     const newVideo = ep.link_m3u8 || ep.m3u8 || "";
@@ -294,8 +292,6 @@ export default function VideoPlayer() {
     setIsAutoNexting(false); 
     setIsPlaying(true);
 
-    // 👇 FIX 2: Cập nhật luôn gói hàng `location.state` của URL. 
-    // F5 một phát là nó nhớ luôn tập mới nhất chứ không bị thụt lùi nữa!
     navigate(location.pathname, {
       replace: true,
       state: {
@@ -303,7 +299,7 @@ export default function VideoPlayer() {
         videoUrl: newVideo,
         embedFallback: newEmbed,
         epName: ep.name,
-        cloudProgress: null // Đảm bảo F5 xong nó cũng tự xóa thời gian cũ
+        cloudProgress: null 
       }
     });
   };
@@ -366,6 +362,7 @@ export default function VideoPlayer() {
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
+              {/* TÁCH BIỆT TRẢI NGHIỆM PC VÀ MOBILE */}
               <video
                 ref={videoRef}
                 playsInline
@@ -373,11 +370,12 @@ export default function VideoPlayer() {
                 className="w-full h-full object-contain cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!showControls) {
-                    handleUserActivity();
-                  } else {
+                  // Kiểm tra xem là PC (chuột) hay Mobile (cảm ứng)
+                  if (e.nativeEvent.pointerType === "mouse") {
                     togglePlay();
                     handleUserActivity();
+                  } else {
+                    toggleControls(e);
                   }
                 }}
                 onTimeUpdate={handleTimeUpdate}
