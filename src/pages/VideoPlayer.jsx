@@ -362,7 +362,7 @@ export default function VideoPlayer() {
             <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
-              {/* TÁCH BIỆT TRẢI NGHIỆM PC VÀ MOBILE */}
+              {/* 👇 CẬP NHẬT MỚI: TÁCH BIỆT TRẢI NGHIỆM PC VÀ MOBILE QUA HARDWARE */}
               <video
                 ref={videoRef}
                 playsInline
@@ -370,11 +370,16 @@ export default function VideoPlayer() {
                 className="w-full h-full object-contain cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
-                  // Kiểm tra xem là PC (chuột) hay Mobile (cảm ứng)
-                  if (e.nativeEvent.pointerType === "mouse") {
+                  
+                  // Tuyệt chiêu soi phần cứng: Máy có chuột thật không?
+                  const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+                  if (isDesktop) {
+                    // PC (Có chuột): Bấm thẳng vào video để Play/Pause
                     togglePlay();
                     handleUserActivity();
                   } else {
+                    // Mobile & iPad (Cảm ứng): Bấm vào video chỉ bật/tắt Menu
                     toggleControls(e);
                   }
                 }}
