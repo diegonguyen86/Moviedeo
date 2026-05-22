@@ -6,6 +6,9 @@ export default function MovieCard({ movie }) {
   const navigate = useNavigate();
   const [isResuming, setIsResuming] = useState(false);
 
+  // 👇 Lớp bảo vệ số 1: Tránh lỗi crash nếu thẻ này bị gọi mà không truyền dữ liệu
+  if (!movie) return null;
+
   const getFullImageUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
@@ -29,6 +32,9 @@ export default function MovieCard({ movie }) {
     setIsResuming(true);
 
     try {
+      // 👇 Bảo vệ khi Resume: Không có ID thì dừng
+      if (!movie.id) return;
+      
       const data = await apiGetPhimDetail(movie.id);
       if (data && data.status) {
         const allServers = data.episodes || [];
@@ -59,22 +65,25 @@ export default function MovieCard({ movie }) {
         }
       }
     } catch (error) {
-      navigate(`/movie/${movie.id}`);
+      navigate(movie.id ? `/movie/${movie.id}` : "#");
     } finally {
       setIsResuming(false);
     }
   };
 
+  // 👇 Lớp bảo vệ số 2 (Quan trọng nhất): Chỉ gán link nếu có ID, không thì gán thành "#"
+  const safeLink = movie.id ? `/movie/${movie.id}` : "#";
+
   return (
     <Link 
-      to={`/movie/${movie.id}`} 
+      to={safeLink} 
       onClick={movie.isHistory ? handleResume : undefined}
-      className="group cursor-pointer block relative"
+      className={`group cursor-pointer block relative ${!movie.id ? 'opacity-50 pointer-events-none' : ''}`}
     >
       {/* THIẾT KẾ CARD: Bọc viền trắng mờ xịn xò khi Hover */}
       <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.15)] border border-white/5 group-hover:border-white/30">
         
-        <img alt={movie.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src={movie.image} />
+        <img alt={movie.title || "Unknown"} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src={movie.image || "/fallback-image.jpg"} />
         
         {/* LỚP LOADING ĐỒNG BỘ TRẮNG */}
         {isResuming && (
@@ -109,8 +118,8 @@ export default function MovieCard({ movie }) {
       </div>
       
       {/* THÔNG TIN PHIM */}
-      <h4 title={movie.title} className="font-bold text-sm md:text-[15px] text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all truncate tracking-tight">
-        {movie.title}
+      <h4 title={movie.title || "Đang tải..."} className="font-bold text-sm md:text-[15px] text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all truncate tracking-tight">
+        {movie.title || "Đang tải..."}
       </h4>
       <p className="font-medium text-[11px] md:text-xs text-zinc-400 mt-1 uppercase tracking-widest">
         {/* GỌI HÀM LỌC CHỮ TẬP Ở ĐÂY */}
