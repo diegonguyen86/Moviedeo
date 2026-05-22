@@ -7,6 +7,9 @@ import UserProfile from "./pages/UserProfile";
 import VideoPlayer from "./pages/VideoPlayer";
 import BrowsePage from "./pages/BrowsePage";
 
+// 👇 BƯỚC 1: Import trang Admin Khôi vừa tạo vào đây
+import TrendingManage from "./pages/TrendingManage";
+
 function App() {
   return (
     <AuthProvider> 
@@ -18,6 +21,9 @@ function App() {
             <Route path="movie/:id" element={<MovieDetail />} />
             <Route path="search" element={<BrowsePage />} />
             <Route path="profile" element={<UserProfile />} />
+            
+            {/* 👇 BƯỚC 2: Mở một "cánh cửa ẩn" cho trang Admin */}
+            <Route path="admin/trending" element={<TrendingManage />} />
           </Route>
 
           {/* Trang xem phim (Tự bảo vệ bên trong component) */}
