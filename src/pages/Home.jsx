@@ -70,11 +70,22 @@ function Home() {
       try {
         setLoading(true);
         
-        // 👇 CẬP NHẬT MỚI: 1. Lấy dữ liệu Top Trending do Admin (Khôi) tự nhập từ Firebase
+        // 👇 ĐÃ FIX CHỖ NÀY: Dịch và lọc dữ liệu từ Admin để tương thích với MovieCard / HeroBanner
         const adminDocRef = doc(db, "admin_settings", "top_trending");
         const adminDocSnap = await getDoc(adminDocRef);
         if (adminDocSnap.exists()) {
-          setAdminTrending(adminDocSnap.data().movies || []);
+          const rawMovies = adminDocSnap.data().movies || [];
+          
+          const formattedAdminMovies = rawMovies
+            .map(movie => ({
+              id: movie.slug,               // Chuyển slug thành id
+              title: movie.name,            // Chuyển name thành title
+              image: movie.thumb_url || movie.poster_url, // Chuyển thumb_url thành image
+              year: movie.year
+            }))
+            .filter(movie => movie.id && movie.image); // Lọc bỏ nếu lỡ có phim bị lỗi trống id hoặc image
+            
+          setAdminTrending(formattedAdminMovies);
         }
 
         // 2. Lấy Phim Chiếu Rạp
