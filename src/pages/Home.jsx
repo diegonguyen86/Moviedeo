@@ -4,14 +4,12 @@ import MovieCarousel from "../components/MovieCarousel";
 import { 
   apiGetPhimTheoDanhSach, 
   apiGetPhimTheoQuocGia, 
-  apiGetTMDBTrending, 
-  apiSearchByTitle,
   formatMovieItem 
 } from "../api/api";
 
 // --- IMPORT FIREBASE ---
 import { db } from "../firebase";
-import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 
 // Danh sách quốc gia chuẩn của KKPhim
@@ -26,7 +24,8 @@ const COUNTRY_LIST = [
 ];
 
 function Home() {
-  const [tmdbTrending, setTmdbTrending] = useState([]); 
+  // Đổi tên state từ tmdbTrending thành adminTrending cho chuẩn ý nghĩa
+  const [adminTrending, setAdminTrending] = useState([]); 
   const [trending, setTrending] = useState([]);       
   const [countrySections, setCountrySections] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +50,6 @@ function Home() {
             id: data.slug || doc.id, 
             title: data.title,
             image: data.image,
-            // 👇 FIX TRỊ ĐÚNG BỆNH LẶP CHỮ TẬP Ở ĐÂY: Trả về data gốc, MovieCard sẽ tự format lại cho đẹp
             year: data.epName || data.year || "2024",
             isHistory: true, 
             rawEpName: data.epName,
@@ -72,19 +70,11 @@ function Home() {
       try {
         setLoading(true);
         
-        // 1. Lấy dữ liệu Trending Thế giới (TMDB) & Khớp với KKPhim
-        const tmdbRes = await apiGetTMDBTrending();
-        if (tmdbRes?.results) {
-          const mappingPromises = tmdbRes.results.slice(0, 10).map(async (movie) => {
-            const searchRes = await apiSearchByTitle(movie.original_title || movie.title);
-            const items = searchRes?.data?.items || searchRes?.items || [];
-            if (items.length > 0) {
-              return formatMovieItem(items[0]);
-            }
-            return null;
-          });
-          const mappedResults = (await Promise.all(mappingPromises)).filter(Boolean);
-          setTmdbTrending(mappedResults);
+        // 👇 CẬP NHẬT MỚI: 1. Lấy dữ liệu Top Trending do Admin (Khôi) tự nhập từ Firebase
+        const adminDocRef = doc(db, "admin_settings", "top_trending");
+        const adminDocSnap = await getDoc(adminDocRef);
+        if (adminDocSnap.exists()) {
+          setAdminTrending(adminDocSnap.data().movies || []);
         }
 
         // 2. Lấy Phim Chiếu Rạp
@@ -126,7 +116,6 @@ function Home() {
   if (loading) {
     return (
       <div className="pt-32 min-h-screen bg-black text-center text-white flex flex-col items-center justify-center">
-        {/* Nâng cấp loading cho tông tông Glass Trắng */}
         <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
         <p className="text-[13px] font-bold animate-pulse text-white/60 tracking-widest uppercase mt-2">Đang chuẩn bị rạp phim...</p>
       </div>
@@ -135,9 +124,9 @@ function Home() {
 
   return (
     <main className="pb-24 overflow-hidden bg-black">
-      {/* Banner chính */}
-      {tmdbTrending.length > 0 ? (
-        <HeroBanner movie={tmdbTrending[0]} />
+      {/* Banner chính: Ưu tiên chiếu phim Top 1 từ danh sách Admin */}
+      {adminTrending.length > 0 ? (
+        <HeroBanner movie={adminTrending[0]} />
       ) : (
         trending.length > 0 && <HeroBanner movie={trending[0]} />
       )}
@@ -151,12 +140,12 @@ function Home() {
           />
         )}
 
-        {/* Top Trending Thế giới */}
-        {tmdbTrending.length > 0 && (
+        {/* Top Trending do Admin tự cấu hình */}
+        {adminTrending.length > 0 && (
           <MovieCarousel 
             title="✨ Top Trending" 
-            movies={tmdbTrending} 
-            viewAllState={{ type: 'trending-tmdb', title: 'Trending Thế Giới' }} 
+            movies={adminTrending} 
+            // Đã ẩn nút ViewAll vì danh sách này do Khôi tự nhập, không có trang xem tất cả
           />
         )}
 
