@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { useNotification } from "../context/NotificationContext";
 
 export default function AdminTrending() {
+  const { showToast } = useNotification();
   const [trendingList, setTrendingList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,13 +36,13 @@ export default function AdminTrending() {
       const data = await res.json();
       
       if (data.success) {
-        alert(data.message);
+        showToast(data.message, "success");
         setTrendingList(data.movies);
       } else {
-        alert("Lỗi: " + data.message);
+        showToast("Lỗi: " + data.message, "error");
       }
     } catch (error) {
-      alert("Lỗi kết nối tới Server API.");
+      showToast("Lỗi kết nối tới Server API.", "error");
     } finally {
       setIsLoading(false);
     }

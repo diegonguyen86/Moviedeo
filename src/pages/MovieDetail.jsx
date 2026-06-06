@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { apiGetPhimDetail, apiGetTrailer } from "../api/api"; 
 import { useWatchlist } from "../hooks/useWatchlist";
+import { useNotification } from "../context/NotificationContext";
 import TrailerModal from "../components/TrailerModal";
 
 export default function MovieDetail() {
+  const { showToast } = useNotification();
   const { id } = useParams();
   const navigate = useNavigate();
   const [movieDetails, setMovieDetails] = useState(null);
@@ -30,7 +32,7 @@ export default function MovieDetail() {
       setTrailerKey(key);
       setIsTrailerOpen(true);
     } else {
-      alert("Chưa tìm thấy Trailer cho bộ phim này!");
+      showToast("Chưa tìm thấy Trailer cho bộ phim này!", "error");
     }
   };
 

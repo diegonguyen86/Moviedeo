@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { apiGetPhimDetail } from "../api/api"; 
 import LoadingLogo from "../components/LoadingLogo"; 
 import { useWatchlist } from "../hooks/useWatchlist";
+import { useNotification } from "../context/NotificationContext";
 import { Link } from "react-router-dom";
 
 export default function UserProfile() {
@@ -23,6 +24,7 @@ export default function UserProfile() {
   const [resumingId, setResumingId] = useState(null); 
   const navigate = useNavigate();
   const { watchlist, removeFromWatchlist } = useWatchlist();
+  const { showConfirm, showToast } = useNotification();
 
   useEffect(() => {
     if (user) {
@@ -53,26 +55,30 @@ export default function UserProfile() {
   const deleteOneHistory = async (e, docId) => {
     e.preventDefault(); 
     e.stopPropagation(); 
-    if (window.confirm("Xóa phim này khỏi lịch sử?")) {
+    showConfirm("Xóa phim này khỏi lịch sử?", async () => {
       try {
         await deleteDoc(doc(db, "users", user.uid, "watchHistory", docId));
+        showToast("Đã xóa khỏi lịch sử", "success");
       } catch (error) {
         console.error("Lỗi xóa phim:", error);
+        showToast("Lỗi khi xóa phim", "error");
       }
-    }
+    });
   };
 
   const clearAllHistory = async () => {
-    if (window.confirm("Bạn thật sự muốn tẩy trắng toàn bộ lịch sử xem phim sao?")) {
+    showConfirm("Bạn thật sự muốn tẩy trắng toàn bộ lịch sử xem phim sao?", async () => {
       try {
         const q = query(collection(db, "users", user.uid, "watchHistory"));
         const snapshot = await getDocs(q);
         const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, "users", user.uid, "watchHistory", d.id)));
         await Promise.all(deletePromises);
+        showToast("Đã dọn sạch lịch sử", "success");
       } catch (error) {
         console.error("Lỗi dọn sạch lịch sử:", error);
+        showToast("Lỗi dọn sạch lịch sử", "error");
       }
-    }
+    });
   };
 
   const handleResume = async (e, movie) => {
