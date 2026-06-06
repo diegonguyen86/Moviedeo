@@ -7,6 +7,12 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
   const navigate = useNavigate();
   const [isAtEnd, setIsAtEnd] = useState(false);
 
+  // Drag to scroll states
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftState, setScrollLeftState] = useState(0);
+  const [dragDistance, setDragDistance] = useState(0);
+
   const handleScroll = () => {
     if (rowRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
@@ -38,6 +44,38 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
       } else {
         rowRef.current.scrollBy({ left: rowRef.current.clientWidth * 0.8, behavior: 'smooth' });
       }
+    }
+  };
+
+  // Drag to scroll handlers
+  const handleMouseDown = (e) => {
+    setIsDragging(true);
+    setStartX(e.pageX - rowRef.current.offsetLeft);
+    setScrollLeftState(rowRef.current.scrollLeft);
+    setDragDistance(0);
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const x = e.pageX - rowRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5; // Tốc độ cuộn (nhân 1.5 để mượt hơn)
+    setDragDistance(Math.abs(walk));
+    rowRef.current.scrollLeft = scrollLeftState - walk;
+  };
+
+  const handleClickCapture = (e) => {
+    if (dragDistance > 5) {
+      e.stopPropagation();
+      e.preventDefault();
     }
   };
 
@@ -77,7 +115,12 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
         <div 
           ref={rowRef}
           onScroll={handleScroll}
-          className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar scroll-smooth pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''}`}
+          onMouseDown={handleMouseDown}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+          onClickCapture={handleClickCapture}
+          className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''} ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
         >
           {movies.map((movie, index) => (
             <div key={movie.id} className={`shrink-0 relative flex items-center ${isTop10 ? 'w-[180px] md:w-[220px] lg:w-[250px]' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
