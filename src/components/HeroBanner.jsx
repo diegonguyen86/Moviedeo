@@ -8,7 +8,7 @@ export default function HeroBanner({ movie }) {
       <div className="absolute inset-0 z-0">
         <img
           alt={movie.title}
-          className="w-full h-full object-cover scale-105"
+          className="w-full h-full object-cover object-top"
           src={movie.image}
         />
         {/* Lớp phủ Gradient tạo chiều sâu điện ảnh */}

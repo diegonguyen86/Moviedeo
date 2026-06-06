@@ -455,14 +455,15 @@ export default function VideoPlayer() {
 
                     {/* Play/Pause */}
                     <button 
-                      className="w-16 h-16 md:w-20 md:h-20 bg-black/40 border border-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md hover:bg-yellow-500 hover:text-black hover:border-yellow-500 hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                      className="relative w-16 h-16 md:w-20 md:h-20 bg-white/10 border border-white/40 text-white rounded-full flex items-center justify-center backdrop-blur-xl hover:bg-white hover:text-black hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] group/play"
                       onClick={(e) => {
                         e.stopPropagation();
                         togglePlay();
                         handleUserActivity();
                       }}
                     >
-                      <span className={`material-symbols-outlined text-4xl md:text-5xl drop-shadow-md ${isPlaying ? '' : 'ml-1 md:ml-2'}`}>
+                      {!isPlaying && <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white group-hover/play:bg-black group-hover/play:opacity-10"></div>}
+                      <span className="material-symbols-outlined text-4xl md:text-5xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1", marginLeft: isPlaying ? '0' : '4px' }}>
                         {isPlaying ? 'pause' : 'play_arrow'}
                       </span>
                     </button>
@@ -524,7 +525,7 @@ export default function VideoPlayer() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 md:gap-6">
                     <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-3xl md:text-[36px]">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
+                      <span className="material-symbols-outlined text-3xl md:text-[36px]" style={{ fontVariationSettings: "'FILL' 1" }}>{isPlaying ? 'pause_circle' : 'play_circle'}</span>
                     </button>
 
                     <button onClick={(e) => { e.stopPropagation(); handleSkip(-10); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hidden sm:block hover:scale-110 transform duration-200">
