@@ -160,11 +160,12 @@ function Home() {
         )}
 
         {/* Top Trending do Admin tự cấu hình */}
-        {adminTrending.length > 0 && (
+        {adminTrending.length > 1 && (
           <MovieCarousel 
             title="✨ Top Trending" 
-            movies={adminTrending} 
+            movies={adminTrending.slice(1)} 
             isTop10={true}
+            startNumber={2}
           />
         )}
 

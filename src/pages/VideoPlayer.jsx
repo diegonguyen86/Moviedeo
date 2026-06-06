@@ -84,25 +84,36 @@ export default function VideoPlayer() {
     // Dùng activeCloudProgress thay vì cloudProgress
     const savedTime = activeCloudProgress || localTime;
 
+    // QUAN TRỌNG: Đặt lại thời gian về 0 trước khi nạp video mới để tránh lỗi dính thời gian của tập cũ
+    video.currentTime = 0;
+    setCurrentTime(0);
+
+    const onLoadedMetadata = () => {
+      video.currentTime = savedTime ? parseFloat(savedTime) : 0;
+      video.play().catch(() => {});
+    };
+
     if (Hls.isSupported()) {
       hls = new Hls({ debug: false, enableWorker: true });
       hls.loadSource(safeVideoUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        if (savedTime) video.currentTime = parseFloat(savedTime);
+        video.currentTime = savedTime ? parseFloat(savedTime) : 0;
+        video.play().catch(() => {});
       });
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) setUseIframe(true);
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = safeVideoUrl;
-      video.addEventListener("loadedmetadata", () => {
-        if (savedTime) video.currentTime = parseFloat(savedTime);
-      });
+      video.addEventListener("loadedmetadata", onLoadedMetadata);
       video.addEventListener("error", () => setUseIframe(true));
     }
 
-    return () => { if (hls) hls.destroy(); };
+    return () => { 
+      if (hls) hls.destroy(); 
+      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+    };
   }, [currentVideo, useIframe, currentEpName, id, activeCloudProgress]);
 
   // ĐẾM NGƯỢC AUTO-NEXT
