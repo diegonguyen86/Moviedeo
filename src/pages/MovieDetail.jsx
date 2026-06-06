@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { apiGetPhimDetail } from "../api/api"; 
+import { apiGetPhimDetail, apiGetTrailer } from "../api/api"; 
+import { useWatchlist } from "../hooks/useWatchlist";
+import TrailerModal from "../components/TrailerModal";
 
 export default function MovieDetail() {
   const { id } = useParams();
@@ -9,6 +11,28 @@ export default function MovieDetail() {
   const [movieServers, setMovieServers] = useState([]); 
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Trailer & Watchlist state
+  const [trailerKey, setTrailerKey] = useState(null);
+  const [isTrailerOpen, setIsTrailerOpen] = useState(false);
+  const [isTrailerLoading, setIsTrailerLoading] = useState(false);
+  const { addToWatchlist, removeFromWatchlist, isSaved } = useWatchlist();
+
+  const handleWatchTrailer = async () => {
+    if (trailerKey) {
+      setIsTrailerOpen(true);
+      return;
+    }
+    setIsTrailerLoading(true);
+    const key = await apiGetTrailer(movieDetails.origin_name || movieDetails.name);
+    setIsTrailerLoading(false);
+    if (key) {
+      setTrailerKey(key);
+      setIsTrailerOpen(true);
+    } else {
+      alert("Chưa tìm thấy Trailer cho bộ phim này!");
+    }
+  };
 
   const getFullImageUrl = (url) => {
     if (!url) return "";
@@ -44,6 +68,8 @@ export default function MovieDetail() {
 
   return (
     <main className="pb-20 bg-black min-h-screen text-white">
+      <TrailerModal isOpen={isTrailerOpen} onClose={() => setIsTrailerOpen(false)} youtubeKey={trailerKey} />
+      
       {/* 👇 ĐÃ THÊM overflow-hidden Ở ĐÂY ĐỂ FIX LỖI TRÀN MÀN HÌNH ĐIỆN THOẠI 👇 */}
       <section className="relative w-full h-[50vh] md:h-[65vh] overflow-hidden">
         <img className="w-full h-full object-cover opacity-30 scale-105" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
@@ -55,6 +81,37 @@ export default function MovieDetail() {
               <span className="bg-white text-black px-3 py-1 rounded-md text-xs font-black">{movieDetails.year}</span>
               <span className="bg-primary px-3 py-1 rounded-md text-xs font-black uppercase">{movieDetails.quality}</span>
               <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-md text-xs font-bold">{movieDetails.lang}</span>
+            </div>
+            
+            {/* NÚT XEM TRAILER & LƯU PHIM */}
+            <div className="flex flex-wrap gap-4 pt-2">
+              <button 
+                onClick={handleWatchTrailer}
+                disabled={isTrailerLoading}
+                className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-bold flex items-center gap-2 transition-all backdrop-blur-md shadow-lg"
+              >
+                <span className={`material-symbols-outlined ${isTrailerLoading ? "animate-spin" : ""}`}>
+                  {isTrailerLoading ? "progress_activity" : "smart_display"}
+                </span>
+                {isTrailerLoading ? "Đang tìm..." : "Xem Trailer"}
+              </button>
+
+              <button 
+                onClick={() => isSaved(movieDetails.slug) ? removeFromWatchlist(movieDetails.slug) : addToWatchlist({
+                  slug: movieDetails.slug,
+                  name: movieDetails.name,
+                  thumb_url: getFullImageUrl(movieDetails.thumb_url),
+                  year: movieDetails.year
+                })}
+                className={`px-6 py-3 border rounded-xl font-bold flex items-center gap-2 transition-all backdrop-blur-md shadow-lg ${
+                  isSaved(movieDetails.slug) 
+                    ? "bg-red-500/20 border-red-500 text-red-500 hover:bg-red-500/30" 
+                    : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                }`}
+              >
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: isSaved(movieDetails.slug) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
+                {isSaved(movieDetails.slug) ? "Đã Lưu" : "Lưu Phim"}
+              </button>
             </div>
           </div>
         </div>

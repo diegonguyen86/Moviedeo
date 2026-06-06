@@ -13,6 +13,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { apiGetPhimDetail } from "../api/api"; 
 import LoadingLogo from "../components/LoadingLogo"; 
+import { useWatchlist } from "../hooks/useWatchlist";
+import { Link } from "react-router-dom";
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
@@ -20,6 +22,7 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [resumingId, setResumingId] = useState(null); 
   const navigate = useNavigate();
+  const { watchlist, removeFromWatchlist } = useWatchlist();
 
   useEffect(() => {
     if (user) {
@@ -138,6 +141,56 @@ export default function UserProfile() {
             <p className="text-white/60 font-bold tracking-widest">{user.email}</p>
             <button onClick={logout} className="mt-2 bg-white/10 text-white px-8 py-3 rounded-xl font-bold border border-white/20 hover:bg-white hover:text-black transition-all shadow-lg active:scale-95">ĐĂNG XUẤT</button>
           </div>
+        </section>
+
+        {/* PHIM YÊU THÍCH (LOCAL WATCHLIST) */}
+        <section className="space-y-8 mb-20">
+          <div className="flex items-center gap-4 border-b border-white/10 pb-6">
+            <div className="w-1.5 h-8 bg-red-500 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.8)]"></div>
+            <h3 className="text-3xl font-black uppercase tracking-tighter drop-shadow-md text-red-500">Phim Yêu Thích</h3>
+          </div>
+
+          {watchlist && watchlist.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+              {watchlist.map((movie) => (
+                <div key={movie.slug} className="relative group cursor-pointer">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromWatchlist(movie.slug);
+                    }}
+                    className="absolute top-2 right-2 z-30 w-8 h-8 bg-black/60 hover:bg-red-600 text-white backdrop-blur-md rounded-full flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/20 shadow-lg"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+
+                  <Link to={`/movie/${movie.slug}`}>
+                    <div className="relative aspect-[2/3] rounded-2xl overflow-hidden transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.15)] border border-white/5 group-hover:border-white/30">
+                      <img src={movie.thumb_url} alt={movie.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center pointer-events-none">
+                         <div className="w-14 h-14 rounded-full bg-white/10 border border-white/30 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                           <span className="material-symbols-outlined text-3xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">play_arrow</span>
+                         </div>
+                      </div>
+                      <div className="absolute bottom-3 left-3 right-3 z-10 pointer-events-none">
+                        <p className="text-[10px] text-white font-black uppercase tracking-widest truncate bg-black/50 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 text-center">
+                          {movie.year}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                  <h4 className="mt-4 font-bold text-sm line-clamp-1 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all uppercase tracking-tight">
+                    {movie.name}
+                  </h4>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-20 flex flex-col items-center justify-center bg-white/5 backdrop-blur-md rounded-[3rem] border border-white/10 shadow-2xl">
+               <span className="material-symbols-outlined text-6xl mb-4 text-white/30 drop-shadow-md">heart_broken</span>
+              <p className="text-white/60 font-bold uppercase tracking-widest text-center">Bạn chưa lưu bộ phim nào cả!</p>
+            </div>
+          )}
         </section>
 
         {/* DANH SÁCH PHIM ĐÃ XEM */}
