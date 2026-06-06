@@ -19,7 +19,11 @@ const getCachedData = (key) => {
 };
 
 const setCachedData = (key, data) => {
-  localStorage.setItem("kkphim_" + key, JSON.stringify({ data, timestamp: Date.now() }));
+  try {
+    localStorage.setItem("kkphim_" + key, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch (error) {
+    console.warn("Lỗi lưu cache (có thể do quá dung lượng):", error);
+  }
 };
 
 const safeGet = async (url) => {
