@@ -119,6 +119,7 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
           onMouseLeave={handleMouseLeave}
           onMouseUp={handleMouseUp}
           onMouseMove={handleMouseMove}
+          onDragStart={(e) => e.preventDefault()}
           onClickCapture={handleClickCapture}
           className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''} ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
         >
