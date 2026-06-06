@@ -477,16 +477,6 @@ export default function VideoPlayer() {
                   </div>
                 )}
 
-                {/* NÚT TẬP TIẾP THEO (NỔI LÊN GÓC PHẢI DƯỚI, NỔI BẬT DỄ BẤM) */}
-                {!isAutoNexting && nextEpisode && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} 
-                    className="absolute right-4 bottom-20 md:right-8 md:bottom-28 flex items-center gap-2 bg-black/60 border border-white/20 text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full backdrop-blur-xl hover:bg-yellow-500 hover:text-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] z-30 group"
-                  >
-                    <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider">Tập tiếp theo</span>
-                    <span className="material-symbols-outlined text-xl md:text-2xl group-hover:translate-x-1 transition-transform">skip_next</span>
-                  </button>
-                )}
               </div>
 
               {/* PANEL CHỌN TẬP */}
@@ -628,6 +618,17 @@ export default function VideoPlayer() {
                   </div>
                 </div>
               </div>
+
+              {/* NÚT TẬP TIẾP THEO (ĐƯA RA NGOÀI ĐỂ KHÔNG BỊ BOTTOM BAR CHE MẤT) */}
+              {!isAutoNexting && nextEpisode && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} 
+                  className={`absolute right-4 bottom-20 md:right-8 md:bottom-28 flex items-center gap-2 bg-black/60 border border-white/20 text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full backdrop-blur-xl hover:bg-yellow-500 hover:text-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] z-40 group ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                >
+                  <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider">Tập tiếp theo</span>
+                  <span className="material-symbols-outlined text-xl md:text-2xl group-hover:translate-x-1 transition-transform">skip_next</span>
+                </button>
+              )}
             </>
           )}
         </div>

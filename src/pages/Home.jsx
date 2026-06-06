@@ -24,6 +24,16 @@ const COUNTRY_LIST = [
   { name: "Hồng Kông", slug: "hong-kong", emoji: "🏙️" },
 ];
 
+const sortMoviesByYearDesc = (movies) => {
+  return [...movies].sort((a, b) => {
+    const getYear = (str) => {
+      const match = String(str).match(/\d{4}/);
+      return match ? parseInt(match[0]) : 0;
+    };
+    return getYear(b.year) - getYear(a.year);
+  });
+};
+
 function Home() {
   // Đổi tên state từ tmdbTrending thành adminTrending cho chuẩn ý nghĩa
   const [adminTrending, setAdminTrending] = useState([]); 
@@ -88,7 +98,8 @@ function Home() {
         const trendingRes = await apiGetPhimTheoDanhSach('phim-chieu-rap', 1);
         const trendingItems = trendingRes?.data?.items || trendingRes?.items || [];
         if (trendingItems.length > 0) {
-          setTrending(trendingItems.map(formatMovieItem));
+          const formatted = trendingItems.map(formatMovieItem);
+          setTrending(sortMoviesByYearDesc(formatted));
         }
 
         // 3. Lấy Phim Theo Quốc Gia
@@ -99,9 +110,10 @@ function Home() {
           if (res.status === "fulfilled" && res.value) {
             const items = res.value?.data?.items || res.value?.items || [];
             if (items.length > 0) {
+              const formatted = items.map(formatMovieItem);
               return {
                 title: `${country.emoji} ${country.name}`,
-                movies: items.map(formatMovieItem),
+                movies: sortMoviesByYearDesc(formatted),
                 viewAllState: { type: 'quoc-gia', slug: country.slug, title: country.name }
               };
             }
