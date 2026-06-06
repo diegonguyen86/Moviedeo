@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { apiGetPhimDetail } from "../api/api";
+import LoadingLogo from "./LoadingLogo";
 
 export default function MovieCard({ movie }) {
   const navigate = useNavigate();
@@ -88,7 +89,7 @@ export default function MovieCard({ movie }) {
         {/* LỚP LOADING ĐỒNG BỘ TRẮNG */}
         {isResuming && (
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-             <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+             <LoadingLogo className="w-12 h-12" />
              <span className="text-[10px] text-white font-bold mt-3 animate-pulse tracking-widest uppercase">Đang nạp...</span>
           </div>
         )}

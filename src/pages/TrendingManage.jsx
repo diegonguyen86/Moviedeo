@@ -3,7 +3,6 @@ import { db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 
 export default function AdminTrending() {
-  const [slugInput, setSlugInput] = useState("");
   const [trendingList, setTrendingList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,58 +26,21 @@ export default function AdminTrending() {
     fetchTrending();
   }, []);
 
-  // 🚀 HÀM XỬ LÝ NHẬP SỈ (BULK ADD)
-  const handleAddBatch = async () => {
-    // Tách chuỗi thành mảng các slug (xuống dòng hoặc dấu phẩy)
-    const slugs = slugInput.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
-    
-    if (slugs.length === 0) return;
+  // 🚀 HÀM XỬ LÝ ĐỒNG BỘ TỰ ĐỘNG TỪ TMDB
+  const handleAutoFetch = async () => {
     setIsLoading(true);
-
     try {
-      const fetchPromises = slugs.map(slug => 
-        fetch(`https://phimapi.com/phim/${slug}`).then(res => res.json())
-      );
+      const res = await fetch("/api/cron-trending");
+      const data = await res.json();
       
-      const results = await Promise.allSettled(fetchPromises);
-      const newMovies = [];
-      const failedSlugs = [];
-
-      results.forEach((result, index) => {
-        if (result.status === "fulfilled" && result.value.status) {
-          const movieData = result.value.movie;
-          newMovies.push({
-            slug: movieData.slug,
-            name: movieData.name,
-            origin_name: movieData.origin_name,
-            thumb_url: movieData.thumb_url,
-            poster_url: movieData.poster_url,
-            year: movieData.year,
-          });
-        } else {
-          failedSlugs.push(slugs[index]);
-        }
-      });
-
-      if (newMovies.length > 0) {
-        const updatedList = [...trendingList, ...newMovies]; // Thêm phim mới vào cuối danh sách
-        setTrendingList(updatedList);
-        
-        const docRef = doc(db, "admin_settings", "top_trending");
-        await setDoc(docRef, { movies: updatedList });
-
-        if (failedSlugs.length === 0) {
-          setSlugInput("");
-          alert(`Đã thêm thành công ${newMovies.length} phim!`);
-        } else {
-          setSlugInput(failedSlugs.join("\n"));
-          alert(`Đã thêm ${newMovies.length} phim. Có ${failedSlugs.length} slug bị lỗi!`);
-        }
+      if (data.success) {
+        alert(data.message);
+        setTrendingList(data.movies);
       } else {
-        alert("Toàn bộ slug đều bị lỗi hoặc không tồn tại!");
+        alert("Lỗi: " + data.message);
       }
     } catch (error) {
-      alert("Có lỗi xảy ra khi gọi API KKPhim.");
+      alert("Lỗi kết nối tới Server API.");
     } finally {
       setIsLoading(false);
     }
@@ -117,23 +79,24 @@ export default function AdminTrending() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-10">
+    <div className="min-h-screen bg-black text-white p-10">
       <h1 className="text-3xl font-black mb-6 uppercase text-yellow-500">Quản lý Top Trending</h1>
       
-      {/* KHU VỰC NHẬP LIỆU (Đã nâng cấp thành Textarea nhập sỉ) */}
-      <div className="bg-white/10 p-6 rounded-2xl mb-8 flex flex-col md:flex-row gap-4 max-w-2xl">
-        <textarea 
-          value={slugInput}
-          onChange={(e) => setSlugInput(e.target.value)}
-          placeholder="Dán list slug từ Terminal vào đây (Mỗi slug 1 dòng)..." 
-          className="flex-1 bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-yellow-500 min-h-[120px] resize-y"
-        />
+      {/* KHU VỰC ĐỒNG BỘ TỰ ĐỘNG TỪ TMDB */}
+      <div className="bg-white/10 p-6 rounded-2xl mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white">Đồng Bộ TMDB Tự Động</h2>
+          <p className="text-sm text-zinc-400 mt-1">
+            Hệ thống sẽ tự động quét và cập nhật Top Trending vào 7:00 sáng mỗi ngày. <br/>
+            Bạn cũng có thể bấm làm mới ngay lập tức (Lưu ý: sẽ thay thế toàn bộ danh sách hiện tại).
+          </p>
+        </div>
         <button 
-          onClick={handleAddBatch}
+          onClick={handleAutoFetch}
           disabled={isLoading}
-          className="bg-yellow-500 text-black font-black px-6 py-3 rounded-xl hover:bg-yellow-400 transition-all disabled:opacity-50 h-fit whitespace-nowrap"
+          className="bg-yellow-500 text-black font-black px-6 py-3 rounded-xl hover:bg-yellow-400 transition-all disabled:opacity-50 h-fit whitespace-nowrap flex items-center gap-2"
         >
-          {isLoading ? "Đang xử lý..." : "Thêm Hàng Loạt"}
+          {isLoading ? "⏳ Đang quét TMDB..." : "🔄 Làm mới ngay"}
         </button>
       </div>
 

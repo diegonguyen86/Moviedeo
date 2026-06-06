@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db, googleProvider } from "../firebase"; 
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth"; 
 import { doc, getDoc, setDoc } from "firebase/firestore"; 
+import LoadingLogo from "../components/LoadingLogo";
 
 const AuthContext = createContext();
 
@@ -97,7 +98,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{ user, isApproved, loginWithGoogle, logout }}>
       {!loading ? children : (
         <div className="h-screen bg-black flex items-center justify-center">
-          <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <LoadingLogo className="w-14 h-14" />
         </div>
       )}
     </AuthContext.Provider>

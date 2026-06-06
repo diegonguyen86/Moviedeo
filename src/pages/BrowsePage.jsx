@@ -10,6 +10,7 @@ import {
   apiGetPhimMoiCapNhat,
   formatMovieItem
 } from "../api/api";
+import LoadingLogo from "../components/LoadingLogo";
 
 const types = [
   { name: "Phim Chiếu Rạp", slug: "phim-chieu-rap", type: 'danh-sach' },
@@ -319,7 +320,7 @@ export default function BrowsePage() {
 
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center py-32">
-              <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+              <LoadingLogo className="w-16 h-16" />
               <div className="mt-4 text-white/50 font-bold uppercase tracking-widest animate-pulse">Đang lục kho phim...</div>
             </div>
           ) : movies.length > 0 ? (

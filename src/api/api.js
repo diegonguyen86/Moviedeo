@@ -48,7 +48,7 @@ export const apiGetPhimTheoNam = (slug, page = 1) => safeGet(`/v1/api/nam/${slug
 export const apiSearchPhim = (keyword, page = 1) => safeGet(`/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
 export const apiSearchByTitle = (title) => safeGet(`/v1/api/tim-kiem?keyword=${encodeURIComponent(title)}&page=1`);
 
-const TMDB_KEY = '6bae5f515f00ea9d7fb9f030d3d454ea';
+const TMDB_KEY = import.meta.env.VITE_TMDB_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 export const apiGetTMDBTrending = async () => {
   try {

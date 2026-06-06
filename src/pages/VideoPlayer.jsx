@@ -4,6 +4,7 @@ import Hls from "hls.js";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import LoadingLogo from "../components/LoadingLogo";
 
 export default function VideoPlayer() {
   const navigate = useNavigate();
@@ -400,9 +401,7 @@ export default function VideoPlayer() {
               {/* MÀN HÌNH AUTO-NEXT */}
               {isAutoNexting && (
                 <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-40 backdrop-blur-sm pointer-events-auto">
-                  <div className="w-16 h-16 md:w-20 md:h-20 border-4 border-white/20 border-t-white rounded-full animate-spin flex items-center justify-center mb-4 md:mb-6">
-                    <span className="text-xl md:text-2xl font-black text-white absolute animate-none">{autoNextCounter}</span>
-                  </div>
+                  <LoadingLogo className="w-20 h-20 md:w-24 md:h-24 mb-4 md:mb-6" />
                   <h3 className="text-lg md:text-2xl font-black uppercase tracking-widest text-white mb-2">Tập tiếp theo</h3>
                   <p className="text-sm md:text-base text-zinc-400 mb-6 md:mb-8 font-medium">Tập {nextEpisode?.name}</p>
                   

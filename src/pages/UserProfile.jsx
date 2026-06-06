@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { apiGetPhimDetail } from "../api/api"; 
+import LoadingLogo from "../components/LoadingLogo"; 
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
@@ -156,7 +157,7 @@ export default function UserProfile() {
 
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center">
-               <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
+               <LoadingLogo className="w-16 h-16" />
                <span className="mt-4 text-white/50 font-bold uppercase tracking-widest animate-pulse">Đang tìm lại dấu vết...</span>
             </div>
           ) : history.length > 0 ? (
@@ -179,7 +180,7 @@ export default function UserProfile() {
                     
                     {resumingId === movie.id ? (
                       <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20 backdrop-blur-sm">
-                        <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <LoadingLogo className="w-12 h-12" />
                         <span className="text-[10px] text-white font-bold mt-3 animate-pulse tracking-widest uppercase">Đang nạp...</span>
                       </div>
                     ) : (

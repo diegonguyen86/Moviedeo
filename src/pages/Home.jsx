@@ -11,6 +11,7 @@ import {
 import { db } from "../firebase";
 import { collection, query, orderBy, limit, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
+import LoadingLogo from "../components/LoadingLogo";
 
 // Danh sách quốc gia chuẩn của KKPhim
 const COUNTRY_LIST = [
@@ -127,7 +128,7 @@ function Home() {
   if (loading) {
     return (
       <div className="pt-32 min-h-screen bg-black text-center text-white flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin mb-4"></div>
+        <LoadingLogo className="w-16 h-16 mb-4" />
         <p className="text-[13px] font-bold animate-pulse text-white/60 tracking-widest uppercase mt-2">Đang chuẩn bị rạp phim...</p>
       </div>
     );
