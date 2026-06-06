@@ -412,26 +412,82 @@ export default function VideoPlayer() {
                 </div>
               )}
 
-              {/* LỚP PHỦ MỜ */}
-              <div className={`absolute inset-0 bg-black/40 pointer-events-none transition-opacity duration-300 z-10 ${!isPlaying || showControls ? 'opacity-100' : 'opacity-0'}`}></div>
+              {/* LỚP PHỦ MỜ KHI HIỆN CONTROLS VÀ VÙNG NHẬN SỰ KIỆN CLICK (TỐI ƯU CẢ PC VÀ MOBILE) */}
+              <div 
+                className={`absolute inset-0 bg-black/40 transition-opacity duration-300 z-10 flex items-center justify-center ${!isPlaying || showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                onClick={(e) => {
+                  const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+                  if (isDesktop) {
+                    togglePlay();
+                    handleUserActivity();
+                  } else {
+                    toggleControls(e);
+                  }
+                }}
+                onDoubleClick={(e) => {
+                  const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+                  if (isDesktop) {
+                    toggleFullscreen();
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    if (x < rect.width / 3) {
+                      handleSkip(-10); // Lùi 10s bên trái
+                    } else if (x > (rect.width * 2) / 3) {
+                      handleSkip(10);  // Tiến 10s bên phải
+                    } else {
+                      toggleFullscreen(); // Phóng to ở giữa
+                    }
+                  }
+                }}
+              >
+                {/* CỤM NÚT TRUNG TÂM */}
+                {!isAutoNexting && (
+                  <div className={`flex items-center justify-center gap-6 md:gap-20 transition-transform duration-300 ${!isPlaying || showControls ? 'scale-100' : 'scale-90'}`}>
+                    
+                    {/* Lùi 10s */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleSkip(-10); handleUserActivity(); }} 
+                      className="text-white hover:text-yellow-400 hover:scale-110 transition-all drop-shadow-lg p-2 md:p-4"
+                    >
+                      <span className="material-symbols-outlined text-[40px] md:text-[56px]">replay_10</span>
+                    </button>
 
-              {/* NÚT PLAY/PAUSE Ở GIỮA */}
-              {!isPlaying && !isAutoNexting && (
-                <div className={`absolute inset-0 flex items-center justify-center pointer-events-none z-20 transition-all duration-300 ${!isPlaying || showControls ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+                    {/* Play/Pause */}
+                    <button 
+                      className="w-16 h-16 md:w-24 md:h-24 bg-black/40 border border-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md hover:bg-yellow-500 hover:text-black hover:border-yellow-500 hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePlay();
+                        handleUserActivity();
+                      }}
+                    >
+                      <span className={`material-symbols-outlined text-4xl md:text-5xl drop-shadow-md ${isPlaying ? '' : 'ml-1 md:ml-2'}`}>
+                        {isPlaying ? 'pause' : 'play_arrow'}
+                      </span>
+                    </button>
+
+                    {/* Tiến 10s */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleSkip(10); handleUserActivity(); }} 
+                      className="text-white hover:text-yellow-400 hover:scale-110 transition-all drop-shadow-lg p-2 md:p-4"
+                    >
+                      <span className="material-symbols-outlined text-[40px] md:text-[56px]">forward_10</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* NÚT TẬP TIẾP THEO (NỔI LÊN GÓC PHẢI DƯỚI, NỔI BẬT DỄ BẤM) */}
+                {!isAutoNexting && nextEpisode && (
                   <button 
-                    className="pointer-events-auto w-16 h-16 md:w-24 md:h-24 bg-white/10 border border-white/30 text-white rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)] backdrop-blur-xl hover:bg-white/20 hover:scale-110 active:scale-95 transition-all"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      togglePlay();
-                      handleUserActivity();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} 
+                    className="absolute right-4 bottom-20 md:right-8 md:bottom-28 flex items-center gap-2 bg-black/60 border border-white/20 text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full backdrop-blur-xl hover:bg-yellow-500 hover:text-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] z-30 group"
                   >
-                    <span className={`material-symbols-outlined text-4xl md:text-6xl drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] ${isPlaying ? '' : 'ml-1 md:ml-2'}`}>
-                      {isPlaying ? 'pause' : 'play_arrow'}
-                    </span>
+                    <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider">Tập tiếp theo</span>
+                    <span className="material-symbols-outlined text-xl md:text-2xl group-hover:translate-x-1 transition-transform">skip_next</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* PANEL CHỌN TẬP */}
               <div className={`absolute top-0 right-0 bottom-0 w-[80%] sm:w-[350px] bg-black/70 backdrop-blur-3xl border-l border-white/10 z-40 flex flex-col transition-transform duration-300 ease-in-out ${showEpisodes ? 'translate-x-0' : 'translate-x-full'}`}>

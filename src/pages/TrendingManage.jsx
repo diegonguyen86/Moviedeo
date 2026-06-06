@@ -113,7 +113,7 @@ export default function AdminTrending() {
             className="relative bg-white/5 rounded-xl overflow-hidden border border-white/10 group cursor-grab active:cursor-grabbing hover:border-yellow-500/50 transition-colors"
           >
             {/* Ảnh Phim */}
-            <img src={movie.thumb_url} alt={movie.name} className="w-full aspect-[2/3] object-cover pointer-events-none" />
+            <img src={movie.thumb_url?.startsWith('http') ? movie.thumb_url : `https://phimimg.com/${movie.thumb_url}`} alt={movie.name} className="w-full aspect-[2/3] object-cover pointer-events-none" />
             
             {/* Thông tin Phim */}
             <div className="p-3 bg-black/80 absolute bottom-0 w-full">

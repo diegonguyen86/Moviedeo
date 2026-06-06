@@ -78,12 +78,7 @@ function Home() {
           const rawMovies = adminDocSnap.data().movies || [];
           
           const formattedAdminMovies = rawMovies
-            .map(movie => ({
-              id: movie.slug,               // Chuyển slug thành id
-              title: movie.name,            // Chuyển name thành title
-              image: movie.thumb_url || movie.poster_url, // Chuyển thumb_url thành image
-              year: movie.year
-            }))
+            .map(formatMovieItem)
             .filter(movie => movie.id && movie.image); // Lọc bỏ nếu lỡ có phim bị lỗi trống id hoặc image
             
           setAdminTrending(formattedAdminMovies);

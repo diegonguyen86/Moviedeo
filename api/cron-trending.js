@@ -46,52 +46,22 @@ export default async function handler(req, res) {
       const releaseStr = movie.release_date || movie.first_air_date;
       const tmdbYear = releaseStr ? parseInt(releaseStr.split('-')[0]) : null;
 
-      if (!tmdbTitle) continue;
+      if (!tmdbTitle || !movie.id) continue;
 
-      let kkphimResults = [];
-      try {
-        const searchUrlVi = `${KKPHIM_SEARCH_API}${encodeURIComponent(tmdbTitle)}`;
-        const resVi = await fetch(searchUrlVi);
-        if (resVi.ok) {
-          const dataVi = await resVi.json();
-          if (dataVi?.data?.items) kkphimResults = dataVi.data.items;
-        }
-      } catch (err) {
-        console.log('Lỗi fetch tên Việt:', err.message);
-      }
-
-      if (kkphimResults.length === 0 && originalTitle && originalTitle !== tmdbTitle) {
-        try {
-          const searchUrlEng = `${KKPHIM_SEARCH_API}${encodeURIComponent(originalTitle)}`;
-          const resEng = await fetch(searchUrlEng);
-          if (resEng.ok) {
-            const dataEng = await resEng.json();
-            if (dataEng?.data?.items) kkphimResults = dataEng.data.items;
-          }
-        } catch (err) {
-          console.log('Lỗi fetch tên gốc:', err.message);
-        }
-      }
-
+      const type = isTV ? 'tv' : 'movie';
       let bestMatch = null;
 
-      // CƠ CHẾ ĐỐI CHIẾU
-      if (isTV) {
-        let tvSeasons = kkphimResults.filter(item => {
-          const kkOrigin = (item.origin_name || "").toLowerCase();
-          return tmdbOriginLower && kkOrigin.includes(tmdbOriginLower);
-        });
-        if (tvSeasons.length > 0) {
-          tvSeasons.sort((a, b) => parseInt(b.year) - parseInt(a.year));
-          bestMatch = tvSeasons[0];
-        }
-      } else {
-        for (const item of kkphimResults) {
-          if (parseInt(item.year) === tmdbYear) {
-            bestMatch = item;
-            break;
+      try {
+        const tmdbUrl = `https://phimapi.com/tmdb/${type}/${movie.id}`;
+        const resKkphim = await fetch(tmdbUrl);
+        if (resKkphim.ok) {
+          const kkphimData = await resKkphim.json();
+          if (kkphimData.status && kkphimData.movie) {
+             bestMatch = kkphimData.movie;
           }
         }
+      } catch (err) {
+        console.log(`Lỗi fetch TMDB ID ${movie.id}:`, err.message);
       }
 
       // Xử lý kết quả
@@ -104,7 +74,7 @@ export default async function handler(req, res) {
             origin_name: bestMatch.origin_name,
             thumb_url: bestMatch.thumb_url,
             poster_url: bestMatch.poster_url,
-            year: bestMatch.year,
+            year: bestMatch.year || tmdbYear || "2024",
           });
         }
       }
