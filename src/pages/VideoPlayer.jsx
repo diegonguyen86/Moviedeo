@@ -93,6 +93,8 @@ export default function VideoPlayer() {
       video.play().catch(() => {});
     };
 
+    const onError = () => setUseIframe(true);
+
     if (Hls.isSupported()) {
       hls = new Hls({ debug: false, enableWorker: true });
       hls.loadSource(safeVideoUrl);
@@ -107,12 +109,13 @@ export default function VideoPlayer() {
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = safeVideoUrl;
       video.addEventListener("loadedmetadata", onLoadedMetadata);
-      video.addEventListener("error", () => setUseIframe(true));
+      video.addEventListener("error", onError);
     }
 
     return () => { 
       if (hls) hls.destroy(); 
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("error", onError);
     };
   }, [currentVideo, useIframe, currentEpName, id, activeCloudProgress]);
 
@@ -299,7 +302,10 @@ export default function VideoPlayer() {
     setCurrentVideo(newVideo); 
     setCurrentEmbed(newEmbed);
     setCurrentEpName(ep.name);
-    setUseIframe(false);
+    
+    // Nếu không có m3u8 nhưng có embed thì tự động chuyển sang dùng Iframe
+    setUseIframe(!newVideo && !!newEmbed);
+    
     setShowEpisodes(false); 
     setIsAutoNexting(false); 
     setIsPlaying(true);
