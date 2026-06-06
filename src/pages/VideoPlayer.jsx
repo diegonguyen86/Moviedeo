@@ -555,12 +555,7 @@ export default function VideoPlayer() {
                   </div>
 
                   <div className="flex items-center gap-2 md:gap-5 relative">
-                    
-                    {nextEpisode && (
-                      <button onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} title="Tập Tiếp Theo" className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                        <span className="material-symbols-outlined text-[22px] md:text-[28px]">skip_next</span>
-                      </button>
-                    )}
+
 
                     {allServers?.length > 1 && (
                       <div className="relative">
@@ -619,8 +614,8 @@ export default function VideoPlayer() {
                 </div>
               </div>
 
-              {/* NÚT TẬP TIẾP THEO (ĐƯA RA NGOÀI ĐỂ KHÔNG BỊ BOTTOM BAR CHE MẤT) */}
-              {!isAutoNexting && nextEpisode && (
+              {/* NÚT TẬP TIẾP THEO (ĐƯA RA NGOÀI ĐỂ KHÔNG BỊ BOTTOM BAR CHE MẤT, CHỈ HIỆN Ở 5 PHÚT CUỐI) */}
+              {!isAutoNexting && nextEpisode && duration > 0 && (duration - currentTime <= 300) && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} 
                   className={`absolute right-4 bottom-20 md:right-8 md:bottom-28 flex items-center gap-2 bg-black/60 border border-white/20 text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full backdrop-blur-xl hover:bg-yellow-500 hover:text-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] z-40 group ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
