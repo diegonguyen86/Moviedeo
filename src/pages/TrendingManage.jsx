@@ -79,7 +79,7 @@ export default function AdminTrending() {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-10">
+    <div className="min-h-screen bg-black text-white p-6">
       <h1 className="text-3xl font-black mb-6 uppercase text-yellow-500">Quản lý Top Trending</h1>
       
       {/* KHU VỰC ĐỒNG BỘ TỰ ĐỘNG TỪ TMDB */}

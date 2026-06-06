@@ -65,7 +65,7 @@ export default {
       "spacing": {
         "margin-x": "48px",
         "gutter": "24px",
-        "container-max": "1440px",
+        "container-max": "1280px",
         "section-gap": "64px",
         "header-height": "72px"
       },

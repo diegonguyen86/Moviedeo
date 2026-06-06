@@ -450,12 +450,12 @@ export default function VideoPlayer() {
                       onClick={(e) => { e.stopPropagation(); handleSkip(-10); handleUserActivity(); }} 
                       className="text-white hover:text-yellow-400 hover:scale-110 transition-all drop-shadow-lg p-2 md:p-4"
                     >
-                      <span className="material-symbols-outlined text-[40px] md:text-[56px]">replay_10</span>
+                      <span className="material-symbols-outlined text-4xl md:text-[48px]">replay_10</span>
                     </button>
 
                     {/* Play/Pause */}
                     <button 
-                      className="w-16 h-16 md:w-24 md:h-24 bg-black/40 border border-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md hover:bg-yellow-500 hover:text-black hover:border-yellow-500 hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                      className="w-16 h-16 md:w-20 md:h-20 bg-black/40 border border-white/20 text-white rounded-full flex items-center justify-center backdrop-blur-md hover:bg-yellow-500 hover:text-black hover:border-yellow-500 hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)]"
                       onClick={(e) => {
                         e.stopPropagation();
                         togglePlay();
@@ -472,7 +472,7 @@ export default function VideoPlayer() {
                       onClick={(e) => { e.stopPropagation(); handleSkip(10); handleUserActivity(); }} 
                       className="text-white hover:text-yellow-400 hover:scale-110 transition-all drop-shadow-lg p-2 md:p-4"
                     >
-                      <span className="material-symbols-outlined text-[40px] md:text-[56px]">forward_10</span>
+                      <span className="material-symbols-outlined text-4xl md:text-[48px]">forward_10</span>
                     </button>
                   </div>
                 )}
@@ -524,14 +524,14 @@ export default function VideoPlayer() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 md:gap-6">
                     <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-3xl md:text-[40px]">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
+                      <span className="material-symbols-outlined text-3xl md:text-[36px]">{isPlaying ? 'pause_circle' : 'play_circle'}</span>
                     </button>
 
                     <button onClick={(e) => { e.stopPropagation(); handleSkip(-10); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hidden sm:block hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-3xl">replay_10</span>
+                      <span className="material-symbols-outlined text-[28px] md:text-3xl">replay_10</span>
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); handleSkip(10); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hidden sm:block hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-3xl">forward_10</span>
+                      <span className="material-symbols-outlined text-[28px] md:text-3xl">forward_10</span>
                     </button>
 
                     <div className="flex items-center gap-2 group/volume relative hidden md:flex ml-2">
@@ -558,14 +558,14 @@ export default function VideoPlayer() {
                     
                     {nextEpisode && (
                       <button onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} title="Tập Tiếp Theo" className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                        <span className="material-symbols-outlined text-[22px] md:text-[32px]">skip_next</span>
+                        <span className="material-symbols-outlined text-[22px] md:text-[28px]">skip_next</span>
                       </button>
                     )}
 
                     {allServers?.length > 1 && (
                       <div className="relative">
                         <button onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); setShowSettings(false); setShowEpisodes(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200 ${showLangMenu ? 'drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Ngôn ngữ / Phiên bản">
-                          <span className="material-symbols-outlined text-[22px] md:text-[32px]">subtitles</span>
+                          <span className="material-symbols-outlined text-[22px] md:text-[28px]">subtitles</span>
                         </button>
                         
                         {showLangMenu && (
@@ -587,12 +587,12 @@ export default function VideoPlayer() {
                     )}
 
                     <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowSettings(false); setShowLangMenu(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200 ${showEpisodes ? 'drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Danh sách tập">
-                      <span className="material-symbols-outlined text-[22px] md:text-[32px]">video_library</span>
+                      <span className="material-symbols-outlined text-[22px] md:text-[28px]">video_library</span>
                     </button>
 
                     <div className="relative">
                       <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowLangMenu(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:rotate-90 transform duration-300 ${showSettings ? 'rotate-90 drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Cài đặt">
-                        <span className="material-symbols-outlined text-[22px] md:text-[32px]">settings</span>
+                        <span className="material-symbols-outlined text-[22px] md:text-[28px]">settings</span>
                       </button>
                       
                       {showSettings && (
@@ -613,7 +613,7 @@ export default function VideoPlayer() {
                     </div>
 
                     <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-2xl md:text-[36px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
+                      <span className="material-symbols-outlined text-[24px] md:text-[30px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
                     </button>
                   </div>
                 </div>

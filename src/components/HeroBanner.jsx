@@ -4,7 +4,7 @@ export default function HeroBanner({ movie }) {
   if (!movie) return null;
 
   return (
-    <section className="relative w-full h-[60vh] md:h-[80vh] flex items-end overflow-hidden">
+    <section className="relative w-full h-[50vh] md:h-[65vh] flex items-end overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
           alt={movie.title}
@@ -16,7 +16,7 @@ export default function HeroBanner({ movie }) {
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent"></div>
       </div>
       
-      <div className="relative z-10 px-6 md:px-12 pb-16 md:pb-24 w-full max-w-container-max mx-auto">
+      <div className="relative z-10 px-6 md:px-12 pb-12 md:pb-16 w-full max-w-container-max mx-auto">
         <div className="space-y-6 max-w-2xl">
           
           <div className="flex items-center gap-2">
@@ -26,7 +26,7 @@ export default function HeroBanner({ movie }) {
             </span>
           </div>
           
-          <h2 className="text-4xl md:text-6xl leading-tight font-black text-white uppercase tracking-tighter drop-shadow-2xl">
+          <h2 className="text-3xl md:text-5xl leading-tight font-black text-white uppercase tracking-tighter drop-shadow-2xl">
             {movie.title}
           </h2>
           
@@ -36,13 +36,13 @@ export default function HeroBanner({ movie }) {
           
           <div className="flex items-center gap-4 pt-4">
             {/* NÚT PHÁT NGAY - TÔNG TRẮNG ĐEN GLOW QUYỀN LỰC */}
-            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white text-black px-8 py-3.5 rounded-full font-black text-sm hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95">
+            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white text-black px-6 py-3 rounded-full font-black text-xs hover:scale-105 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.4)] active:scale-95">
               <span className="material-symbols-outlined filled text-[24px] group-hover:animate-pulse">play_circle</span>
               PHÁT NGAY
             </Link>
             
             {/* NÚT CHI TIẾT - KÍNH MỜ TRẮNG VIỀN SÁNG */}
-            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white/10 text-white px-8 py-3.5 rounded-full font-bold text-sm border border-white/20 hover:bg-white/20 hover:border-white/50 transition-all duration-300 active:scale-95 backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+            <Link to={`/movie/${movie.id}`} className="group flex items-center gap-2 bg-white/10 text-white px-6 py-3 rounded-full font-bold text-xs border border-white/20 hover:bg-white/20 hover:border-white/50 transition-all duration-300 active:scale-95 backdrop-blur-md shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]">
               <span className="material-symbols-outlined text-[24px] group-hover:rotate-12 transition-transform drop-shadow-md">info</span>
               CHI TIẾT
             </Link>

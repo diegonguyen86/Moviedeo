@@ -137,6 +137,7 @@ export default function BrowsePage() {
   useEffect(() => { setPage(1); }, [debouncedQuery, activeFilter]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const fetchMovies = async () => {
       setLoading(true);
       try {

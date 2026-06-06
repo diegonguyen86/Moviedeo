@@ -103,8 +103,10 @@ export default function MovieCard({ movie }) {
 
         {/* LỚP PHỦ KHI HOVER VÀ NÚT PLAY KÍNH MỜ (WHITE GLASS) */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/10 border border-white/30 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-            <span className="material-symbols-outlined text-3xl md:text-4xl ml-1 drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">
+          <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/20 border border-white/40 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.4)]">
+            {/* Vòng sáng tỏa ra mờ ảo */}
+            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white"></div>
+            <span className="material-symbols-outlined text-2xl md:text-3xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1", marginLeft: movie.isHistory ? '0' : '4px' }}>
               {movie.isHistory ? "resume" : "play_arrow"}
             </span>
           </div>

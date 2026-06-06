@@ -41,6 +41,7 @@ export default function MovieDetail() {
   };
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     setSelectedServerIndex(0);
     const fetchMovieData = async () => {
       setLoading(true);
@@ -59,8 +60,8 @@ export default function MovieDetail() {
     fetchMovieData();
   }, [id]);
 
-  if (loading) return <div className="p-12 text-center text-white font-bold animate-pulse text-2xl mt-20">🍿 Đang chuẩn bị rạp phim...</div>;
-  if (!movieDetails) return <div className="p-12 text-center text-white font-bold text-xl mt-20">Không tìm thấy phim này rồi!</div>;
+  if (loading) return <div className="p-8 text-center text-white font-bold animate-pulse text-2xl mt-20">🍿 Đang chuẩn bị rạp phim...</div>;
+  if (!movieDetails) return <div className="p-8 text-center text-white font-bold text-xl mt-20">Không tìm thấy phim này rồi!</div>;
 
   // LẤY DỮ LIỆU AN TOÀN BAO THẦU CẢ 2 CHUẨN KKPHIM & NGUONC
   const rawEpisodes = movieServers[selectedServerIndex]?.server_data || movieServers[selectedServerIndex]?.items || [];
@@ -71,13 +72,13 @@ export default function MovieDetail() {
       <TrailerModal isOpen={isTrailerOpen} onClose={() => setIsTrailerOpen(false)} youtubeKey={trailerKey} />
       
       {/* 👇 ĐÃ THÊM overflow-hidden Ở ĐÂY ĐỂ FIX LỖI TRÀN MÀN HÌNH ĐIỆN THOẠI 👇 */}
-      <section className="relative w-full h-[50vh] md:h-[65vh] overflow-hidden">
+      <section className="relative w-full h-[45vh] md:h-[55vh] overflow-hidden">
         <img className="w-full h-full object-cover opacity-30 scale-105" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute inset-0 flex items-end px-6 md:px-20 pb-16">
-          <div className="space-y-4">
-            <h1 className="text-4xl md:text-7xl font-black uppercase tracking-tighter drop-shadow-2xl">{movieDetails.name}</h1>
-            <div className="flex flex-wrap gap-3">
+        <div className="absolute inset-0 flex items-end px-4 md:px-12 pb-12">
+          <div className="space-y-4 max-w-4xl">
+            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter drop-shadow-2xl">{movieDetails.name}</h1>
+            <div className="flex flex-wrap gap-2 md:gap-3">
               <span className="bg-white text-black px-3 py-1 rounded-md text-xs font-black">{movieDetails.year}</span>
               <span className="bg-primary px-3 py-1 rounded-md text-xs font-black uppercase">{movieDetails.quality}</span>
               <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-md text-xs font-bold">{movieDetails.lang}</span>
@@ -88,9 +89,9 @@ export default function MovieDetail() {
               <button 
                 onClick={handleWatchTrailer}
                 disabled={isTrailerLoading}
-                className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-bold flex items-center gap-2 transition-all backdrop-blur-md shadow-lg"
+                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-md shadow-lg"
               >
-                <span className={`material-symbols-outlined ${isTrailerLoading ? "animate-spin" : ""}`}>
+                <span className={`material-symbols-outlined text-[20px] ${isTrailerLoading ? "animate-spin" : ""}`}>
                   {isTrailerLoading ? "progress_activity" : "smart_display"}
                 </span>
                 {isTrailerLoading ? "Đang tìm..." : "Xem Trailer"}
@@ -103,13 +104,13 @@ export default function MovieDetail() {
                   thumb_url: getFullImageUrl(movieDetails.thumb_url),
                   year: movieDetails.year
                 })}
-                className={`px-6 py-3 border rounded-xl font-bold flex items-center gap-2 transition-all backdrop-blur-md shadow-lg ${
+                className={`px-5 py-2.5 border rounded-xl font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-md shadow-lg ${
                   isSaved(movieDetails.slug) 
                     ? "bg-red-500/20 border-red-500 text-red-500 hover:bg-red-500/30" 
                     : "bg-white/10 border-white/20 text-white hover:bg-white/20"
                 }`}
               >
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: isSaved(movieDetails.slug) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isSaved(movieDetails.slug) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
                 {isSaved(movieDetails.slug) ? "Đã Lưu" : "Lưu Phim"}
               </button>
             </div>
@@ -117,7 +118,7 @@ export default function MovieDetail() {
         </div>
       </section>
 
-      <section className="px-6 md:px-20 py-12 grid grid-cols-1 md:grid-cols-4 gap-12">
+      <section className="px-4 md:px-12 py-8 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="md:col-span-1">
           <div className="sticky top-28">
             <img src={getFullImageUrl(movieDetails.thumb_url)} className="w-full rounded-2xl border border-white/5 shadow-2xl" alt="Poster" />
