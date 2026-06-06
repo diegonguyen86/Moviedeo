@@ -1,6 +1,27 @@
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { apiGetTrailer } from "../api/api";
 
 export default function HeroBanner({ movie }) {
+  const [trailerKey, setTrailerKey] = useState(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+
+  useEffect(() => {
+    if (!movie) return;
+    const fetchTrailer = async () => {
+      const key = await apiGetTrailer(movie.origin_name || movie.title);
+      if (key) {
+        setTrailerKey(key);
+        // Delay slighty before showing video to ensure smooth transition
+        setTimeout(() => setIsVideoPlaying(true), 2000);
+      } else {
+        setTrailerKey(null);
+        setIsVideoPlaying(false);
+      }
+    };
+    fetchTrailer();
+  }, [movie]);
+
   if (!movie) return null;
 
   return (
@@ -8,9 +29,23 @@ export default function HeroBanner({ movie }) {
       <div className="absolute inset-0 z-0">
         <img
           alt={movie.title}
-          className="w-full h-full object-cover object-top"
+          className={`w-full h-full object-cover object-top transition-opacity duration-1000 ${isVideoPlaying ? 'opacity-0' : 'opacity-100'}`}
           src={movie.image}
         />
+        
+        {/* VIDEO NỀN TỰ ĐỘNG PHÁT */}
+        {trailerKey && (
+          <div className={`absolute top-1/2 left-1/2 w-[150vw] h-[150vh] md:w-[120vw] md:h-[150vh] -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-opacity duration-1000 ${isVideoPlaying ? 'opacity-100' : 'opacity-0'}`}>
+            <iframe
+              src={`https://www.youtube-nocookie.com/embed/${trailerKey}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&loop=1&playlist=${trailerKey}&modestbranding=1&playsinline=1`}
+              title="Trailer Background"
+              className="w-full h-full object-cover"
+              allow="autoplay; encrypted-media"
+              frameBorder="0"
+            ></iframe>
+          </div>
+        )}
+        
         {/* Lớp phủ Gradient tạo chiều sâu điện ảnh */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent"></div>

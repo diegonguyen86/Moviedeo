@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Link } from "react-router-dom";
 import MovieCard from "./MovieCard";
 
-export default function MovieCarousel({ title, movies, viewAllState }) {
+export default function MovieCarousel({ title, movies, viewAllState, isTop10 = false }) {
   const rowRef = useRef(null);
 
   const scrollLeft = () => {
@@ -52,11 +52,26 @@ export default function MovieCarousel({ title, movies, viewAllState }) {
 
         <div 
           ref={rowRef}
-          className="flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar scroll-smooth snap-x snap-mandatory pt-2 pb-8"
+          className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar scroll-smooth snap-x snap-mandatory pt-2 pb-8 ${isTop10 ? 'pl-8' : ''}`}
         >
-          {movies.map((movie) => (
-            <div key={movie.id} className="w-[140px] md:w-[180px] lg:w-[200px] shrink-0 snap-start">
-              <MovieCard movie={movie} />
+          {movies.map((movie, index) => (
+            <div key={movie.id} className={`shrink-0 snap-start relative flex items-center ${isTop10 ? 'w-[180px] md:w-[220px] lg:w-[250px]' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
+              
+              {/* SỐ TOP 10 KHỔNG LỒ (Chỉ hiện nếu isTop10 = true và index < 10) */}
+              {isTop10 && index < 10 && (
+                <div className="absolute -left-8 md:-left-12 bottom-2 md:bottom-4 z-10 font-black text-[100px] md:text-[140px] leading-none tracking-tighter" style={{
+                  WebkitTextStroke: "2px rgba(255, 255, 255, 0.7)",
+                  color: "transparent",
+                  textShadow: "0 0 20px rgba(0,0,0,0.8)"
+                }}>
+                  {index + 1}
+                </div>
+              )}
+              
+              {/* Dịch chuyển thẻ phim sang phải một chút nếu có số Top 10 */}
+              <div className={`w-full ${isTop10 ? 'pl-10 md:pl-16' : ''}`}>
+                <MovieCard movie={movie} />
+              </div>
             </div>
           ))}
         </div>

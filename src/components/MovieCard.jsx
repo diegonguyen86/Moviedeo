@@ -1,11 +1,15 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { apiGetPhimDetail } from "../api/api";
+import { useWatchlist } from "../hooks/useWatchlist";
+import { useNotification } from "../context/NotificationContext";
 import LoadingLogo from "./LoadingLogo";
 
 export default function MovieCard({ movie }) {
   const navigate = useNavigate();
   const [isResuming, setIsResuming] = useState(false);
+  const { addToWatchlist, removeFromWatchlist, isSaved } = useWatchlist();
+  const { showToast } = useNotification();
 
   // 👇 Lớp bảo vệ số 1: Tránh lỗi crash nếu thẻ này bị gọi mà không truyền dữ liệu
   if (!movie) return null;
@@ -25,6 +29,20 @@ export default function MovieCard({ movie }) {
     // Nếu là tập phim, xóa hết chữ "tập" và ":" bị lặp, sau đó ghép lại cho chuẩn
     const cleanText = str.replace(/tập/gi, "").replace(/:/g, "").trim();
     return `TẬP ${cleanText}`;
+  };
+
+  const handleToggleWatchlist = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!movie || !movie.id) return;
+    
+    if (isSaved(movie.id)) {
+      removeFromWatchlist(movie.id);
+      showToast("Đã bỏ khỏi danh sách", "info");
+    } else {
+      addToWatchlist(movie);
+      showToast("Đã thêm vào danh sách", "success");
+    }
   };
 
   const handleResume = async (e) => {
@@ -110,6 +128,16 @@ export default function MovieCard({ movie }) {
               {movie.isHistory ? "resume" : "play_arrow"}
             </span>
           </div>
+
+          {/* NÚT QUICK ADD TO LIST */}
+          <button 
+            onClick={handleToggleWatchlist}
+            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:bg-white hover:text-black hover:scale-110 shadow-lg z-30"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              {isSaved(movie.id) ? "check" : "add"}
+            </span>
+          </button>
         </div>
         
         {/* THANH PROGRESS LƠ LỬNG KÍNH MỜ (WHITE GLOW) */}

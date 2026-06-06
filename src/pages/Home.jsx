@@ -164,7 +164,7 @@ function Home() {
           <MovieCarousel 
             title="✨ Top Trending" 
             movies={adminTrending} 
-            // Đã ẩn nút ViewAll vì danh sách này do Khôi tự nhập, không có trang xem tất cả
+            isTop10={true}
           />
         )}
 
@@ -173,7 +173,7 @@ function Home() {
           <MovieCarousel 
             title="🍿 Phim Chiếu Rạp" 
             movies={trending} 
-            viewAllState={{ type: 'danh-sach', slug: 'phim-chieu-rap', title: 'Phim Chiếu Rạp' }} 
+            viewAllState={{ type: 'danh-sach', slug: 'phim-chieu-rap', title: 'Phim Chiếu Rạp' }}
           />
         )}
         
