@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext"; 
 import { NotificationProvider } from "./context/NotificationContext";
 import Layout from "./pages/Layout";
@@ -15,7 +15,7 @@ function App() {
   return (
     <NotificationProvider>
       <AuthProvider> 
-        <HashRouter>
+        <BrowserRouter>
         <Routes>
           {/* Toàn bộ các trang nằm trong Layout sẽ được bảo vệ bởi logic "Duyệt" */}
           <Route path="/" element={<Layout />}>
@@ -31,7 +31,7 @@ function App() {
           {/* Trang xem phim (Tự bảo vệ bên trong component) */}
           <Route path="/play/:id" element={<VideoPlayer />} />
         </Routes>
-      </HashRouter>
+      </BrowserRouter>
     </AuthProvider>
     </NotificationProvider>
   );

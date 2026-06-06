@@ -1,23 +1,34 @@
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import MovieCard from "./MovieCard";
 
 export default function MovieCarousel({ title, movies, viewAllState, isTop10 = false, startNumber = 1 }) {
   const rowRef = useRef(null);
   const navigate = useNavigate();
+  const [isAtEnd, setIsAtEnd] = useState(false);
+
+  const handleScroll = () => {
+    if (rowRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
+      const atEnd = Math.ceil(scrollLeft + clientWidth) >= scrollWidth - 10;
+      setIsAtEnd(atEnd);
+    }
+  };
+
+  useEffect(() => {
+    handleScroll();
+    window.addEventListener('resize', handleScroll);
+    return () => window.removeEventListener('resize', handleScroll);
+  }, [movies]);
 
   const scrollLeft = () => {
     if (rowRef.current) {
-      rowRef.current.scrollBy({ left: -rowRef.current.offsetWidth + 150, behavior: 'smooth' });
+      rowRef.current.scrollBy({ left: -rowRef.current.clientWidth * 0.8, behavior: 'smooth' });
     }
   };
 
   const scrollRight = () => {
     if (rowRef.current) {
-      const { scrollLeft, scrollWidth, clientWidth } = rowRef.current;
-      // Allow a small buffer (10px) for rounding errors when calculating scroll end
-      const isAtEnd = Math.ceil(scrollLeft + clientWidth) >= scrollWidth - 10;
-
       if (isAtEnd) {
         if (isTop10) {
           rowRef.current.scrollTo({ left: 0, behavior: 'smooth' });
@@ -25,7 +36,7 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
           navigate('/search', { state: viewAllState });
         }
       } else {
-        rowRef.current.scrollBy({ left: clientWidth - 150, behavior: 'smooth' });
+        rowRef.current.scrollBy({ left: rowRef.current.clientWidth * 0.8, behavior: 'smooth' });
       }
     }
   };
@@ -65,10 +76,11 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
 
         <div 
           ref={rowRef}
-          className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar scroll-smooth snap-x snap-mandatory pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''}`}
+          onScroll={handleScroll}
+          className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar scroll-smooth pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''}`}
         >
           {movies.map((movie, index) => (
-            <div key={movie.id} className={`shrink-0 snap-start relative flex items-center ${isTop10 ? 'w-[180px] md:w-[220px] lg:w-[250px]' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
+            <div key={movie.id} className={`shrink-0 relative flex items-center ${isTop10 ? 'w-[180px] md:w-[220px] lg:w-[250px]' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
               
               {/* Dịch chuyển thẻ phim sang trái một chút để chừa chỗ cho số Top 10 bên phải */}
               <div className={`w-full ${isTop10 ? 'pr-10 md:pr-14' : ''}`}>
@@ -92,9 +104,17 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
         {/* MŨI TÊN PHẢI - TO HƠN, KÍNH MỜ TRẮNG SÁNG */}
         <button 
           onClick={scrollRight}
-          className="absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-14 h-14 bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 hover:bg-white/20 hover:border-white/40 hover:scale-110 shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] border border-white/10 cursor-pointer hidden md:flex"
+          className={`absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-14 h-14 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 cursor-pointer hidden md:flex border hover:scale-110 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${
+            isAtEnd && viewAllState
+              ? 'bg-yellow-500/90 text-black border-yellow-400 hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(234,179,8,0.5)]'
+              : 'bg-black/60 text-white border-white/10 hover:bg-white/20 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.15)]'
+          }`}
         >
-          <span className="material-symbols-outlined text-3xl">chevron_right</span>
+          <span className="material-symbols-outlined text-3xl">
+            {isAtEnd 
+              ? (isTop10 ? 'restart_alt' : (viewAllState ? 'arrow_forward' : 'chevron_right')) 
+              : 'chevron_right'}
+          </span>
         </button>
       </div>
     </section>
