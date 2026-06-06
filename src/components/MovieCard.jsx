@@ -8,6 +8,7 @@ import LoadingLogo from "./LoadingLogo";
 export default function MovieCard({ movie }) {
   const navigate = useNavigate();
   const [isResuming, setIsResuming] = useState(false);
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
   const { addToWatchlist, removeFromWatchlist, isSaved } = useWatchlist();
   const { showToast } = useNotification();
 
@@ -102,7 +103,18 @@ export default function MovieCard({ movie }) {
       {/* THIẾT KẾ CARD: Bọc viền trắng mờ xịn xò khi Hover */}
       <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.15)] border border-white/5 group-hover:border-white/30">
         
-        <img alt={movie.title || "Unknown"} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src={movie.image || "/fallback-image.jpg"} />
+        {/* HIỆU ỨNG SKELETON KHI CHƯA TẢI XONG ẢNH */}
+        {!isImageLoaded && (
+          <div className="absolute inset-0 bg-zinc-800 animate-pulse"></div>
+        )}
+
+        <img 
+          alt={movie.title || "Unknown"} 
+          loading="lazy"
+          onLoad={() => setIsImageLoaded(true)}
+          className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-110 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          src={movie.image || "/fallback-image.jpg"} 
+        />
         
         {/* LỚP LOADING ĐỒNG BỘ TRẮNG */}
         {isResuming && (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 export default function Header() {
@@ -14,8 +14,24 @@ export default function Header() {
   // Hàm đóng menu mobile khi bấm vào link
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
+  // Trạng thái cuộn trang
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <header className="fixed top-0 w-full h-header-height z-50 bg-black/40 backdrop-blur-2xl border-b border-white/10 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)] transition-all duration-300">
+    <header className={`fixed top-0 w-full h-header-height z-50 transition-all duration-500 ${isScrolled ? 'bg-black/80 backdrop-blur-3xl border-b border-white/10 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)]' : 'bg-gradient-to-b from-black/80 via-black/40 to-transparent border-b border-transparent'}`}>
       <div className="flex items-center justify-between px-6 h-full max-w-container-max mx-auto">
         
         {/* 1. BÊN TRÁI: LOGO & TÊN WEB */}

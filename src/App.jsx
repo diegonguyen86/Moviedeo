@@ -7,6 +7,7 @@ import MovieDetail from "./pages/MovieDetail";
 import UserProfile from "./pages/UserProfile";
 import VideoPlayer from "./pages/VideoPlayer";
 import BrowsePage from "./pages/BrowsePage";
+import ScrollToTop from "./components/ScrollToTop";
 
 // 👇 BƯỚC 1: Import trang Admin Khôi vừa tạo vào đây
 import TrendingManage from "./pages/TrendingManage";
@@ -16,6 +17,7 @@ function App() {
     <NotificationProvider>
       <AuthProvider> 
         <BrowserRouter>
+          <ScrollToTop />
         <Routes>
           {/* Toàn bộ các trang nằm trong Layout sẽ được bảo vệ bởi logic "Duyệt" */}
           <Route path="/" element={<Layout />}>
