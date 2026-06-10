@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -33,7 +34,7 @@ export default function AppDownloadModal({ isOpen, onClose }) {
 
   if (!isOpen && !show) return null;
 
-  return (
+  return createPortal(
     <div className={`fixed inset-0 z-[9999] flex items-center justify-center p-4 transition-opacity duration-300 ${isOpen ? "opacity-100" : "opacity-0"}`}>
       {/* Overlay */}
       <div 
@@ -126,6 +127,7 @@ export default function AppDownloadModal({ isOpen, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
