@@ -55,10 +55,10 @@ export default function AppDownloadModal({ isOpen, onClose }) {
         <div className="flex flex-col items-center mb-6 mt-2">
           <img 
             src={`${import.meta.env.BASE_URL}icon.png`} 
-            alt="Moviedeo App" 
+            alt="App Phim Hay Quá Trời" 
             className="w-20 h-20 rounded-2xl mb-4 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
           />
-          <h2 className="text-2xl font-bold text-white mb-2">Moviedeo App</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Phim Hay Quá Trời</h2>
           <p className="text-zinc-400 text-sm leading-relaxed px-4">
             Trải nghiệm xem phim mượt mà hơn, không giật lag trên thiết bị di động của bạn.
           </p>

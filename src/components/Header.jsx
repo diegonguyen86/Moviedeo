@@ -172,7 +172,7 @@ export default function Header() {
             className="flex items-center justify-center gap-2 text-[16px] font-bold py-3 px-4 rounded-xl mt-2 bg-gradient-to-r from-[#e50914] to-[#b20710] text-white transition-all shadow-[0_0_10px_rgba(229,9,20,0.3)]"
           >
             <span className="material-symbols-outlined text-[20px]">smartphone</span>
-            Tải App Moviedeo
+            Tải App Phim Hay Quá Trời
           </button>
         </nav>
       )}
