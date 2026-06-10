@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
+import { apiGetRelatedSeasons, apiGetPhimDetail } from "../api/api";
 
 export default function VideoPlayer() {
   const navigate = useNavigate();
@@ -23,6 +24,13 @@ export default function VideoPlayer() {
   const [currentVideo, setCurrentVideo] = useState(videoUrl);
   const [currentEmbed, setCurrentEmbed] = useState(embedFallback);
   const [currentEpName, setCurrentEpName] = useState(epName);
+  const [currentMovieName, setCurrentMovieName] = useState(movieName);
+  const [currentPosterUrl, setCurrentPosterUrl] = useState(posterUrl);
+  const [currentAllServers, setCurrentAllServers] = useState(allServers);
+  const [currentSlug, setCurrentSlug] = useState(id);
+  
+  const [relatedSeasons, setRelatedSeasons] = useState([]);
+  const [isLoadingSeason, setIsLoadingSeason] = useState(false);
   
   // Quản lý tiến trình Firebase (Trị Zombie Progress)
   const [activeCloudProgress, setActiveCloudProgress] = useState(cloudProgress);
@@ -46,7 +54,7 @@ export default function VideoPlayer() {
   const [isAutoNexting, setIsAutoNexting] = useState(false);
   const [autoNextCounter, setAutoNextCounter] = useState(5);
 
-  const rawEpisodes = allServers?.[activeServerIdx]?.server_data || allServers?.[activeServerIdx]?.items || [];
+  const rawEpisodes = currentAllServers?.[activeServerIdx]?.server_data || currentAllServers?.[activeServerIdx]?.items || [];
   const currentEpisodes = Array.isArray(rawEpisodes) ? rawEpisodes : [];
 
   // TÌM TẬP TIẾP THEO
@@ -54,16 +62,62 @@ export default function VideoPlayer() {
   const nextEpisode = currentIndex !== -1 && currentIndex < currentEpisodes.length - 1 ? currentEpisodes[currentIndex + 1] : null;
 
   useEffect(() => {
-    if (!videoUrl && !embedFallback) navigate(`/movie/${id}`, { replace: true });
-  }, [videoUrl, embedFallback, id, navigate]);
+    if (!videoUrl && !embedFallback) navigate(`/movie/${currentSlug}`, { replace: true });
+  }, [videoUrl, embedFallback, currentSlug, navigate]);
+
+  // Fetch related seasons once
+  useEffect(() => {
+    if (movieName) {
+      // Find base name or just pass it
+      apiGetRelatedSeasons(movieName, "").then(seasons => {
+        setRelatedSeasons(seasons);
+      });
+    }
+  }, [movieName]);
+
+  const changeSeason = async (seasonSlug) => {
+    if (seasonSlug === currentSlug || isLoadingSeason) return;
+    setIsLoadingSeason(true);
+    try {
+      const res = await apiGetPhimDetail(seasonSlug);
+      if (res && res.movie) {
+        saveToFirebase(); // save current progress
+        
+        setCurrentMovieName(res.movie.name);
+        setCurrentPosterUrl(res.movie.poster_url?.startsWith("http") ? res.movie.poster_url : `https://phimimg.com/${res.movie.poster_url}`);
+        setCurrentAllServers(res.episodes || []);
+        setCurrentSlug(seasonSlug);
+        
+        const newServers = res.episodes || [];
+        const newEps = newServers[0]?.server_data || newServers[0]?.items || [];
+        const firstEp = newEps[0];
+        
+        if (firstEp) {
+          const nVideo = firstEp.link_m3u8 || firstEp.m3u8 || "";
+          const nEmbed = firstEp.link_embed || firstEp.embed || "";
+          
+          setCurrentVideo(nVideo);
+          setCurrentEmbed(nEmbed);
+          setCurrentEpName(firstEp.name);
+          setActiveServerIdx(0);
+          setUseIframe(!nVideo && !!nEmbed);
+          setActiveCloudProgress(null); // start from 0 for new season
+        }
+      }
+    } catch (e) {
+      console.log("Error changing season:", e);
+    } finally {
+      setIsLoadingSeason(false);
+    }
+  };
 
   const saveToFirebase = async () => {
-    if (!user || !movieName) return;
+    if (!user || !currentMovieName) return;
     try {
-      const historyRef = doc(db, "users", user.uid, "watchHistory", id);
+      const historyRef = doc(db, "users", user.uid, "watchHistory", currentSlug);
       await setDoc(historyRef, {
-        slug: id, movieId: id, title: movieName, epName: currentEpName,
-        image: posterUrl, progress: videoRef.current?.currentTime || currentTime, lastWatched: serverTimestamp() 
+        slug: currentSlug, movieId: currentSlug, title: currentMovieName, epName: currentEpName,
+        image: currentPosterUrl, progress: videoRef.current?.currentTime || currentTime, lastWatched: serverTimestamp() 
       });
     } catch (error) {}
   };
@@ -79,7 +133,7 @@ export default function VideoPlayer() {
 
     let hls;
     const safeVideoUrl = currentVideo.replace("http://", "https://");
-    const localTime = localStorage.getItem(`progress_${id}_${currentEpName}`);
+    const localTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
     
     // Dùng activeCloudProgress thay vì cloudProgress
     const savedTime = activeCloudProgress || localTime;
@@ -117,7 +171,7 @@ export default function VideoPlayer() {
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("error", onError);
     };
-  }, [currentVideo, useIframe, currentEpName, id, activeCloudProgress]);
+  }, [currentVideo, useIframe, currentEpName, currentSlug, activeCloudProgress]);
 
   // ĐẾM NGƯỢC AUTO-NEXT
   useEffect(() => {
@@ -233,7 +287,7 @@ export default function VideoPlayer() {
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
-      localStorage.setItem(`progress_${id}_${currentEpName}`, videoRef.current.currentTime);
+      localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, videoRef.current.currentTime);
     }
   };
 
@@ -324,7 +378,7 @@ export default function VideoPlayer() {
 
   const handleSwitchLanguage = (idx) => {
     setActiveServerIdx(idx);
-    const newServerEpisodes = allServers[idx].server_data || allServers[idx].items || [];
+    const newServerEpisodes = currentAllServers[idx].server_data || currentAllServers[idx].items || [];
     const equivalentEp = newServerEpisodes.find(e => e.name === currentEpName) || newServerEpisodes[0];
     handleSwitchEpisode(equivalentEp);
     setShowLangMenu(false);
@@ -345,7 +399,7 @@ export default function VideoPlayer() {
       <div className="fixed inset-0 z-0 pointer-events-none">
         <div 
           className="absolute inset-0 bg-cover bg-center opacity-40 blur-[100px] scale-110 saturate-150 transition-all duration-1000" 
-          style={{ backgroundImage: `url(${posterUrl})` }}
+          style={{ backgroundImage: `url(${currentPosterUrl})` }}
         ></div>
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
@@ -359,7 +413,7 @@ export default function VideoPlayer() {
           <span className="hidden sm:block">QUAY LẠI</span>
         </button>
         <div className="flex flex-col items-end drop-shadow-2xl max-w-[70%] sm:max-w-none">
-          <h2 className="text-base md:text-2xl font-black uppercase tracking-tighter text-white truncate w-full text-right">{movieName}</h2>
+          <h2 className="text-base md:text-2xl font-black uppercase tracking-tighter text-white truncate w-full text-right">{currentMovieName}</h2>
           <span className="text-white font-bold text-[10px] md:text-sm tracking-widest bg-white/10 border border-white/10 px-2 py-0.5 md:px-3 md:py-1 rounded-md backdrop-blur-md mt-1">{renderEpisodeName(currentEpName)}</span>
         </div>
       </div>
@@ -384,7 +438,7 @@ export default function VideoPlayer() {
               <video
                 ref={videoRef}
                 playsInline
-                poster={posterUrl}
+                poster={currentPosterUrl}
                 className="w-full h-full object-contain cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -506,7 +560,34 @@ export default function VideoPlayer() {
                   </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/40">
+                {/* SEASON SELECTOR IN PLAYER */}
+                {relatedSeasons.length > 1 && (
+                  <div className="p-4 border-b border-white/10">
+                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Phần phim</span>
+                    <div className="flex flex-wrap gap-2">
+                      {relatedSeasons.map(season => {
+                        const isActive = season.id === currentSlug;
+                        return (
+                          <button 
+                            key={season.id}
+                            onClick={() => changeSeason(season.id)}
+                            disabled={isLoadingSeason}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isActive ? 'bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]' : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white'} ${isLoadingSeason ? 'opacity-50' : 'opacity-100'}`}
+                          >
+                            Phần {season.seasonNumber}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/40 relative">
+                  {isLoadingSeason && (
+                    <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center backdrop-blur-sm">
+                      <LoadingLogo className="w-12 h-12" />
+                    </div>
+                  )}
                   {currentEpisodes.map((ep) => (
                     <button 
                       key={ep.slug} 
@@ -575,7 +656,7 @@ export default function VideoPlayer() {
                   <div className="flex items-center gap-2 md:gap-5 relative">
 
 
-                    {allServers?.length > 1 && (
+                    {currentAllServers?.length > 1 && (
                       <div className="relative">
                         <button onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); setShowSettings(false); setShowEpisodes(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200 ${showLangMenu ? 'drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Ngôn ngữ / Phiên bản">
                           <span className="material-symbols-outlined text-[22px] md:text-[28px]">subtitles</span>
@@ -584,7 +665,7 @@ export default function VideoPlayer() {
                         {showLangMenu && (
                           <div className="absolute bottom-full right-0 mb-4 w-40 md:w-48 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 py-2 origin-bottom transition-all">
                             <span className="px-3 md:px-4 py-2 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-white/5 mb-1">Phiên bản</span>
-                            {allServers.map((server, index) => (
+                            {currentAllServers.map((server, index) => (
                               <button 
                                 key={index} 
                                 onClick={(e) => { e.stopPropagation(); handleSwitchLanguage(index); }}

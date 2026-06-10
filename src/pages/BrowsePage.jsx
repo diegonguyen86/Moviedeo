@@ -8,7 +8,8 @@ import {
   apiGetPhimTheoNam,
   apiSearchPhim,
   apiGetPhimMoiCapNhat,
-  formatMovieItem
+  formatMovieItem,
+  deduplicateSeasons
 } from "../api/api";
 import LoadingLogo from "../components/LoadingLogo";
 
@@ -161,7 +162,13 @@ export default function BrowsePage() {
           res = await fetchFilterPage(page);
         }
 
-        const items = res?.data?.items || res?.items || [];
+        let items = res?.data?.items || res?.items || [];
+        
+        // Deduplicate if we are searching
+        if (debouncedQuery.trim().length > 0) {
+          items = deduplicateSeasons(items);
+        }
+        
         const apiTotalPages = res?.data?.params?.pagination?.totalPages || res?.pagination?.totalPages || 1;
 
         setMovies(items.map(formatMovieItem));

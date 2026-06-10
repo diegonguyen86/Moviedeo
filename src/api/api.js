@@ -147,3 +147,38 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
 
   return uniqueSeasons;
 };
+
+export const deduplicateSeasons = (movies) => {
+  if (!movies || movies.length === 0) return [];
+  
+  const seasonRegex = /(.+?)\s*(?:Phần|Season|Mùa)\s*(\d+)/i;
+  const groups = {};
+  
+  for (const movie of movies) {
+    const rawName = movie.title || movie.name || "";
+    const match = rawName.match(seasonRegex);
+    
+    let baseName = rawName;
+    let seasonNum = 1;
+    
+    if (match) {
+      baseName = match[1].trim();
+      seasonNum = parseInt(match[2]);
+    }
+    
+    const normalizedBase = String(baseName).toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!normalizedBase) continue;
+    
+    if (!groups[normalizedBase]) {
+      groups[normalizedBase] = { bestMovie: movie, maxSeason: seasonNum };
+    } else {
+      if (seasonNum > groups[normalizedBase].maxSeason) {
+        groups[normalizedBase].bestMovie = movie;
+        groups[normalizedBase].maxSeason = seasonNum;
+      }
+    }
+  }
+  
+  const bestMoviesSet = new Set(Object.values(groups).map(g => g.bestMovie.id));
+  return movies.filter(m => bestMoviesSet.has(m.id));
+};
