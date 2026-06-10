@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import AppDownloadModal from "./AppDownloadModal";
 
 export default function Header() {
   const location = useLocation();
@@ -7,6 +8,9 @@ export default function Header() {
   
   // Trạng thái đóng/mở menu trên Mobile
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Trạng thái popup tải App
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
 
   // Hàm để kiểm tra xem menu nào đang được chọn
   const isActive = (slug) => location.state?.slug === slug;
@@ -101,6 +105,15 @@ export default function Header() {
             <span className="material-symbols-outlined text-[22px] md:text-[24px]">person</span>
           </Link>
 
+          {/* NÚT MỞ POPUP DOWNLOAD APP */}
+          <button 
+            onClick={() => setIsDownloadModalOpen(true)}
+            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#e50914] to-[#b20710] text-white font-semibold text-sm transition-transform hover:scale-105 shadow-[0_0_15px_rgba(229,9,20,0.5)]"
+          >
+            <span className="material-symbols-outlined text-[20px]">smartphone</span>
+            Tải App
+          </button>
+
           {/* NÚT 3 GẠCH (Chỉ hiện trên Mobile) */}
           <button 
             className="md:hidden p-2 rounded-full text-zinc-400 hover:text-white transition-all hover:bg-white/10"
@@ -150,8 +163,25 @@ export default function Header() {
           >
             Phim Bộ
           </Link>
+
+          <button 
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              setIsDownloadModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 text-[16px] font-bold py-3 px-4 rounded-xl mt-2 bg-gradient-to-r from-[#e50914] to-[#b20710] text-white transition-all shadow-[0_0_10px_rgba(229,9,20,0.3)]"
+          >
+            <span className="material-symbols-outlined text-[20px]">smartphone</span>
+            Tải App Moviedeo
+          </button>
         </nav>
       )}
+
+      {/* POPUP DOWNLOAD APP */}
+      <AppDownloadModal 
+        isOpen={isDownloadModalOpen} 
+        onClose={() => setIsDownloadModalOpen(false)} 
+      />
     </header>
   );
 }

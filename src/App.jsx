@@ -11,6 +11,7 @@ import ScrollToTop from "./components/ScrollToTop";
 
 // 👇 BƯỚC 1: Import trang Admin Khôi vừa tạo vào đây
 import TrendingManage from "./pages/TrendingManage";
+import AppLinksManage from "./pages/AppLinksManage";
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
             
             {/* 👇 BƯỚC 2: Mở một "cánh cửa ẩn" cho trang Admin */}
             <Route path="admin/trending" element={<TrendingManage />} />
+            <Route path="admin/app-links" element={<AppLinksManage />} />
           </Route>
 
           {/* Trang xem phim (Tự bảo vệ bên trong component) */}
