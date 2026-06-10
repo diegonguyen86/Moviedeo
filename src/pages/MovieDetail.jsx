@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { apiGetPhimDetail, apiGetTrailer } from "../api/api"; 
+import { apiGetPhimDetail, apiGetTrailer, apiGetRelatedSeasons } from "../api/api"; 
 import { useWatchlist } from "../hooks/useWatchlist";
 import { useNotification } from "../context/NotificationContext";
 import TrailerModal from "../components/TrailerModal";
@@ -13,6 +13,7 @@ export default function MovieDetail() {
   const [movieServers, setMovieServers] = useState([]); 
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [relatedSeasons, setRelatedSeasons] = useState([]);
 
   // Trailer & Watchlist state
   const [trailerKey, setTrailerKey] = useState(null);
@@ -52,6 +53,10 @@ export default function MovieDetail() {
         if (data && data.status === true) {
           setMovieDetails(data.movie);
           setMovieServers(data.episodes || []); 
+          
+          apiGetRelatedSeasons(data.movie.name, data.movie.origin_name).then(seasons => {
+             setRelatedSeasons(seasons);
+          });
         }
       } catch (error) {
         console.error("Lỗi lấy dữ liệu phim:", error);
@@ -146,6 +151,27 @@ export default function MovieDetail() {
               <span className="material-symbols-outlined text-primary">playlist_play</span>
               <h3 className="text-xl font-bold uppercase tracking-tight">Chọn tập phim</h3>
             </div>
+            
+            {/* SEASON SELECTOR */}
+            {relatedSeasons.length > 1 && (
+              <div className="mb-8 border-b border-white/5 pb-6">
+                <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">Phần phim (Seasons)</h4>
+                <div className="flex flex-wrap gap-3">
+                  {relatedSeasons.map(season => {
+                    const isActive = season.id === id;
+                    return (
+                      <button 
+                        key={season.id}
+                        onClick={() => !isActive && navigate(`/movie/${season.id}`)}
+                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 border ${isActive ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"}`}
+                      >
+                        Phần {season.seasonNumber}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
             
             {movieServers.length > 1 && (
               <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-black/50 rounded-xl w-fit border border-white/5">

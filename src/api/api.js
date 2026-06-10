@@ -93,3 +93,57 @@ export const formatMovieItem = (item) => ({
   quality: item.quality || "HD",
   lang: item.lang
 });
+
+// --- GROUP SEASONS LOGIC ---
+export const apiGetRelatedSeasons = async (movieName, originalName) => {
+  if (!movieName) return [];
+  
+  const seasonRegex = /(.+?)\s*(?:Phần|Season|Mùa)\s*(\d+)/i;
+  const match = movieName.match(seasonRegex);
+  
+  let baseName = movieName;
+  if (match) {
+    baseName = match[1].trim();
+  } else if (originalName) {
+    baseName = originalName;
+  }
+  
+  const searchRes = await apiSearchByTitle(baseName);
+  const items = searchRes?.data?.items || searchRes?.items || [];
+  
+  if (items.length <= 1) return [];
+
+  const normalize = (str) => String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalizedBase = normalize(baseName);
+  
+  const related = items.filter(item => {
+    const nName = normalize(item.name);
+    const nOrig = normalize(item.origin_name || item.original_name || '');
+    return nName.includes(normalizedBase) || nOrig.includes(normalizedBase);
+  });
+
+  if (related.length <= 1) return [];
+
+  const seasons = related.map(item => {
+    const m = item.name.match(seasonRegex);
+    const seasonNumber = m ? parseInt(m[2]) : 1; 
+    return {
+      ...formatMovieItem(item),
+      seasonNumber,
+      rawName: item.name
+    };
+  });
+
+  seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+
+  const uniqueSeasons = [];
+  const seenSeasons = new Set();
+  for (const s of seasons) {
+    if (!seenSeasons.has(s.seasonNumber)) {
+      seenSeasons.add(s.seasonNumber);
+      uniqueSeasons.push(s);
+    }
+  }
+
+  return uniqueSeasons;
+};
