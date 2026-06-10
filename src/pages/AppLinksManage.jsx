@@ -31,18 +31,20 @@ export default function AppLinksManage() {
     setIsLoading(true);
     try {
       const docRef = doc(db, "admin_settings", "app_links");
-      await setDoc(docRef, links);
+      // Dùng merge: true để tránh lỗi ghi đè undefined
+      await setDoc(docRef, links, { merge: true });
       showToast("Lưu đường dẫn tải App thành công!", "success");
     } catch (error) {
       console.error("Lỗi khi lưu:", error);
-      showToast("Lỗi khi lưu dữ liệu.", "error");
+      // Hiển thị lỗi chi tiết ra màn hình
+      showToast("Lỗi: " + error.message, "error");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
+    <div className="min-h-screen bg-black text-white p-6 pt-28">
       <h1 className="text-3xl font-black mb-6 uppercase text-yellow-500">Quản lý Link Tải App</h1>
       
       <div className="bg-white/10 p-6 rounded-2xl max-w-2xl">
