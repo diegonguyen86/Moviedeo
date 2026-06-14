@@ -146,32 +146,68 @@ export default function VideoPlayer() {
     video.currentTime = 0;
     setCurrentTime(0);
 
+    let retryCount = 0;
+
     const onLoadedMetadata = () => {
       video.currentTime = savedTime ? parseFloat(savedTime) : 0;
       video.play().catch(() => {});
     };
 
-    const onError = () => setUseIframe(true);
+    const onError = () => {
+      // Nếu lỗi (đặc biệt khi từ background quay lại), thử load lại trước khi bỏ cuộc
+      if (retryCount < 3) {
+        retryCount++;
+        // Đọc lại time mới nhất từ ổ cứng (tránh trường hợp video bị crash làm mất currentTime)
+        const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
+        const recoverTime = freshestTime ? parseFloat(freshestTime) : (savedTime ? parseFloat(savedTime) : 0);
+        
+        video.src = safeVideoUrl;
+        video.load();
+        video.currentTime = recoverTime;
+      } else {
+        setUseIframe(true);
+      }
+    };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        if (video && video.paused) {
-          // Nhích nhẹ currentTime để ép video decoder vẽ lại frame thay vì hiển thị màn hình đen
-          video.currentTime = video.currentTime + 0.001;
+      if (document.visibilityState === "visible" || !document.hidden) {
+        if (video) {
+          const currentDisplay = video.style.display;
+          video.style.display = "none";
+          void video.offsetHeight;
+          video.style.display = currentDisplay || "block";
+
+          if (typeof hls !== 'undefined' && hls) {
+            hls.startLoad();
+          } else if (video.paused && !video.error) {
+            video.currentTime = video.currentTime + 0.001;
+          }
+        }
+      } else {
+        // TẮT MÀN HÌNH / ẨN WEB: Lập tức lưu tiến trình lên Firebase và LocalStorage
+        saveToFirebase();
+        if (video) {
+          localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, video.currentTime);
         }
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
 
-    if (Hls.isSupported()) {
+    const initHls = () => {
+      if (hls) hls.destroy();
       hls = new Hls({ debug: false, enableWorker: true });
       hls.loadSource(safeVideoUrl);
       hls.attachMedia(video);
+      
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.currentTime = savedTime ? parseFloat(savedTime) : 0;
+        // Lấy lại tiến trình mới nhất phòng khi crash
+        const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
+        video.currentTime = freshestTime ? parseFloat(freshestTime) : (savedTime ? parseFloat(savedTime) : 0);
         video.play().catch(() => {});
       });
+
       hls.on(Hls.Events.ERROR, (event, data) => {
         if (data.fatal) {
           switch (data.type) {
@@ -182,12 +218,21 @@ export default function VideoPlayer() {
               hls.recoverMediaError();
               break;
             default:
-              hls.destroy();
-              setUseIframe(true);
+              if (retryCount < 3) {
+                retryCount++;
+                initHls(); // Khởi tạo lại HLS thay vì bỏ cuộc ngay
+              } else {
+                hls.destroy();
+                setUseIframe(true);
+              }
               break;
           }
         }
       });
+    };
+
+    if (Hls.isSupported()) {
+      initHls();
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = safeVideoUrl;
       video.addEventListener("loadedmetadata", onLoadedMetadata);
@@ -199,6 +244,7 @@ export default function VideoPlayer() {
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("error", onError);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
     };
   }, [currentVideo, useIframe, currentEpName, currentSlug, activeCloudProgress]);
 
