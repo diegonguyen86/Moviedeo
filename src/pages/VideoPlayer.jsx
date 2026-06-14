@@ -644,8 +644,8 @@ export default function VideoPlayer() {
               {/* BOTTOM BAR */}
               <div className={`absolute bottom-0 left-0 right-0 pt-24 pb-4 px-4 md:px-6 bg-gradient-to-t from-black via-black/80 to-transparent z-30 transition-opacity duration-300 flex flex-col justify-end ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
                 
-                {/* NÚT BỎ QUA QUẢNG CÁO (Nổi lên góc phải trên thanh trượt) */}
-                <div className="absolute right-4 md:right-8 bottom-[70px] md:bottom-[80px] z-40">
+                {/* NÚT BỎ QUA QUẢNG CÁO (Nổi lên góc trái trên thanh trượt) */}
+                <div className="absolute left-4 md:left-8 bottom-[70px] md:bottom-[80px] z-40">
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleSkipAd(); }} 
                     className="flex items-center gap-1.5 bg-black/50 border border-white/20 text-white/80 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full backdrop-blur-md hover:text-white hover:bg-white/10 hover:border-white/40 transition-all"
