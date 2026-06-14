@@ -645,13 +645,13 @@ export default function VideoPlayer() {
               <div className={`absolute bottom-0 left-0 right-0 pt-24 pb-4 px-4 md:px-6 bg-gradient-to-t from-black via-black/80 to-transparent z-30 transition-opacity duration-300 flex flex-col justify-end ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
                 
                 {/* NÚT BỎ QUA QUẢNG CÁO (Nổi lên góc phải trên thanh trượt) */}
-                <div className="absolute right-4 md:right-8 bottom-[75px] md:bottom-[85px] z-40">
+                <div className="absolute right-4 md:right-8 bottom-[70px] md:bottom-[80px] z-40">
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleSkipAd(); }} 
-                    className="flex items-center gap-2 bg-red-600/90 border border-red-400 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-md backdrop-blur-xl hover:bg-red-500 hover:scale-105 transition-all shadow-[0_0_15px_rgba(220,38,38,0.5)]"
+                    className="flex items-center gap-1.5 bg-black/50 border border-white/20 text-white/80 px-2.5 py-1 md:px-3 md:py-1.5 rounded-full backdrop-blur-md hover:text-white hover:bg-white/10 hover:border-white/40 transition-all"
                   >
-                    <span className="material-symbols-outlined text-sm md:text-base">fast_forward</span>
-                    <span className="font-bold text-[10px] md:text-xs uppercase tracking-wider">Bỏ qua QC ({AD_DURATION_SECONDS}s)</span>
+                    <span className="material-symbols-outlined text-[14px] md:text-[16px]">fast_forward</span>
+                    <span className="font-bold text-[9px] md:text-[10px] uppercase tracking-wider">Skip ADs</span>
                   </button>
                 </div>
 
