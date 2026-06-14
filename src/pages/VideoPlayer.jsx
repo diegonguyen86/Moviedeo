@@ -169,32 +169,6 @@ export default function VideoPlayer() {
       }
     };
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" || !document.hidden) {
-        if (video) {
-          const currentDisplay = video.style.display;
-          video.style.display = "none";
-          void video.offsetHeight;
-          video.style.display = currentDisplay || "block";
-
-          if (typeof hls !== 'undefined' && hls) {
-            hls.startLoad();
-          } else if (video.paused && !video.error) {
-            video.currentTime = video.currentTime + 0.001;
-          }
-        }
-      } else {
-        // TẮT MÀN HÌNH / ẨN WEB: Lập tức lưu tiến trình lên Firebase và LocalStorage
-        saveToFirebase();
-        if (video) {
-          localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, video.currentTime);
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleVisibilityChange);
-
     const initHls = () => {
       if (hls) hls.destroy();
       hls = new Hls({ debug: false, enableWorker: true });
@@ -230,6 +204,33 @@ export default function VideoPlayer() {
         }
       });
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" || !document.hidden) {
+        if (video) {
+          // Lỗi đen màn hình nhưng tiếng vẫn chạy (Decoder bị treo). 
+          // CÁCH CHỮA DUY NHẤT: Đập bỏ toàn bộ luồng stream và khởi tạo lại.
+          if (typeof hls !== 'undefined' && hls) {
+            initHls(); 
+          } else {
+            const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
+            const recoverTime = freshestTime ? parseFloat(freshestTime) : video.currentTime;
+            video.src = safeVideoUrl;
+            video.load();
+            video.currentTime = recoverTime;
+          }
+        }
+      } else {
+        // TẮT MÀN HÌNH / ẨN WEB: Lập tức lưu tiến trình lên Firebase và LocalStorage
+        saveToFirebase();
+        if (video) {
+          localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, video.currentTime);
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
 
     if (Hls.isSupported()) {
       initHls();
