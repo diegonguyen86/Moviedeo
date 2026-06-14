@@ -149,6 +149,17 @@ export default function VideoPlayer() {
 
     const onError = () => setUseIframe(true);
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        if (video && video.paused) {
+          // Nhích nhẹ currentTime để ép video decoder vẽ lại frame thay vì hiển thị màn hình đen
+          video.currentTime = video.currentTime + 0.001;
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     if (Hls.isSupported()) {
       hls = new Hls({ debug: false, enableWorker: true });
       hls.loadSource(safeVideoUrl);
@@ -158,7 +169,20 @@ export default function VideoPlayer() {
         video.play().catch(() => {});
       });
       hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) setUseIframe(true);
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              setUseIframe(true);
+              break;
+          }
+        }
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = safeVideoUrl;
@@ -170,6 +194,7 @@ export default function VideoPlayer() {
       if (hls) hls.destroy(); 
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("error", onError);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [currentVideo, useIframe, currentEpName, currentSlug, activeCloudProgress]);
 
