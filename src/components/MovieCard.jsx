@@ -55,10 +55,10 @@ export default function MovieCard({ movie }) {
     e.stopPropagation();
     if (!user || !movie.docId) return;
     
-    showConfirm("Xóa phim này khỏi lịch sử?", async () => {
+    showConfirm("Xóa phim này khỏi danh sách đang xem?", async () => {
       try {
         await deleteDoc(doc(db, "users", user.uid, "watchHistory", movie.docId));
-        showToast("Đã xóa khỏi lịch sử", "success");
+        showToast("Đã xóa khỏi trang chủ", "success");
       } catch (error) {
         console.error("Lỗi xóa phim:", error);
         showToast("Lỗi khi xóa phim", "error");

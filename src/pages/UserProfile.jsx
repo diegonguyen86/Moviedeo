@@ -19,32 +19,19 @@ import { Link } from "react-router-dom";
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
-  const [history, setHistory] = useState([]);
+  const [stats, setStats] = useState({ watchedCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [resumingId, setResumingId] = useState(null); 
   const navigate = useNavigate();
   const { watchlist, removeFromWatchlist } = useWatchlist();
   const { showConfirm, showToast } = useNotification();
 
   useEffect(() => {
     if (user) {
-      const q = query(
-        collection(db, "users", user.uid, "watchHistory"),
-        orderBy("lastWatched", "desc")
-      );
-
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          docId: doc.id, 
-          id: doc.data().slug || doc.id, 
-          title: doc.data().title,
-          image: doc.data().image,
-          // 👇 FIX TRỊ BỆNH LẶP CHỮ TẬP TẠI ĐÂY: Dữ liệu thô truyền thẳng, không nhét chữ linh tinh vào
-          year: doc.data().epName || "Đang cập nhật",
-          rawEpName: doc.data().epName,
-          progress: doc.data().progress
-        }));
-        setHistory(data);
+      const userRef = doc(db, "users", user.uid);
+      const unsubscribe = onSnapshot(userRef, (docSnap) => {
+        if (docSnap.exists()) {
+          setStats({ watchedCount: docSnap.data().watchedCount || 0 });
+        }
         setLoading(false);
       });
 
@@ -52,80 +39,13 @@ export default function UserProfile() {
     }
   }, [user]);
 
-  const deleteOneHistory = async (e, docId) => {
-    e.preventDefault(); 
-    e.stopPropagation(); 
-    showConfirm("Xóa phim này khỏi lịch sử?", async () => {
-      try {
-        await deleteDoc(doc(db, "users", user.uid, "watchHistory", docId));
-        showToast("Đã xóa khỏi lịch sử", "success");
-      } catch (error) {
-        console.error("Lỗi xóa phim:", error);
-        showToast("Lỗi khi xóa phim", "error");
-      }
-    });
-  };
-
-  const clearAllHistory = async () => {
-    showConfirm("Bạn thật sự muốn tẩy trắng toàn bộ lịch sử xem phim sao?", async () => {
-      try {
-        const q = query(collection(db, "users", user.uid, "watchHistory"));
-        const snapshot = await getDocs(q);
-        const deletePromises = snapshot.docs.map(d => deleteDoc(doc(db, "users", user.uid, "watchHistory", d.id)));
-        await Promise.all(deletePromises);
-        showToast("Đã dọn sạch lịch sử", "success");
-      } catch (error) {
-        console.error("Lỗi dọn sạch lịch sử:", error);
-        showToast("Lỗi dọn sạch lịch sử", "error");
-      }
-    });
-  };
-
-  const handleResume = async (e, movie) => {
-    e.preventDefault(); 
-    if (resumingId) return;
-    setResumingId(movie.id); 
-
-    try {
-      const data = await apiGetPhimDetail(movie.id);
-      if (data && data.status) {
-        const allServers = data.episodes || [];
-        let targetEp = null;
-        let targetServerIdx = 0;
-
-        for (let i = 0; i < allServers.length; i++) {
-          const eps = allServers[i].server_data || allServers[i].items || [];
-          const found = eps.find(ep => ep.name === movie.rawEpName);
-          if (found) { targetEp = found; targetServerIdx = i; break; }
-        }
-
-        if (!targetEp) targetEp = (allServers[0]?.server_data || allServers[0]?.items || [])[0];
-
-        if (targetEp) {
-          navigate(`/play/${data.movie.slug}`, {
-            state: {
-              videoUrl: targetEp.link_m3u8 || targetEp.m3u8 || "",
-              embedFallback: targetEp.link_embed || targetEp.embed || "",
-              movieName: data.movie.name,
-              epName: targetEp.name,
-              allServers: allServers,
-              currentServerIndex: targetServerIdx,
-              posterUrl: data.movie.poster_url || movie.image,
-              cloudProgress: movie.progress 
-            }
-          });
-          return;
-        }
-      }
-      navigate(`/movie/${movie.id}`); 
-    } catch (error) {
-      navigate(`/movie/${movie.id}`);
-    } finally {
-      setResumingId(null);
-    }
-  };
-
-  if (!user) return null; 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <LoadingLogo />
+      </div>
+    );
+  }
 
   return (
     <main className="pt-24 pb-16 min-h-screen bg-black text-white px-4 md:px-6 relative overflow-hidden">
@@ -153,12 +73,12 @@ export default function UserProfile() {
         <section className="mb-12 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
             <span className="material-symbols-outlined text-4xl text-yellow-500 mb-2 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)] group-hover:scale-110 transition-transform">movie</span>
-            <h4 className="text-3xl font-black text-white">{history.length}</h4>
+            <h4 className="text-3xl font-black text-white">{stats.watchedCount}</h4>
             <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Phim đã xem</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
             <span className="material-symbols-outlined text-4xl text-blue-500 mb-2 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)] group-hover:scale-110 transition-transform">schedule</span>
-            <h4 className="text-3xl font-black text-white">{Math.round(history.length * 1.5)}</h4>
+            <h4 className="text-3xl font-black text-white">{Math.round(stats.watchedCount * 1.5)}</h4>
             <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Giờ xem (ước tính)</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
@@ -168,7 +88,7 @@ export default function UserProfile() {
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
             <span className="material-symbols-outlined text-4xl text-purple-500 mb-2 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform">local_fire_department</span>
-            <h4 className="text-xl md:text-2xl font-black text-white mt-1 mb-1">{history.length > 20 ? 'Thánh Cày' : 'Mọt Phim'}</h4>
+            <h4 className="text-xl md:text-2xl font-black text-white mt-1 mb-1">{stats.watchedCount > 20 ? 'Thánh Cày' : 'Mọt Phim'}</h4>
             <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Danh hiệu</p>
           </div>
         </section>

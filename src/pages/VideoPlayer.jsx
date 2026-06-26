@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Hls from "hls.js"; 
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
 import { apiGetRelatedSeasons, apiGetPhimDetail } from "../api/api";
 
@@ -125,6 +125,26 @@ export default function VideoPlayer() {
       });
     } catch (error) {}
   };
+
+  // Tính lượt xem duy nhất cho thống kê cá nhân (chỉ chạy 1 lần khi load phim mới)
+  useEffect(() => {
+    const recordUniqueWatch = async () => {
+      if (!user || !currentSlug) return;
+      try {
+        const historyRef = doc(db, "users", user.uid, "watchHistory", currentSlug);
+        const snap = await getDoc(historyRef);
+        
+        // Nếu phim này chưa từng có trong lịch sử (hoặc đã bị xóa), thì cộng thêm 1 vào tổng phim đã xem
+        if (!snap.exists()) {
+          const userRef = doc(db, "users", user.uid);
+          await setDoc(userRef, { watchedCount: increment(1) }, { merge: true });
+        }
+      } catch (error) {
+        console.error("Lỗi cập nhật thống kê:", error);
+      }
+    };
+    recordUniqueWatch();
+  }, [currentSlug, user]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
