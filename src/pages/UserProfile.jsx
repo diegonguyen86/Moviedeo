@@ -200,79 +200,7 @@ export default function UserProfile() {
           )}
         </section>
 
-        {/* DANH SÁCH PHIM ĐÃ XEM */}
-        <section className="space-y-8">
-          <div className="flex items-center justify-between border-b border-white/10 pb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-1.5 h-6 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
-              <h3 className="text-2xl font-black uppercase tracking-tighter drop-shadow-md">Phim Đã Xem</h3>
-            </div>
-            {history.length > 0 && (
-              <button onClick={clearAllHistory} className="text-zinc-500 hover:text-white font-bold text-xs uppercase tracking-widest flex items-center gap-2 transition-colors bg-white/5 px-4 py-2 rounded-lg border border-white/10 hover:bg-white/10">
-                <span className="material-symbols-outlined text-lg">delete_sweep</span>
-                Xóa tất cả
-              </button>
-            )}
-          </div>
 
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center">
-               <LoadingLogo className="w-16 h-16" />
-               <span className="mt-4 text-white/50 font-bold uppercase tracking-widest animate-pulse">Đang tìm lại dấu vết...</span>
-            </div>
-          ) : history.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-              {history.map((movie) => (
-                <div 
-                  key={movie.docId} 
-                  className="relative group cursor-pointer"
-                  onClick={(e) => handleResume(e, movie)} 
-                >
-                  <button 
-                    onClick={(e) => deleteOneHistory(e, movie.docId)}
-                    className="absolute top-2 right-2 z-30 w-8 h-8 bg-black/60 hover:bg-red-600 text-white backdrop-blur-md rounded-full flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/20 shadow-lg"
-                  >
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-
-                  <div className="relative aspect-[2/3] rounded-2xl overflow-hidden transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.15)] border border-white/5 group-hover:border-white/30">
-                    <img src={movie.image} alt={movie.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    
-                    {resumingId === movie.id ? (
-                      <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20 backdrop-blur-sm">
-                        <LoadingLogo className="w-12 h-12" />
-                        <span className="text-[10px] text-white font-bold mt-3 animate-pulse tracking-widest uppercase">Đang nạp...</span>
-                      </div>
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center pointer-events-none">
-                         <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/20 border border-white/40 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.4)]">
-                           <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white"></div>
-                           <span className="material-symbols-outlined text-2xl md:text-3xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1" }}>resume</span>
-                         </div>
-                      </div>
-                    )}
-                    
-                    {/* 👇 ĐÃ FIX: Chỗ này sẽ dùng lại Regex dọn sạch chữ y hệt bên MovieCard */}
-                    <div className="absolute bottom-3 left-3 right-3 z-10 pointer-events-none">
-                      <p className="text-[10px] text-white font-black uppercase tracking-widest truncate bg-black/50 backdrop-blur-md px-2 py-1 rounded-md border border-white/10 text-center">
-                        {movie.year ? (movie.year.toString().match(/^\d{4}$/) ? movie.year : `TẬP ${movie.year.toString().replace(/tập/gi, "").replace(/:/g, "").trim()}`) : "Đang cập nhật"}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <h4 className="mt-4 font-bold text-sm line-clamp-1 group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all uppercase tracking-tight">
-                    {movie.title}
-                  </h4>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-24 flex flex-col items-center justify-center bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 shadow-2xl">
-               <span className="material-symbols-outlined text-5xl mb-4 text-white/30 drop-shadow-md">history</span>
-              <p className="text-white/60 font-bold uppercase tracking-widest">Lịch sử phim của bạn còn trong trắng quá!</p>
-            </div>
-          )}
-        </section>
 
       </div>
     </main>

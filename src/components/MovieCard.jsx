@@ -4,13 +4,17 @@ import { apiGetPhimDetail } from "../api/api";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { useNotification } from "../context/NotificationContext";
 import LoadingLogo from "./LoadingLogo";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
+import { deleteDoc, doc } from "firebase/firestore";
 
 export default function MovieCard({ movie }) {
   const navigate = useNavigate();
   const [isResuming, setIsResuming] = useState(false);
   const [isImageLoaded, setIsImageLoaded] = useState(false);
   const { addToWatchlist, removeFromWatchlist, isSaved } = useWatchlist();
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
+  const { user } = useAuth();
 
   // 👇 Lớp bảo vệ số 1: Tránh lỗi crash nếu thẻ này bị gọi mà không truyền dữ liệu
   if (!movie) return null;
@@ -44,6 +48,22 @@ export default function MovieCard({ movie }) {
       addToWatchlist(movie);
       showToast("Đã thêm vào danh sách", "success");
     }
+  };
+
+  const handleDeleteHistory = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !movie.docId) return;
+    
+    showConfirm("Xóa phim này khỏi lịch sử?", async () => {
+      try {
+        await deleteDoc(doc(db, "users", user.uid, "watchHistory", movie.docId));
+        showToast("Đã xóa khỏi lịch sử", "success");
+      } catch (error) {
+        console.error("Lỗi xóa phim:", error);
+        showToast("Lỗi khi xóa phim", "error");
+      }
+    });
   };
 
   const handleResume = async (e) => {
@@ -141,15 +161,26 @@ export default function MovieCard({ movie }) {
             </span>
           </div>
 
-          {/* NÚT QUICK ADD TO LIST */}
-          <button 
-            onClick={handleToggleWatchlist}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:bg-white hover:text-black hover:scale-110 shadow-lg z-30"
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              {isSaved(movie.id) ? "check" : "add"}
-            </span>
-          </button>
+          {/* NÚT TÙY CHỌN */}
+          {movie.isHistory ? (
+            <button 
+              onClick={handleDeleteHistory}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:bg-red-600 hover:text-white hover:scale-110 shadow-lg z-30"
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                close
+              </span>
+            </button>
+          ) : (
+            <button 
+              onClick={handleToggleWatchlist}
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:bg-white hover:text-black hover:scale-110 shadow-lg z-30"
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {isSaved(movie.id) ? "check" : "add"}
+              </span>
+            </button>
+          )}
         </div>
         
         {/* THANH PROGRESS LƠ LỬNG KÍNH MỜ (WHITE GLOW) */}

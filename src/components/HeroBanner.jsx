@@ -4,7 +4,7 @@ export default function HeroBanner({ movie }) {
   if (!movie) return null;
 
   return (
-    <section className="relative w-full h-[50vh] md:h-[65vh] flex items-end overflow-hidden">
+    <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden">
       <div className="absolute inset-0 z-0">
         <img
           alt={movie.title}

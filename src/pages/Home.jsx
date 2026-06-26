@@ -59,6 +59,7 @@ function Home() {
           const data = doc.data();
           return {
             id: data.slug || doc.id, 
+            docId: doc.id,
             title: data.title,
             image: data.image,
             year: data.epName || data.year || "2024",
