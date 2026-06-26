@@ -149,6 +149,30 @@ export default function UserProfile() {
           </div>
         </section>
 
+        {/* THỐNG KÊ GIA TÀI PHIM ẢNH (PERSONAL INSIGHTS) */}
+        <section className="mb-12 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
+            <span className="material-symbols-outlined text-4xl text-yellow-500 mb-2 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)] group-hover:scale-110 transition-transform">movie</span>
+            <h4 className="text-3xl font-black text-white">{history.length}</h4>
+            <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Phim đã xem</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
+            <span className="material-symbols-outlined text-4xl text-blue-500 mb-2 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)] group-hover:scale-110 transition-transform">schedule</span>
+            <h4 className="text-3xl font-black text-white">{Math.round(history.length * 1.5)}</h4>
+            <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Giờ xem (ước tính)</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
+            <span className="material-symbols-outlined text-4xl text-green-500 mb-2 drop-shadow-[0_0_10px_rgba(34,197,94,0.5)] group-hover:scale-110 transition-transform">workspace_premium</span>
+            <h4 className="text-3xl font-black text-white">VIP</h4>
+            <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Hạng thành viên</p>
+          </div>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
+            <span className="material-symbols-outlined text-4xl text-purple-500 mb-2 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform">local_fire_department</span>
+            <h4 className="text-xl md:text-2xl font-black text-white mt-1 mb-1">{history.length > 20 ? 'Thánh Cày' : 'Mọt Phim'}</h4>
+            <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Danh hiệu</p>
+          </div>
+        </section>
+
         {/* PHIM YÊU THÍCH (LOCAL WATCHLIST) */}
         <section className="space-y-8 mb-20">
           <div className="flex items-center gap-4 border-b border-white/10 pb-6">

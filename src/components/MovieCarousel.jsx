@@ -124,23 +124,24 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
           className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''} ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
         >
           {movies.map((movie, index) => (
-            <div key={movie.id} className={`shrink-0 relative flex items-center ${isTop10 ? 'w-[180px] md:w-[220px] lg:w-[250px]' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
+            <div key={movie.id} className={`shrink-0 relative flex items-center ${isTop10 ? 'w-[180px] md:w-[230px] lg:w-[260px] pl-10 md:pl-16' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
               
-              {/* Dịch chuyển thẻ phim sang trái một chút để chừa chỗ cho số Top 10 bên phải */}
-              <div className={`w-full ${isTop10 ? 'pr-10 md:pr-14' : ''}`}>
-                <MovieCard movie={movie} />
-              </div>
-
-              {/* SỐ TOP KHỔNG LỒ (Hiện cho tất cả các phim trong list này, chuyển sang bên phải) */}
+              {/* SỐ TOP KHỔNG LỒ (Bám sát bên trái, đè lên poster) */}
               {isTop10 && (
-                <div className="absolute right-0 md:-right-2 bottom-2 md:bottom-4 z-10 font-black text-[100px] md:text-[140px] leading-none tracking-tighter pointer-events-none" style={{
+                <div className="absolute left-0 bottom-8 md:bottom-12 z-10 font-black text-[100px] md:text-[140px] leading-none tracking-tighter pointer-events-none" style={{
                   WebkitTextStroke: "2px rgba(255, 255, 255, 0.7)",
                   color: "transparent",
-                  textShadow: "0 0 20px rgba(0,0,0,0.8)"
+                  textShadow: "0 0 20px rgba(0,0,0,0.8)",
+                  transform: "translateX(-15%)"
                 }}>
                   {index + startNumber}
                 </div>
               )}
+
+              {/* Thẻ phim */}
+              <div className="w-full z-20">
+                <MovieCard movie={movie} />
+              </div>
             </div>
           ))}
         </div>

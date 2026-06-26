@@ -66,11 +66,40 @@ export default async function handler(req, res) {
 
       // Xử lý kết quả
       if (bestMatch) {
+         // Cố gắng tìm phần/season cao nhất nếu có thể
+         const seasonRegex = /(.+?)\s*(?:Phần|Season|Mùa)\s*(\d+)/i;
+         const match = bestMatch.name.match(seasonRegex);
+         if (match || isTV) {
+            const baseName = match ? match[1].trim() : bestMatch.name;
+            const searchApi = `https://phimapi.com/v1/api/tim-kiem?keyword=${encodeURIComponent(baseName)}`;
+            try {
+               const searchRes = await fetch(searchApi);
+               if (searchRes.ok) {
+                  const searchData = await searchRes.json();
+                  const items = searchData?.data?.items || [];
+                  let highestSeasonMatch = bestMatch;
+                  let maxSeasonNum = match ? parseInt(match[2]) : 1;
+                  
+                  for (const item of items) {
+                     const itemMatch = item.name.match(seasonRegex);
+                     if (itemMatch) {
+                        const itemSeasonNum = parseInt(itemMatch[2]);
+                        if (itemSeasonNum > maxSeasonNum) {
+                           highestSeasonMatch = item;
+                           maxSeasonNum = itemSeasonNum;
+                        }
+                     }
+                  }
+                  bestMatch = highestSeasonMatch;
+               }
+            } catch(e) {}
+         }
+
         // Tránh trùng lặp slug
         if (!resultMovies.find(m => m.slug === bestMatch.slug)) {
           resultMovies.push({
             slug: bestMatch.slug,
-            name: bestMatch.name,
+            name: bestMatch.name.replace(/\s*\-?\s*\(?(?:Phần|Season|Mùa)\s*\d+\)?/gi, '').trim(), // Bỏ "(Phần X)" để giao diện gọn gàng nếu admin gộp các phần
             origin_name: bestMatch.origin_name,
             thumb_url: bestMatch.thumb_url,
             poster_url: bestMatch.poster_url,
