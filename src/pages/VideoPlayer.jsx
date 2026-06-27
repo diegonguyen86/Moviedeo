@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { doc, setDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
+import CommentSection from "../components/CommentSection";
 import { apiGetRelatedSeasons, apiGetPhimDetail } from "../api/api";
 
 export default function VideoPlayer() {
@@ -888,6 +889,11 @@ export default function VideoPlayer() {
               {useIframe ? "Đang dùng: Dự Phòng (Đổi về Chính)" : "Đang dùng: Server Chính (Đổi qua Dự Phòng)"}
             </button>
           </div>
+        </div>
+
+        {/* --- BÌNH LUẬN NATIVE --- */}
+        <div className="mt-4 md:mt-8 relative z-10 max-w-5xl mx-auto">
+          <CommentSection movieId={currentSlug} />
         </div>
 
       </div>

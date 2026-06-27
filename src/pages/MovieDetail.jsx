@@ -4,6 +4,7 @@ import { apiGetPhimDetail, apiGetTrailer, apiGetRelatedSeasons } from "../api/ap
 import { useWatchlist } from "../hooks/useWatchlist";
 import { useNotification } from "../context/NotificationContext";
 import TrailerModal from "../components/TrailerModal";
+import CommentSection from "../components/CommentSection";
 
 export default function MovieDetail() {
   const { showToast } = useNotification();
@@ -208,7 +209,11 @@ export default function MovieDetail() {
                 </button>
               ))}
             </div>
+          {/* --- BÌNH LUẬN --- */}
+          <div className="mt-12">
+            <CommentSection movieId={movieDetails.slug} />
           </div>
+
         </div>
       </section>
     </main>
