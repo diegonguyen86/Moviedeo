@@ -58,6 +58,23 @@ export default function VideoPlayer() {
   const [isAutoNexting, setIsAutoNexting] = useState(false);
   const [autoNextCounter, setAutoNextCounter] = useState(5);
 
+  // BỘ ĐẾM THỜI GIAN XEM THỰC TẾ
+  const lastPlayTimeRef = useRef(Date.now());
+  const unsavedWatchTimeRef = useRef(0);
+
+  useEffect(() => {
+    let interval;
+    if (isPlaying) {
+      lastPlayTimeRef.current = Date.now();
+      interval = setInterval(() => {
+        const now = Date.now();
+        unsavedWatchTimeRef.current += (now - lastPlayTimeRef.current) / 1000;
+        lastPlayTimeRef.current = now;
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
   const rawEpisodes = currentAllServers?.[activeServerIdx]?.server_data || currentAllServers?.[activeServerIdx]?.items || [];
   const currentEpisodes = Array.isArray(rawEpisodes) ? rawEpisodes : [];
 
@@ -123,6 +140,14 @@ export default function VideoPlayer() {
         slug: currentSlug, movieId: currentSlug, title: currentMovieName, epName: currentEpName,
         image: currentPosterUrl, progress: videoRef.current?.currentTime || currentTime, lastWatched: serverTimestamp() 
       });
+
+      // Lưu thời gian xem thực tế vào global
+      const secondsToSave = Math.floor(unsavedWatchTimeRef.current);
+      if (secondsToSave > 0) {
+        unsavedWatchTimeRef.current = 0; // Reset ngay để tránh lưu trùng
+        const userRef = doc(db, "users", user.uid);
+        await setDoc(userRef, { totalWatchSeconds: increment(secondsToSave) }, { merge: true });
+      }
     } catch (error) {}
   };
 

@@ -8,7 +8,9 @@ import {
   onSnapshot, 
   deleteDoc, 
   doc, 
-  getDocs 
+  getDocs,
+  getDoc,
+  setDoc
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { apiGetPhimDetail } from "../api/api"; 
@@ -19,7 +21,7 @@ import { Link } from "react-router-dom";
 
 export default function UserProfile() {
   const { user, logout } = useAuth();
-  const [stats, setStats] = useState({ watchedCount: 0 });
+  const [stats, setStats] = useState({ watchedCount: 0, totalWatchSeconds: 0 });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { watchlist, removeFromWatchlist } = useWatchlist();
@@ -28,9 +30,38 @@ export default function UserProfile() {
   useEffect(() => {
     if (user) {
       const userRef = doc(db, "users", user.uid);
+      
+      const checkAndInitStats = async () => {
+        const snap = await getDoc(userRef);
+        const data = snap.exists() ? snap.data() : {};
+        
+        let updates = {};
+        let needUpdate = false;
+
+        if (data.watchedCount === undefined) {
+          const historySnap = await getDocs(collection(db, "users", user.uid, "watchHistory"));
+          updates.watchedCount = historySnap.size;
+          needUpdate = true;
+        }
+
+        if (data.totalWatchSeconds === undefined) {
+          const count = updates.watchedCount !== undefined ? updates.watchedCount : (data.watchedCount || 0);
+          updates.totalWatchSeconds = count * 5400; // Giả lập 1 phim = 1.5 giờ = 5400 giây
+          needUpdate = true;
+        }
+
+        if (needUpdate) {
+          await setDoc(userRef, updates, { merge: true });
+        }
+      };
+      checkAndInitStats();
+
       const unsubscribe = onSnapshot(userRef, (docSnap) => {
         if (docSnap.exists()) {
-          setStats({ watchedCount: docSnap.data().watchedCount || 0 });
+          setStats({ 
+            watchedCount: docSnap.data().watchedCount || 0,
+            totalWatchSeconds: docSnap.data().totalWatchSeconds || 0
+          });
         }
         setLoading(false);
       });
@@ -38,6 +69,18 @@ export default function UserProfile() {
       return () => unsubscribe();
     }
   }, [user]);
+
+  const actualHours = Math.floor(stats.totalWatchSeconds / 3600);
+
+  const getRank = (hours) => {
+    if (hours < 5) return "Xem Dạo";
+    if (hours < 30) return "Mọt Phim Tập Sự";
+    if (hours < 100) return "Thợ Săn Phim";
+    if (hours < 300) return "Mọt Phim Đẳng Cấp";
+    if (hours < 600) return "Chuyên Gia Bình Luận";
+    if (hours < 1200) return "Trùm Điện Ảnh";
+    return "Tinh Anh Cinephile";
+  };
 
   if (loading) {
     return (
@@ -78,8 +121,8 @@ export default function UserProfile() {
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
             <span className="material-symbols-outlined text-4xl text-blue-500 mb-2 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)] group-hover:scale-110 transition-transform">schedule</span>
-            <h4 className="text-3xl font-black text-white">{Math.round(stats.watchedCount * 1.5)}</h4>
-            <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Giờ xem (ước tính)</p>
+            <h4 className="text-3xl font-black text-white">{actualHours}</h4>
+            <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Giờ xem (thực tế)</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
             <span className="material-symbols-outlined text-4xl text-green-500 mb-2 drop-shadow-[0_0_10px_rgba(34,197,94,0.5)] group-hover:scale-110 transition-transform">workspace_premium</span>
@@ -88,7 +131,7 @@ export default function UserProfile() {
           </div>
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
             <span className="material-symbols-outlined text-4xl text-purple-500 mb-2 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform">local_fire_department</span>
-            <h4 className="text-xl md:text-2xl font-black text-white mt-1 mb-1">{stats.watchedCount > 20 ? 'Thánh Cày' : 'Mọt Phim'}</h4>
+            <h4 className="text-[18px] md:text-2xl font-black text-white mt-1 mb-1">{getRank(actualHours)}</h4>
             <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Danh hiệu</p>
           </div>
         </section>
