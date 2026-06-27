@@ -221,7 +221,7 @@ export default function Header() {
       )}
 
       {/* DOWNLOAD APP MODAL */}
-      <DownloadAppModal 
+      <AppDownloadModal 
         isOpen={isDownloadModalOpen} 
         onClose={() => setIsDownloadModalOpen(false)} 
       />
