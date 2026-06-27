@@ -90,12 +90,6 @@ export default function BrowsePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  const savedKeyword = sessionStorage.getItem("savedSearch") || "";
-  const [searchQuery, setSearchQuery] = useState(savedKeyword);
-  const [debouncedQuery, setDebouncedQuery] = useState(savedKeyword);
-  
-  const [advancedFilters, setAdvancedFilters] = useState([]);
-  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -110,32 +104,7 @@ export default function BrowsePage() {
     }
   }, [location.state]); 
 
-  const toggleAdvancedFilterItem = (item) => {
-    setAdvancedFilters(prev =>
-      prev.some(f => f.slug === item.slug)
-        ? prev.filter(f => f.slug !== item.slug)
-        : [...prev, item]
-    );
-  };
-
-  const applyAdvancedSearch = () => {
-    if (advancedFilters.length > 0) {
-      const keyword = advancedFilters.map(f => f.name).join(" ");
-      setSearchQuery(keyword);
-      if (window.innerWidth < 768) {
-        setIsAdvancedOpen(false);
-        setIsMobileFilterOpen(false); 
-      }
-    }
-  };
-
-  useEffect(() => {
-    sessionStorage.setItem("savedSearch", searchQuery);
-    const timer = setTimeout(() => { setDebouncedQuery(searchQuery); }, 500);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  useEffect(() => { setPage(1); }, [debouncedQuery, activeFilter]);
+  useEffect(() => { setPage(1); }, [activeFilter]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -155,12 +124,7 @@ export default function BrowsePage() {
           }
         };
 
-        let res;
-        if (debouncedQuery.trim().length > 0) {
-          res = await apiSearchPhim(debouncedQuery, page);
-        } else {
-          res = await fetchFilterPage(page);
-        }
+        const res = await fetchFilterPage(page);
 
         let items = res?.data?.items || res?.items || [];
         
@@ -183,7 +147,7 @@ export default function BrowsePage() {
 
     fetchMovies();
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activeFilter, page, debouncedQuery]);
+  }, [activeFilter, page]);
 
   const handleFilterClick = (filter) => {
     if (activeFilter?.slug === filter.slug) {
@@ -191,7 +155,6 @@ export default function BrowsePage() {
     } else {
       setActiveFilter(filter);
     }
-    setSearchQuery("");
     if (window.innerWidth < 768) {
       setIsMobileFilterOpen(false);
     }
@@ -235,40 +198,6 @@ export default function BrowsePage() {
     );
   };
 
-  // 👇 ĐÃ FIX: Chuyển Lọc Nâng Cao sang Trắng/Kính Mờ
-  const AdvancedFilterSection = () => (
-    <div className="mb-6 bg-white/5 border border-white/20 rounded-xl overflow-hidden backdrop-blur-md">
-      <button onClick={() => setIsAdvancedOpen(!isAdvancedOpen)} className="w-full flex items-center justify-between p-3.5 bg-white/10 hover:bg-white/20 text-white transition-colors">
-        <span className="font-bold text-[15px] flex items-center gap-2 drop-shadow-md">
-          <span className="material-symbols-outlined text-[18px]">tune</span> Lọc Nâng Cao
-        </span>
-        <span className={`material-symbols-outlined transition-transform ${isAdvancedOpen ? "rotate-180" : ""}`}>expand_more</span>
-      </button>
-      {isAdvancedOpen && (
-        <div className="p-4 border-t border-white/10 flex flex-col gap-5">
-          {[ {t: "Thể Loại", d: categories}, {t: "Quốc Gia", d: countries}, {t: "Năm", d: years} ].map(sec => (
-            <div key={sec.t} className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">{sec.t}</span>
-              <div className="flex flex-wrap gap-1.5">
-                {sec.d.map(item => {
-                  const isSelected = advancedFilters.some(f => f.slug === item.slug);
-                  return (
-                    <button key={`adv-${item.slug}`} onClick={() => toggleAdvancedFilterItem(item)}
-                      className={`px-2 py-1 rounded-md text-xs font-bold border transition-all ${isSelected ? "bg-white text-black border-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" : "bg-transparent border-white/20 text-zinc-400 hover:text-white hover:border-white/50"}`}
-                    > {item.name} </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-          <button onClick={applyAdvancedSearch} disabled={advancedFilters.length === 0} className="w-full mt-2 py-3 rounded-lg font-black bg-white text-black hover:scale-[1.02] transition-transform disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2 text-sm uppercase shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-            <span className="material-symbols-outlined text-[18px]">search</span> Bắt đầu lọc phim
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="pt-24 min-h-screen px-6 max-w-container-max mx-auto pb-20 bg-black">
 
@@ -295,8 +224,6 @@ export default function BrowsePage() {
             <span className="text-xl uppercase tracking-tighter">Bộ Lọc Phim</span>
           </div>
           <div className="max-h-[70vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
-            <AdvancedFilterSection />
-            <div className="h-[1px] w-full bg-white/10 mb-6 hidden md:block"></div>
             <FilterSection title="Định Đạng" items={types} />
             <FilterSection title="Thể Loại" items={categories} />
             <FilterSection title="Quốc Gia" items={countries} />
@@ -308,9 +235,7 @@ export default function BrowsePage() {
         <section className="flex-1 flex flex-col">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
             <h2 className="text-2xl font-black text-white uppercase tracking-tighter drop-shadow-md">
-              {debouncedQuery.trim().length > 0
-                ? `Kết quả cho: "${debouncedQuery}"`
-                : activeFilter ? activeFilter.name : `TẤT CẢ PHIM`}
+              {activeFilter ? activeFilter.name : `TẤT CẢ PHIM`}
             </h2>
             <span className="text-xs text-white/50 font-bold uppercase tracking-widest bg-white/5 px-3 py-1 rounded-md">Trang {page} / {totalPages}</span>
           </div>

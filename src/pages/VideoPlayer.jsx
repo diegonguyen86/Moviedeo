@@ -215,7 +215,9 @@ export default function VideoPlayer() {
       }
     };
 
-    const initHls = () => {
+    let wasPlayingBeforeHidden = true;
+
+    const initHls = (autoPlay = true) => {
       if (hls) hls.destroy();
       hls = new Hls({ debug: false, enableWorker: true });
       hls.loadSource(safeVideoUrl);
@@ -225,7 +227,9 @@ export default function VideoPlayer() {
         // Lấy lại tiến trình mới nhất phòng khi crash
         const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
         video.currentTime = freshestTime ? parseFloat(freshestTime) : (savedTime ? parseFloat(savedTime) : 0);
-        video.play().catch(() => {});
+        if (autoPlay) {
+          video.play().catch(() => {});
+        }
       });
 
       hls.on(Hls.Events.ERROR, (event, data) => {
@@ -257,19 +261,23 @@ export default function VideoPlayer() {
           // Lỗi đen màn hình nhưng tiếng vẫn chạy (Decoder bị treo). 
           // CÁCH CHỮA DUY NHẤT: Đập bỏ toàn bộ luồng stream và khởi tạo lại.
           if (typeof hls !== 'undefined' && hls) {
-            initHls(); 
+            initHls(wasPlayingBeforeHidden); 
           } else {
             const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
             const recoverTime = freshestTime ? parseFloat(freshestTime) : video.currentTime;
             video.src = safeVideoUrl;
             video.load();
             video.currentTime = recoverTime;
+            if (wasPlayingBeforeHidden) {
+              video.play().catch(() => {});
+            }
           }
         }
       } else {
         // TẮT MÀN HÌNH / ẨN WEB: Lập tức lưu tiến trình lên Firebase và LocalStorage
         saveToFirebase();
         if (video) {
+          wasPlayingBeforeHidden = !video.paused;
           localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, video.currentTime);
         }
       }
@@ -463,6 +471,12 @@ export default function VideoPlayer() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (useIframe) return;
+      
+      // Không kích hoạt phím tắt nếu đang gõ trong input hoặc textarea (ví dụ: gõ bình luận)
+      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) {
+        return;
+      }
+
       const key = e.key.toLowerCase();
       handleUserActivity(); 
       if (key === ' ' || key === 'k') { e.preventDefault(); togglePlay(); }
