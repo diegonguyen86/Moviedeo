@@ -137,7 +137,7 @@ export default function UserProfile() {
                     <li className="text-zinc-300"><span className="text-purple-400 font-bold">⭐ Đẳng Cấp (100-300h):</span> Có gu xem phim cực đa dạng.</li>
                     <li className="text-zinc-300"><span className="text-pink-400 font-bold">💬 Chuyên Gia (300-600h):</span> Đủ trình nhận xét như nhà phê bình.</li>
                     <li className="text-zinc-300"><span className="text-yellow-400 font-bold">👑 Trùm Điện Ảnh (600-1200h):</span> Nhìn poster đoán ngay đạo diễn.</li>
-                    <li className="text-zinc-300"><span className="text-red-500 font-bold">🔥 Tinh Anh (>1200h):</span> Đỉnh cao cày phim, không bỏ sót siêu phẩm nào.</li>
+                    <li className="text-zinc-300"><span className="text-red-500 font-bold">🔥 Tinh Anh (&gt;1200h):</span> Đỉnh cao cày phim, không bỏ sót siêu phẩm nào.</li>
                   </ul>
                   <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-black/90 border-b border-r border-white/20 rotate-45"></div>
                 </div>

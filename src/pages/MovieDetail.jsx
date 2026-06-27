@@ -209,6 +209,8 @@ export default function MovieDetail() {
                 </button>
               ))}
             </div>
+          </div>
+          
           {/* --- BÌNH LUẬN --- */}
           <div className="mt-12">
             <CommentSection movieId={movieDetails.slug} />
