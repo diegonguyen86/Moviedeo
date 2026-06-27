@@ -907,7 +907,7 @@ export default function VideoPlayer() {
 
         {/* --- BÌNH LUẬN NATIVE --- */}
         <div className="mt-4 md:mt-8 relative z-10 max-w-5xl mx-auto">
-          <CommentSection movieId={currentSlug} />
+          <CommentSection movieId={currentSlug} movieName={currentMovieName} />
         </div>
 
       </div>

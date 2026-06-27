@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { useNotification } from "../context/NotificationContext";
 
-export default function CommentSection({ movieId }) {
+export default function CommentSection({ movieId, movieName }) {
   const { user, userData, getRankInfo, loginWithGoogle } = useAuth();
   const { showToast } = useNotification();
   const [comments, setComments] = useState([]);
@@ -23,14 +23,20 @@ export default function CommentSection({ movieId }) {
       limit(commentLimit)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setComments(data);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setComments(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Lỗi khi tải bình luận:", error);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [movieId, commentLimit]);
@@ -45,19 +51,29 @@ export default function CommentSection({ movieId }) {
 
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "comments", movieId, "list"), {
+      const commentData = {
         uid: user.uid,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
+        displayName: user.displayName || "Thành viên ẩn danh",
+        photoURL: user.photoURL || "https://ui-avatars.com/api/?name=User",
         text: newComment.trim(),
         totalWatchSeconds: userData?.totalWatchSeconds || 0,
         createdAt: serverTimestamp()
+      };
+
+      // 1. Lưu vào bình luận của phim
+      await addDoc(collection(db, "comments", movieId, "list"), commentData);
+
+      // 2. Lưu vào luồng bình luận toàn cục (kèm thông tin phim)
+      await addDoc(collection(db, "global_comments"), {
+        ...commentData,
+        movieId,
+        movieName: movieName || "Phim Moviedeo"
       });
       setNewComment("");
       showToast("Đã gửi bình luận!", "success");
     } catch (error) {
       console.error("Lỗi gửi bình luận:", error);
-      showToast("Lỗi khi gửi bình luận", "error");
+      showToast("Lỗi: " + (error.message || "Không thể gửi bình luận"), "error");
     } finally {
       setIsSubmitting(false);
     }
