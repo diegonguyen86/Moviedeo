@@ -60,10 +60,10 @@ export default function Header() {
         </div>
 
         {/* 2. Ở GIỮA: BỘ LỌC PHIM (Chỉ hiện trên PC/Tablet lớn) */}
-        <nav className="hidden md:flex items-center gap-10">
+        <nav className="hidden md:flex items-center gap-6 bg-white/5 border border-white/10 rounded-full px-6 py-2.5 backdrop-blur-md shadow-lg">
           <Link 
             to="/" 
-            className={`text-[14px] font-bold transition-all duration-300 pb-1 ${currentPath === "/" ? "text-white border-b-2 border-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"}`}
+            className={`text-[13px] uppercase tracking-wider font-bold transition-all duration-300 ${currentPath === "/" ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white"}`}
           >
             Trang Chủ
           </Link>
@@ -71,15 +71,15 @@ export default function Header() {
           <Link 
             to="/search" 
             state={{ type: 'danh-sach', slug: 'phim-chieu-rap', title: 'Phim Chiếu Rạp' }}
-            className={`text-[14px] font-bold transition-all duration-300 pb-1 ${isActive('phim-chieu-rap') ? "text-white border-b-2 border-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"}`}
+            className={`text-[13px] uppercase tracking-wider font-bold transition-all duration-300 ${isActive('phim-chieu-rap') ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white"}`}
           >
-            Phim Chiếu Rạp
+            Chiếu Rạp
           </Link>
 
           <Link 
             to="/search" 
             state={{ type: 'danh-sach', slug: 'phim-le', title: 'Phim Lẻ' }}
-            className={`text-[14px] font-bold transition-all duration-300 pb-1 ${isActive('phim-le') ? "text-white border-b-2 border-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"}`}
+            className={`text-[13px] uppercase tracking-wider font-bold transition-all duration-300 ${isActive('phim-le') ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white"}`}
           >
             Phim Lẻ
           </Link>
@@ -87,7 +87,7 @@ export default function Header() {
           <Link 
             to="/search" 
             state={{ type: 'danh-sach', slug: 'phim-bo', title: 'Phim Bộ' }}
-            className={`text-[14px] font-bold transition-all duration-300 pb-1 ${isActive('phim-bo') ? "text-white border-b-2 border-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]"}`}
+            className={`text-[13px] uppercase tracking-wider font-bold transition-all duration-300 ${isActive('phim-bo') ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-zinc-400 hover:text-white"}`}
           >
             Phim Bộ
           </Link>
@@ -96,14 +96,22 @@ export default function Header() {
         {/* 3. BÊN PHẢI: ICON TÌM KIẾM, HỒ SƠ & NÚT MENU MOBILE */}
         <div className="flex-1 flex items-center justify-end gap-3 md:gap-4">
           
-          {/* NÚT TÌM KIẾM (MỞ MODAL) */}
-          <button 
-            onClick={() => { setIsSearchModalOpen(true); closeMobileMenu(); }}
-            className={`p-2.5 rounded-full transition-all duration-300 border flex items-center justify-center border-transparent text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20`}
-            title="Tìm kiếm phim nhanh"
-          >
-            <span className="material-symbols-outlined text-[22px] md:text-[24px]">search</span>
-          </button>
+          {/* NÚT TÌM KIẾM (MỞ MODAL) - Đặt relative để Dropdown bám theo */}
+          <div className="relative">
+            <button 
+              onClick={() => { setIsSearchModalOpen(true); closeMobileMenu(); }}
+              className={`p-2.5 rounded-full transition-all duration-300 border flex items-center justify-center border-transparent text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20`}
+              title="Tìm kiếm phim nhanh"
+            >
+              <span className="material-symbols-outlined text-[22px] md:text-[24px]">search</span>
+            </button>
+
+            {/* SEARCH MODAL (Bây giờ là Dropdown tuyệt đối) */}
+            <SearchModal 
+              isOpen={isSearchModalOpen} 
+              onClose={() => setIsSearchModalOpen(false)} 
+            />
+          </div>
 
           {/* NÚT KHO PHIM (DẪN TỚI /SEARCH) */}
           <Link 
@@ -212,16 +220,10 @@ export default function Header() {
         </nav>
       )}
 
-      {/* POPUP DOWNLOAD APP */}
-      <AppDownloadModal 
+      {/* DOWNLOAD APP MODAL */}
+      <DownloadAppModal 
         isOpen={isDownloadModalOpen} 
         onClose={() => setIsDownloadModalOpen(false)} 
-      />
-
-      {/* SEARCH MODAL */}
-      <SearchModal 
-        isOpen={isSearchModalOpen} 
-        onClose={() => setIsSearchModalOpen(false)} 
       />
     </header>
   );
