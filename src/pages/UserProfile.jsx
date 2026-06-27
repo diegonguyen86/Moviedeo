@@ -20,7 +20,7 @@ import { useNotification } from "../context/NotificationContext";
 import { Link } from "react-router-dom";
 
 export default function UserProfile() {
-  const { user, logout } = useAuth();
+  const { user, logout, userData, getRankInfo } = useAuth();
   const [stats, setStats] = useState({ watchedCount: 0, totalWatchSeconds: 0 });
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -71,16 +71,7 @@ export default function UserProfile() {
   }, [user]);
 
   const actualHours = Math.floor(stats.totalWatchSeconds / 3600);
-
-  const getRank = (hours) => {
-    if (hours < 5) return "Xem Dạo";
-    if (hours < 30) return "Mọt Phim Tập Sự";
-    if (hours < 100) return "Thợ Săn Phim";
-    if (hours < 300) return "Mọt Phim Đẳng Cấp";
-    if (hours < 600) return "Chuyên Gia Bình Luận";
-    if (hours < 1200) return "Trùm Điện Ảnh";
-    return "Tinh Anh Cinephile";
-  };
+  const userRank = getRankInfo(stats.totalWatchSeconds);
 
   if (loading) {
     return (
@@ -129,9 +120,29 @@ export default function UserProfile() {
             <h4 className="text-3xl font-black text-white">VIP</h4>
             <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Hạng thành viên</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group">
-            <span className="material-symbols-outlined text-4xl text-purple-500 mb-2 drop-shadow-[0_0_10px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform">local_fire_department</span>
-            <h4 className="text-[18px] md:text-2xl font-black text-white mt-1 mb-1">{getRank(actualHours)}</h4>
+          <div className={`bg-white/5 border ${userRank.border} rounded-2xl p-6 backdrop-blur-md flex flex-col items-center justify-center text-center shadow-lg hover:bg-white/10 transition-all group ${userRank.glow}`}>
+            <span className={`text-4xl mb-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] group-hover:scale-110 transition-transform ${userRank.color}`}>{userRank.icon}</span>
+            <div className="flex items-center gap-2 mt-1 mb-1">
+              <h4 className={`text-[18px] md:text-xl font-black ${userRank.color}`}>{userRank.name}</h4>
+              <div className="relative group/tooltip">
+                <span className="material-symbols-outlined text-[14px] text-white/40 cursor-help hover:text-white transition-colors border border-white/20 rounded-full w-4 h-4 flex items-center justify-center">question_mark</span>
+                
+                {/* TOOLTIP GIẢI THÍCH DANH HIỆU */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-[260px] md:w-[320px] bg-black/90 backdrop-blur-3xl border border-white/20 rounded-xl p-4 shadow-2xl opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all z-50 text-left pointer-events-none scale-95 group-hover/tooltip:scale-100 origin-bottom">
+                  <h5 className="text-white font-black text-sm uppercase tracking-widest border-b border-white/10 pb-2 mb-2">Hệ thống Danh Hiệu</h5>
+                  <ul className="space-y-1.5 text-xs">
+                    <li className="text-zinc-300"><span className="text-zinc-400 font-bold">👀 Xem Dạo (0-5h):</span> Vừa tạo tài khoản, đang đi dạo.</li>
+                    <li className="text-zinc-300"><span className="text-emerald-400 font-bold">🌱 Tập Sự (5-30h):</span> Đã cày xong bộ phim đầu tiên.</li>
+                    <li className="text-zinc-300"><span className="text-blue-400 font-bold">🎯 Thợ Săn (30-100h):</span> Thường xuyên đón tập mới.</li>
+                    <li className="text-zinc-300"><span className="text-purple-400 font-bold">⭐ Đẳng Cấp (100-300h):</span> Có gu xem phim cực đa dạng.</li>
+                    <li className="text-zinc-300"><span className="text-pink-400 font-bold">💬 Chuyên Gia (300-600h):</span> Đủ trình nhận xét như nhà phê bình.</li>
+                    <li className="text-zinc-300"><span className="text-yellow-400 font-bold">👑 Trùm Điện Ảnh (600-1200h):</span> Nhìn poster đoán ngay đạo diễn.</li>
+                    <li className="text-zinc-300"><span className="text-red-500 font-bold">🔥 Tinh Anh (>1200h):</span> Đỉnh cao cày phim, không bỏ sót siêu phẩm nào.</li>
+                  </ul>
+                  <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-black/90 border-b border-r border-white/20 rotate-45"></div>
+                </div>
+              </div>
+            </div>
             <p className="text-white/60 text-[10px] md:text-xs font-bold uppercase tracking-widest mt-1">Danh hiệu</p>
           </div>
         </section>

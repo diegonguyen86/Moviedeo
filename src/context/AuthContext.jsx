@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db, googleProvider } from "../firebase"; 
 import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth"; 
-import { doc, getDoc, setDoc } from "firebase/firestore"; 
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"; 
 import LoadingLogo from "../components/LoadingLogo";
 
 const AuthContext = createContext();
@@ -9,6 +9,7 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isApproved, setIsApproved] = useState(false);
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // --- 🤖 CON BOT TELEGRAM (ĐÃ FIX LINK VERCEL) ---
@@ -53,34 +54,43 @@ export function AuthProvider({ children }) {
   }; 
 
   useEffect(() => {
+    let unsubsDoc = null;
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       try {
         setLoading(true);
         if (currentUser) {
           const userDocRef = doc(db, "users", currentUser.uid);
-          const userDoc = await getDoc(userDocRef);
           
-          if (!userDoc.exists()) {
-            // TẠO MỚI KHI LẦN ĐẦU ĐĂNG NHẬP
-            await setDoc(userDocRef, {
-              uid: currentUser.uid,
-              email: currentUser.email,
-              displayName: currentUser.displayName,
-              photoURL: currentUser.photoURL,
-              isApproved: false,
-              createdAt: new Date().toISOString()
-            });
-            setIsApproved(false);
-            // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
-            await notifyAdmin(currentUser.displayName, currentUser.email, currentUser.uid);
-          } else {
-            // ĐÃ CÓ TÀI KHOẢN -> Chỉ lấy trạng thái duyệt
-            setIsApproved(userDoc.data().isApproved || false);
-          }
+          unsubsDoc = onSnapshot(userDocRef, async (docSnap) => {
+            if (!docSnap.exists()) {
+              // TẠO MỚI KHI LẦN ĐẦU ĐĂNG NHẬP
+              await setDoc(userDocRef, {
+                uid: currentUser.uid,
+                email: currentUser.email,
+                displayName: currentUser.displayName,
+                photoURL: currentUser.photoURL,
+                isApproved: false,
+                createdAt: new Date().toISOString()
+              });
+              setIsApproved(false);
+              setUserData(null);
+              // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
+              await notifyAdmin(currentUser.displayName, currentUser.email, currentUser.uid);
+            } else {
+              // ĐÃ CÓ TÀI KHOẢN -> Lấy trạng thái duyệt và data
+              setIsApproved(docSnap.data().isApproved || false);
+              setUserData(docSnap.data());
+            }
+          });
           setUser(currentUser);
         } else {
           setUser(null);
           setIsApproved(false);
+          setUserData(null);
+          if (unsubsDoc) {
+            unsubsDoc();
+            unsubsDoc = null;
+          }
         }
       } catch (error) {
         console.error("Firebase/Auth Error:", error);
@@ -88,14 +98,28 @@ export function AuthProvider({ children }) {
         setLoading(false);
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (unsubsDoc) unsubsDoc();
+    };
   }, []);
 
   const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
   const logout = () => signOut(auth);
 
+  const getRankInfo = (seconds = 0) => {
+    const hours = Math.floor(seconds / 3600);
+    if (hours < 5) return { name: "Xem Dạo", color: "text-zinc-400", border: "border-zinc-500", glow: "shadow-[0_0_10px_rgba(161,161,170,0.5)]", icon: "👀" };
+    if (hours < 30) return { name: "Mọt Tập Sự", color: "text-emerald-400", border: "border-emerald-500", glow: "shadow-[0_0_15px_rgba(52,211,153,0.6)]", icon: "🌱" };
+    if (hours < 100) return { name: "Thợ Săn Phim", color: "text-blue-400", border: "border-blue-500", glow: "shadow-[0_0_15px_rgba(96,165,250,0.6)]", icon: "🎯" };
+    if (hours < 300) return { name: "Mọt Đẳng Cấp", color: "text-purple-400", border: "border-purple-500", glow: "shadow-[0_0_20px_rgba(192,132,252,0.7)]", icon: "⭐" };
+    if (hours < 600) return { name: "CG Bình Luận", color: "text-pink-400", border: "border-pink-500", glow: "shadow-[0_0_25px_rgba(244,114,182,0.8)]", icon: "💬" };
+    if (hours < 1200) return { name: "Trùm Điện Ảnh", color: "text-yellow-400", border: "border-yellow-500", glow: "shadow-[0_0_30px_rgba(250,204,21,0.9)]", icon: "👑" };
+    return { name: "Tinh Anh Cinephile", color: "text-red-500", border: "border-red-600", glow: "shadow-[0_0_40px_rgba(239,68,68,1)] animate-pulse", icon: "🔥" };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isApproved, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, isApproved, userData, getRankInfo, loginWithGoogle, logout }}>
       {!loading ? children : (
         <div className="h-screen bg-black flex items-center justify-center">
           <LoadingLogo className="w-14 h-14" />

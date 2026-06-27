@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AppDownloadModal from "./AppDownloadModal";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { user, userData, getRankInfo } = useAuth();
   
   // Trạng thái đóng/mở menu trên Mobile
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -97,13 +99,30 @@ export default function Header() {
             <span className="material-symbols-outlined text-[22px] md:text-[24px]">search</span>
           </Link>
 
-          <Link 
-            to="/profile" 
-            onClick={closeMobileMenu}
-            className={`p-2.5 rounded-full transition-all duration-300 border flex items-center justify-center ${currentPath === "/profile" ? "bg-white/20 text-white border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.2)] backdrop-blur-md" : "border-transparent text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20"}`}
-          >
-            <span className="material-symbols-outlined text-[22px] md:text-[24px]">person</span>
-          </Link>
+          {user ? (() => {
+            const rank = getRankInfo(userData?.totalWatchSeconds || 0);
+            return (
+              <Link 
+                to="/profile" 
+                onClick={closeMobileMenu}
+                className={`relative rounded-full transition-all duration-300 border-2 flex items-center justify-center ${rank.border} ${rank.glow} hover:scale-110`}
+                title={`${rank.name} (${Math.floor((userData?.totalWatchSeconds || 0)/3600)} giờ xem)`}
+              >
+                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover" />
+                <div className={`absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-[10px] md:text-[12px] ${rank.color}`} title={rank.name}>
+                  {rank.icon}
+                </div>
+              </Link>
+            );
+          })() : (
+            <Link 
+              to="/profile" 
+              onClick={closeMobileMenu}
+              className={`p-2.5 rounded-full transition-all duration-300 border flex items-center justify-center ${currentPath === "/profile" ? "bg-white/20 text-white border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.2)] backdrop-blur-md" : "border-transparent text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20"}`}
+            >
+              <span className="material-symbols-outlined text-[22px] md:text-[24px]">person</span>
+            </Link>
+          )}
 
           {/* NÚT MỞ POPUP DOWNLOAD APP */}
           <button 
