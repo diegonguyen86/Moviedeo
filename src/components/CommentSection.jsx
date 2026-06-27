@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc } from "firebase/firestore";
 import { useNotification } from "../context/NotificationContext";
 
 export default function CommentSection({ movieId, movieName }) {
@@ -76,6 +76,17 @@ export default function CommentSection({ movieId, movieName }) {
       showToast("Lỗi: " + (error.message || "Không thể gửi bình luận"), "error");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (commentId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xoá bình luận này?")) return;
+    try {
+      await deleteDoc(doc(db, "comments", movieId, "list", commentId));
+      showToast("Đã xoá bình luận", "success");
+    } catch (error) {
+      console.error("Lỗi xoá bình luận:", error);
+      showToast("Không thể xoá bình luận", "error");
     }
   };
 
@@ -171,6 +182,17 @@ export default function CommentSection({ movieId, movieName }) {
                         {rank.name}
                       </span>
                       <span className="text-xs text-zinc-500 ml-auto">{timeAgo(comment.createdAt)}</span>
+                      
+                      {/* Nút Xoá */}
+                      {user && (user.uid === comment.uid || user.uid === "qD9qHFwiucgQOj6bXHoCIuHuoWv1") && (
+                        <button 
+                          onClick={() => handleDelete(comment.id)}
+                          className="ml-2 text-zinc-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Xoá bình luận"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      )}
                     </div>
                     <p className="text-zinc-300 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
                       {comment.text}

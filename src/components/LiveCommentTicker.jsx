@@ -48,7 +48,11 @@ export default function LiveCommentTicker() {
 
   if (comments.length === 0) return null;
 
-  const currentComment = comments[currentIndex];
+  // Đảm bảo không bị crash nếu comments bị xoá bớt khiến currentIndex vượt quá mảng
+  const safeIndex = currentIndex >= comments.length ? 0 : currentIndex;
+  const currentComment = comments[safeIndex];
+  if (!currentComment) return null;
+
   const rank = getRankInfo(currentComment.totalWatchSeconds || 0);
 
   return (
