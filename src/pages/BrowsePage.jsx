@@ -271,18 +271,7 @@ export default function BrowsePage() {
 
   return (
     <div className="pt-24 min-h-screen px-6 max-w-container-max mx-auto pb-20 bg-black">
-      
-      {/* 👇 ĐÃ FIX: Search Bar chuẩn Kính Mờ */}
-      <div className="relative mb-8 w-full md:w-2/3 lg:w-1/2 mx-auto">
-        <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-white/50 text-2xl">search</span>
-        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Tìm kiếm phim, diễn viên, đạo diễn..."
-          className="w-full bg-white/10 border border-white/20 focus:border-white/60 focus:bg-white/15 text-white placeholder-white/40 rounded-full pl-14 pr-14 py-4 outline-none transition-all shadow-lg backdrop-blur-md font-medium" />
-        {searchQuery && (
-          <button onClick={() => setSearchQuery("")} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full p-1 flex items-center">
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
-        )}
-      </div>
+
 
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
         

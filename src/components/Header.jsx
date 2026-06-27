@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import AppDownloadModal from "./AppDownloadModal";
+import SearchModal from "./SearchModal";
 import { useAuth } from "../context/AuthContext";
 
 export default function Header() {
@@ -13,6 +14,9 @@ export default function Header() {
 
   // Trạng thái popup tải App
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  
+  // Trạng thái popup tìm kiếm
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
   // Hàm để kiểm tra xem menu nào đang được chọn
   const isActive = (slug) => location.state?.slug === slug;
@@ -91,12 +95,24 @@ export default function Header() {
 
         {/* 3. BÊN PHẢI: ICON TÌM KIẾM, HỒ SƠ & NÚT MENU MOBILE */}
         <div className="flex-1 flex items-center justify-end gap-3 md:gap-4">
+          
+          {/* NÚT TÌM KIẾM (MỞ MODAL) */}
+          <button 
+            onClick={() => { setIsSearchModalOpen(true); closeMobileMenu(); }}
+            className={`p-2.5 rounded-full transition-all duration-300 border flex items-center justify-center border-transparent text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20`}
+            title="Tìm kiếm phim nhanh"
+          >
+            <span className="material-symbols-outlined text-[22px] md:text-[24px]">search</span>
+          </button>
+
+          {/* NÚT KHO PHIM (DẪN TỚI /SEARCH) */}
           <Link 
             to="/search" 
             onClick={closeMobileMenu}
             className={`p-2.5 rounded-full transition-all duration-300 border flex items-center justify-center ${currentPath === "/search" && !location.state ? "bg-white/20 text-white border-white/40 shadow-[0_0_15px_rgba(255,255,255,0.2)] backdrop-blur-md" : "border-transparent text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/20"}`}
+            title="Kho Phim / Lọc Phim"
           >
-            <span className="material-symbols-outlined text-[22px] md:text-[24px]">search</span>
+            <span className="material-symbols-outlined text-[22px] md:text-[24px]">grid_view</span>
           </Link>
 
           {user ? (() => {
@@ -200,6 +216,12 @@ export default function Header() {
       <AppDownloadModal 
         isOpen={isDownloadModalOpen} 
         onClose={() => setIsDownloadModalOpen(false)} 
+      />
+
+      {/* SEARCH MODAL */}
+      <SearchModal 
+        isOpen={isSearchModalOpen} 
+        onClose={() => setIsSearchModalOpen(false)} 
       />
     </header>
   );
