@@ -106,20 +106,20 @@ export default function MovieDetail() {
               </button>
 
               <button 
-                onClick={() => isSaved(movieDetails.slug) ? removeFromWatchlist(movieDetails.slug) : addToWatchlist({
-                  slug: movieDetails.slug,
+                onClick={() => isSaved(id) ? removeFromWatchlist(id) : addToWatchlist({
+                  slug: id,
                   name: movieDetails.name,
                   thumb_url: getFullImageUrl(movieDetails.thumb_url),
                   year: movieDetails.year
                 })}
                 className={`px-5 py-2.5 border rounded-xl font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-md shadow-lg ${
-                  isSaved(movieDetails.slug) 
+                  isSaved(id) 
                     ? "bg-red-500/20 border-red-500 text-red-500 hover:bg-red-500/30" 
                     : "bg-white/10 border-white/20 text-white hover:bg-white/20"
                 }`}
               >
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isSaved(movieDetails.slug) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
-                {isSaved(movieDetails.slug) ? "Đã Lưu" : "Lưu Phim"}
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isSaved(id) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
+                {isSaved(id) ? "Đã Lưu" : "Lưu Phim"}
               </button>
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function MovieDetail() {
               {currentEpisodes.map((ep) => (
                 <button key={ep.slug}
                   onClick={() => {
-                    navigate(`/play/${movieDetails.slug}`, { 
+                    navigate(`/play/${id}`, { 
                       state: { 
                         // MAPPING CHUẨN XÁC BAO THẦU CẢ KKPHIM VÀ NGUONC
                         videoUrl: ep.link_m3u8 || ep.m3u8 || "", 
@@ -213,7 +213,7 @@ export default function MovieDetail() {
           
           {/* --- BÌNH LUẬN --- */}
           <div className="mt-12">
-            <CommentSection movieId={movieDetails.slug} />
+            <CommentSection movieId={id} />
           </div>
 
         </div>

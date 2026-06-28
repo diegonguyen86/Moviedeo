@@ -124,6 +124,21 @@ export default function VideoPlayer() {
           setActiveServerIdx(0);
           setUseIframe(!nVideo && !!nEmbed);
           setActiveCloudProgress(null); // start from 0 for new season
+
+          // Cập nhật lại đường dẫn URL trên trình duyệt để tránh bị lỗi khi user ấn F5
+          navigate(`/play/${seasonSlug}`, {
+            replace: true,
+            state: {
+              videoUrl: nVideo,
+              embedFallback: nEmbed,
+              movieName: res.movie.name,
+              epName: firstEp.name,
+              allServers: res.episodes || [],
+              currentServerIndex: 0,
+              posterUrl: res.movie.poster_url,
+              cloudProgress: null
+            }
+          });
         }
       }
     } catch (e) {
@@ -574,7 +589,7 @@ export default function VideoPlayer() {
           onMouseLeave={() => { if (isPlaying && !showEpisodes && !showLangMenu && !showSettings && !isAutoNexting) setShowControls(false); }}
         >
           {useIframe ? (
-            <iframe src={currentEmbed} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
+            <iframe src={currentEmbed?.replace("http://", "https://")} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
               {/* 👇 CẬP NHẬT MỚI: TÁCH BIỆT TRẢI NGHIỆM PC VÀ MOBILE QUA HARDWARE */}
