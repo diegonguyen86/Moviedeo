@@ -36,7 +36,7 @@ export default function VideoPlayer() {
   // Quản lý tiến trình Firebase (Trị Zombie Progress)
   const [activeCloudProgress, setActiveCloudProgress] = useState(cloudProgress);
 
-  const [useIframe, setUseIframe] = useState(false);
+  const [useIframe, setUseIframe] = useState(!videoUrl && !!embedFallback);
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -529,7 +529,7 @@ export default function VideoPlayer() {
 
   const renderEpisodeName = (name) => {
     if (!name) return "";
-    return `Tập ${name.replace(/tập/gi, "").replace(/:/g, "").trim()}`;
+    return `Tập ${String(name).replace(/tập/gi, "").replace(/:/g, "").trim()}`;
   };
 
   if (!currentVideo && !currentEmbed) return null; 
