@@ -279,21 +279,8 @@ export default function VideoPlayer() {
       if (document.visibilityState === "visible" || !document.hidden) {
         if (wasHidden) {
           wasHidden = false;
-          if (video) {
-            // Lỗi đen màn hình nhưng tiếng vẫn chạy (Decoder bị treo). 
-            // CÁCH CHỮA DUY NHẤT: Đập bỏ toàn bộ luồng stream và khởi tạo lại.
-            if (typeof hls !== 'undefined' && hls) {
-              initHls(wasPlayingBeforeHidden); 
-            } else {
-              const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
-              const recoverTime = freshestTime ? parseFloat(freshestTime) : video.currentTime;
-              video.src = safeVideoUrl;
-              video.load();
-              video.currentTime = recoverTime;
-              if (wasPlayingBeforeHidden) {
-                video.play().catch(() => {});
-              }
-            }
+          if (video && wasPlayingBeforeHidden) {
+            video.play().catch(() => {});
           }
         }
       } else {
