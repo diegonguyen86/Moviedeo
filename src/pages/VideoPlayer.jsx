@@ -231,11 +231,16 @@ export default function VideoPlayer() {
     };
 
     let wasPlayingBeforeHidden = true;
+    let wasHidden = document.hidden;
 
     const initHls = (autoPlay = true) => {
       if (hls) hls.destroy();
       hls = new Hls({ debug: false, enableWorker: true });
-      hls.loadSource(safeVideoUrl);
+      
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        hls.loadSource(safeVideoUrl);
+      });
+      
       hls.attachMedia(video);
       
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -272,23 +277,27 @@ export default function VideoPlayer() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" || !document.hidden) {
-        if (video) {
-          // Lỗi đen màn hình nhưng tiếng vẫn chạy (Decoder bị treo). 
-          // CÁCH CHỮA DUY NHẤT: Đập bỏ toàn bộ luồng stream và khởi tạo lại.
-          if (typeof hls !== 'undefined' && hls) {
-            initHls(wasPlayingBeforeHidden); 
-          } else {
-            const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
-            const recoverTime = freshestTime ? parseFloat(freshestTime) : video.currentTime;
-            video.src = safeVideoUrl;
-            video.load();
-            video.currentTime = recoverTime;
-            if (wasPlayingBeforeHidden) {
-              video.play().catch(() => {});
+        if (wasHidden) {
+          wasHidden = false;
+          if (video) {
+            // Lỗi đen màn hình nhưng tiếng vẫn chạy (Decoder bị treo). 
+            // CÁCH CHỮA DUY NHẤT: Đập bỏ toàn bộ luồng stream và khởi tạo lại.
+            if (typeof hls !== 'undefined' && hls) {
+              initHls(wasPlayingBeforeHidden); 
+            } else {
+              const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
+              const recoverTime = freshestTime ? parseFloat(freshestTime) : video.currentTime;
+              video.src = safeVideoUrl;
+              video.load();
+              video.currentTime = recoverTime;
+              if (wasPlayingBeforeHidden) {
+                video.play().catch(() => {});
+              }
             }
           }
         }
       } else {
+        wasHidden = true;
         // TẮT MÀN HÌNH / ẨN WEB: Lập tức lưu tiến trình lên Firebase và LocalStorage
         saveToFirebase();
         if (video) {
@@ -299,7 +308,8 @@ export default function VideoPlayer() {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("focus", handleVisibilityChange);
+    // Xóa sự kiện focus vì nó gây lỗi re-init liên tục khi người dùng click chuột
+    // window.addEventListener("focus", handleVisibilityChange);
 
     if (Hls.isSupported()) {
       initHls();
@@ -314,7 +324,6 @@ export default function VideoPlayer() {
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("error", onError);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("focus", handleVisibilityChange);
     };
   }, [currentVideo, useIframe, currentEpName, currentSlug, activeCloudProgress]);
 
