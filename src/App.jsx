@@ -14,11 +14,9 @@ import LiveCommentTicker from "./components/LiveCommentTicker";
 import TrendingManage from "./pages/TrendingManage";
 import AppLinksManage from "./pages/AppLinksManage";
 
-import { ErrorBoundary } from "./ErrorBoundary";
 
 function App() {
   return (
-    <ErrorBoundary>
     <NotificationProvider>
       <AuthProvider> 
         <BrowserRouter>
@@ -43,7 +41,6 @@ function App() {
       </BrowserRouter>
     </AuthProvider>
     </NotificationProvider>
-    </ErrorBoundary>
   );
 }
 
