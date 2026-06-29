@@ -11,12 +11,10 @@ export default function LiveCommentTicker() {
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
 
-  // Ẩn ticker nếu đang ở trang xem phim (bắt đầu bằng /play/)
-  if (location.pathname.startsWith("/play/")) {
-    return null;
-  }
-
   useEffect(() => {
+    // Ẩn ticker và ngừng query Firebase nếu đang ở trang xem phim (bảo vệ lưu lượng Firebase)
+    if (location.pathname.startsWith("/play/")) return;
+
     // Lắng nghe 5 bình luận mới nhất
     const q = query(
       collection(db, "global_comments"),
@@ -33,18 +31,25 @@ export default function LiveCommentTicker() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [location.pathname]);
 
   useEffect(() => {
+    if (location.pathname.startsWith("/play/")) return;
+
     // Chuyển đổi bình luận mỗi 5 giây
-    let timer;
-    if (comments.length > 1 && !isHovered) {
-      timer = setInterval(() => {
-        setCurrentIndex((prev) => (prev + 1) % comments.length);
-      }, 5000);
-    }
+    if (comments.length === 0 || isHovered) return;
+
+    const timer = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % comments.length);
+    }, 5000);
+
     return () => clearInterval(timer);
-  }, [comments.length, isHovered]);
+  }, [comments.length, isHovered, location.pathname]);
+
+  // ĐẶT SAU TẤT CẢ CÁC HOOK ĐỂ TRÁNH LỖI REACT ERROR 300
+  if (location.pathname.startsWith("/play/")) {
+    return null;
+  }
 
   if (comments.length === 0) return null;
 
