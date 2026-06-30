@@ -23,15 +23,8 @@ export default function Layout() {
         const isDomBlocked = ad.offsetHeight === 0 || window.getComputedStyle(ad).display === 'none';
         document.body.removeChild(ad);
         
-        if (isDomBlocked) {
-          resolve(true); 
-          return;
-        }
-
-        // 2. Kiểm tra bằng bẫy Network (Bắt Brave Shields)
-        fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", { mode: 'no-cors', cache: 'no-store' })
-          .then(() => resolve(false))
-          .catch(() => resolve(true));
+        // Bỏ bẫy network vì nó sẽ bắt nhầm Pi-hole, NextDNS, VPN, hoặc các trình duyệt tự block tracker (như Edge, Safari)
+        resolve(isDomBlocked);
       }, 100); 
     });
   };

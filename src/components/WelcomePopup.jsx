@@ -4,12 +4,23 @@ export default function WelcomePopup() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Để popup hiện lên mượt mà sau khi trang load
-    const timer = setTimeout(() => {
-      setIsOpen(true);
-    }, 500);
-    return () => clearTimeout(timer);
+    // Sử dụng sessionStorage thay vì localStorage. 
+    // Popup sẽ hiện 1 lần duy nhất cho mỗi "phiên" lướt web. 
+    // Nếu họ tắt tab và vào lại web, popup sẽ hiện lại.
+    const hasSeen = sessionStorage.getItem("has_seen_welcome_popup");
+
+    if (!hasSeen) {
+      const timer = setTimeout(() => {
+        setIsOpen(true);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
   }, []);
+
+  const handleClose = () => {
+    sessionStorage.setItem("has_seen_welcome_popup", "true");
+    setIsOpen(false);
+  };
 
   if (!isOpen) return null;
 
@@ -43,7 +54,7 @@ export default function WelcomePopup() {
           </div>
 
           <button 
-            onClick={() => setIsOpen(false)}
+            onClick={handleClose}
             className="w-full sm:w-auto px-10 py-3 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold transition-all shadow-xl active:scale-95"
           >
             TUI ĐÃ HIỂU, ĐÓNG LẠI!
