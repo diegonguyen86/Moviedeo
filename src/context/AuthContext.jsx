@@ -132,12 +132,11 @@ export function AuthProvider({ children }) {
       if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
         // Người dùng tự đóng popup
         return { success: false, reason: 'cancelled' };
-      } else if (error.code === 'auth/popup-blocked' || (error.message && error.message.toLowerCase().includes('popup'))) {
-        return { success: false, reason: 'blocked' };
       } else {
-        console.error("Lỗi đăng nhập:", error);
-        showToast("Lỗi kết nối hoặc popup bị chặn!", "error");
-        return { success: false, reason: 'error' };
+        // Mọi lỗi còn lại (popup-blocked, network-request-failed do Brave Shields chặn cookie, internal-error do Adguard)
+        // Đều được quy về nguyên nhân do Trình chặn quảng cáo phá bĩnh.
+        console.error("Lỗi đăng nhập bị chặn:", error);
+        return { success: false, reason: 'blocked' };
       }
     }
   };

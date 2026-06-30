@@ -11,7 +11,7 @@ export default function Layout() {
 
   const detectAdblock = () => {
     return new Promise((resolve) => {
-      // 1. Kiểm tra bằng mồi nhử DOM (Bắt uBlock Origin, Adblock Plus)
+      // Lớp 1: Bẫy tàng hình DOM (Bắt uBlock, Adblock Plus)
       const ad = document.createElement('div');
       ad.innerHTML = '&nbsp;';
       ad.className = 'adsbox ad-placement doubleclick ad-placeholder';
@@ -20,23 +20,9 @@ export default function Layout() {
       document.body.appendChild(ad);
       
       setTimeout(() => {
-        const isDomBlocked = ad.offsetHeight === 0 || window.getComputedStyle(ad).display === 'none';
+        const isDomBlocked = window.getComputedStyle(ad).display === 'none' || ad.offsetHeight === 0;
         document.body.removeChild(ad);
-        
-        if (isDomBlocked) {
-          resolve(true); 
-          return;
-        }
-
-        // 2. Bẫy Network (Bắt AdGuard Desktop, Brave Shields)
-        // Những trình chặn ở cấp độ mạng hoặc trình duyệt sẽ ngắt kết nối fetch.
-        fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", { 
-          method: 'HEAD',
-          mode: 'no-cors', 
-          cache: 'no-store' 
-        })
-        .then(() => resolve(false))
-        .catch(() => resolve(true));
+        resolve(isDomBlocked);
       }, 100); 
     });
   };
