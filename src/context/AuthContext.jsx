@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db, googleProvider } from "../firebase"; 
-import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from "firebase/auth"; 
+import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth"; 
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"; 
 import { useNotification } from "./NotificationContext";
 import LoadingLogo from "../components/LoadingLogo";
@@ -62,7 +62,9 @@ export function AuthProvider({ children }) {
         if (currentUser) {
           const userDocRef = doc(db, "users", currentUser.uid);
           
-          unsubsDoc = onSnapshot(userDocRef, async (docSnap) => {
+          // Bước 1: Kiểm tra an toàn bằng getDoc (không bị lỗi cache như onSnapshot)
+          try {
+            const docSnap = await getDoc(userDocRef);
             if (!docSnap.exists()) {
               // TẠO MỚI KHI LẦN ĐẦU ĐĂNG NHẬP
               await setDoc(userDocRef, {
@@ -73,14 +75,22 @@ export function AuthProvider({ children }) {
                 isApproved: false,
                 createdAt: new Date().toISOString()
               });
-              setIsApproved(false);
-              setUserData(null);
               // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
               await notifyAdmin(currentUser.displayName, currentUser.email, currentUser.uid);
-            } else {
+            }
+          } catch (e) {
+            console.error("Lỗi khởi tạo user:", e);
+          }
+
+          // Bước 2: Lắng nghe thay đổi real-time
+          unsubsDoc = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists()) {
               // ĐÃ CÓ TÀI KHOẢN -> Lấy trạng thái duyệt và data
               setIsApproved(docSnap.data().isApproved || false);
               setUserData(docSnap.data());
+            } else {
+              setIsApproved(false);
+              setUserData(null);
             }
             setUser(currentUser);
             setLoading(false); // Bắt buộc chờ có data mới tắt Loading
@@ -118,19 +128,11 @@ export function AuthProvider({ children }) {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (error) {
-      if (error.code === 'auth/popup-blocked' || (error.message && error.message.includes('popup'))) {
-        showToast("Trình chặn quảng cáo đã chặn cửa sổ! Đang dùng chế độ chuyển hướng...", "warning");
-        setTimeout(() => {
-          signInWithRedirect(auth, googleProvider).catch(err => {
-            console.error("Lỗi chuyển hướng:", err);
-            showToast("Vui lòng TẮT TRÌNH CHẶN QUẢNG CÁO (Adblock/Brave Shields) để đăng nhập!", "error");
-          });
-        }, 1500);
-      } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
-        // Người dùng tự đóng popup, không làm gì cả
+      if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        // Người dùng tự đóng popup
       } else {
         console.error("Lỗi đăng nhập:", error);
-        showToast("Lỗi đăng nhập: Vui lòng tắt Adblock và thử lại!", "error");
+        showToast("Lỗi kết nối hoặc popup bị chặn!", "error");
       }
     }
   };

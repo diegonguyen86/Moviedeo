@@ -1,23 +1,105 @@
 import { Outlet } from "react-router-dom";
 import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
+import { useState, useEffect } from "react";
 
 export default function Layout() {
-  // BỔ SUNG: Lấy thêm hàm logout từ useAuth
   const { user, isApproved, loginWithGoogle, logout } = useAuth();
+  
+  const [showAdblockModal, setShowAdblockModal] = useState(false);
+  const [isCheckingAdblock, setIsCheckingAdblock] = useState(false);
+
+  const detectAdblock = () => {
+    return new Promise((resolve) => {
+      // 1. Kiểm tra bằng mồi nhử DOM (Bắt uBlock Origin, Adblock Plus)
+      const ad = document.createElement('div');
+      ad.innerHTML = '&nbsp;';
+      ad.className = 'adsbox ad-placement doubleclick ad-placeholder';
+      ad.style.position = 'absolute';
+      ad.style.top = '-1000px';
+      document.body.appendChild(ad);
+      
+      setTimeout(() => {
+        const isDomBlocked = ad.offsetHeight === 0 || window.getComputedStyle(ad).display === 'none';
+        document.body.removeChild(ad);
+        
+        if (isDomBlocked) {
+          resolve(true); 
+          return;
+        }
+
+        // 2. Kiểm tra bằng bẫy Network (Bắt Brave Shields)
+        fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", { mode: 'no-cors', cache: 'no-store' })
+          .then(() => resolve(false))
+          .catch(() => resolve(true));
+      }, 100); 
+    });
+  };
+
+  const handleLoginClick = async () => {
+    setIsCheckingAdblock(true);
+    const hasAdblock = await detectAdblock();
+    setIsCheckingAdblock(false);
+
+    if (hasAdblock) {
+      setShowAdblockModal(true);
+    } else {
+      setShowAdblockModal(false);
+      loginWithGoogle();
+    }
+  };
+  
+  useEffect(() => {
+    // Chỉ kiểm tra khi ở màn hình chưa đăng nhập
+    if (!user) {
+      detectAdblock().then(hasAdblock => {
+        if (hasAdblock) {
+          setShowAdblockModal(true);
+        }
+      });
+    }
+  }, [user]);
 
   // 1. NẾU CHƯA ĐĂNG NHẬP: Bắt buộc đăng nhập
   if (!user) {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
+        
+        {/* Adblock Modal */}
+        {showAdblockModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-md">
+            <div className="relative w-full max-w-md bg-zinc-900 border border-red-500/50 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.2)] p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
+              <span className="material-symbols-outlined text-6xl text-red-500 mb-4 animate-bounce">gpp_bad</span>
+              <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Phát hiện Adblock!</h2>
+              <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                Hệ thống phát hiện bạn đang sử dụng <b>Trình chặn quảng cáo (Adblock)</b> hoặc trình duyệt <b>Brave</b>. Điều này sẽ khiến cửa sổ đăng nhập bị lỗi.
+                <br/><br/>
+                Vui lòng <span className="text-white font-bold">TẮT TRÌNH CHẶN QUẢNG CÁO</span> cho trang web này để tiếp tục!
+              </p>
+              <button 
+                onClick={handleLoginClick}
+                disabled={isCheckingAdblock}
+                className="w-full bg-white text-black hover:bg-zinc-200 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"
+              >
+                {isCheckingAdblock ? (
+                  <><span className="material-symbols-outlined animate-spin">progress_activity</span> Đang quét lại...</>
+                ) : "TÔI ĐÃ TẮT, KIỂM TRA LẠI"}
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="max-w-md text-center space-y-8">
           <h1 className="text-5xl font-black text-primary uppercase tracking-tighter">KHO ẢNH CAO CẤP</h1>
           <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để khám phá bộ sưu tập thư viện ảnh nhé!</p>
           <button 
-            onClick={loginWithGoogle}
-            className="w-full bg-primary hover:bg-primary-fixed text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(var(--primary-rgb),0.3)] active:scale-95"
+            onClick={handleLoginClick}
+            disabled={isCheckingAdblock}
+            className="w-full bg-primary hover:bg-primary-fixed text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(var(--primary-rgb),0.3)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
           >
-            ĐĂNG NHẬP BẰNG GOOGLE
+            {isCheckingAdblock ? (
+              <><span className="material-symbols-outlined animate-spin">progress_activity</span> Đang kiểm tra bảo mật...</>
+            ) : "ĐĂNG NHẬP BẰNG GOOGLE"}
           </button>
         </div>
       </div>
