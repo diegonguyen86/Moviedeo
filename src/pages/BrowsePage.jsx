@@ -99,7 +99,6 @@ export default function BrowsePage() {
         slug: location.state.slug,
         type: location.state.type
       });
-      setSearchQuery("");
       sessionStorage.removeItem("savedSearch");
     }
   }, [location.state]); 
@@ -128,10 +127,8 @@ export default function BrowsePage() {
 
         let items = res?.data?.items || res?.items || [];
         
-        // Deduplicate if we are searching
-        if (debouncedQuery.trim().length > 0) {
-          items = deduplicateSeasons(items);
-        }
+        // Không còn search trong BrowsePage nên không cần deduplicateSeasons ở đây nữa
+        // (hoặc nếu cần thì gọi deduplicateSeasons luôn)
         
         const apiTotalPages = res?.data?.params?.pagination?.totalPages || res?.pagination?.totalPages || 1;
 
