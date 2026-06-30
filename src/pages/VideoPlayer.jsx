@@ -151,10 +151,17 @@ export default function VideoPlayer() {
   const saveToFirebase = async () => {
     if (!user || !currentMovieName) return;
     try {
+      const currentProgress = videoRef.current?.currentTime || currentTime;
+      
+      // Backup tiến trình vào máy để chắc chắn 100% không mất
+      if (currentProgress > 0) {
+        localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, currentProgress);
+      }
+
       const historyRef = doc(db, "users", user.uid, "watchHistory", currentSlug);
       await setDoc(historyRef, {
         slug: currentSlug, movieId: currentSlug, title: currentMovieName, epName: currentEpName,
-        image: currentPosterUrl, progress: videoRef.current?.currentTime || currentTime, lastWatched: serverTimestamp() 
+        image: currentPosterUrl, progress: currentProgress, lastWatched: serverTimestamp() 
       });
 
       // Lưu thời gian xem thực tế vào global
@@ -189,8 +196,16 @@ export default function VideoPlayer() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    saveToFirebase();
   }, [currentVideo, useIframe]);
+
+  // ĐẢM BẢO LƯU TIẾN TRÌNH KHI NGƯỜI DÙNG RỜI KHỎI TRANG (UNMOUNT)
+  const saveProgressRef = useRef(saveToFirebase);
+  useEffect(() => { saveProgressRef.current = saveToFirebase; });
+  useEffect(() => {
+    return () => {
+      saveProgressRef.current();
+    };
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
