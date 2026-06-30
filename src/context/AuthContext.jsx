@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db, googleProvider } from "../firebase"; 
-import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth"; 
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, signOut } from "firebase/auth"; 
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"; 
+import { useNotification } from "./NotificationContext";
 import LoadingLogo from "../components/LoadingLogo";
 
 const AuthContext = createContext();
@@ -104,7 +105,29 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const loginWithGoogle = () => signInWithPopup(auth, googleProvider);
+  const { showToast } = useNotification();
+
+  const loginWithGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      if (error.code === 'auth/popup-blocked' || (error.message && error.message.includes('popup'))) {
+        showToast("Trình chặn quảng cáo đã chặn cửa sổ! Đang dùng chế độ chuyển hướng...", "warning");
+        setTimeout(() => {
+          signInWithRedirect(auth, googleProvider).catch(err => {
+            console.error("Lỗi chuyển hướng:", err);
+            showToast("Vui lòng TẮT TRÌNH CHẶN QUẢNG CÁO (Adblock/Brave Shields) để đăng nhập!", "error");
+          });
+        }, 1500);
+      } else if (error.code === 'auth/cancelled-popup-request' || error.code === 'auth/popup-closed-by-user') {
+        // Người dùng tự đóng popup, không làm gì cả
+      } else {
+        console.error("Lỗi đăng nhập:", error);
+        showToast("Lỗi đăng nhập: Vui lòng tắt Adblock và thử lại!", "error");
+      }
+    }
+  };
+
   const logout = () => signOut(auth);
 
   const getRankInfo = (seconds = 0) => {
