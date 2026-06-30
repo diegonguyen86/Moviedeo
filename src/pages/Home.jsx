@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import HeroBanner from "../components/HeroBanner";
 import MovieCarousel from "../components/MovieCarousel";
+import WelcomePopup from "../components/WelcomePopup";
 import { 
   apiGetPhimTheoDanhSach, 
   apiGetPhimTheoQuocGia, 
@@ -189,6 +190,9 @@ function Home() {
           />
         ))}
       </div>
+      
+      {/* Popup dễ thương hiện lên mỗi khi vào trang */}
+      <WelcomePopup />
     </main>
   );
 }
