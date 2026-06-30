@@ -82,12 +82,20 @@ export function AuthProvider({ children }) {
               setIsApproved(docSnap.data().isApproved || false);
               setUserData(docSnap.data());
             }
+            setUser(currentUser);
+            setLoading(false); // Bắt buộc chờ có data mới tắt Loading
+          }, (err) => {
+            console.error("Lỗi kết nối Firestore (Có thể do Adblock):", err);
+            // Vẫn phải tắt loading để không bị treo màn hình đen mãi mãi
+            setUser(currentUser);
+            setIsApproved(false);
+            setLoading(false);
           });
-          setUser(currentUser);
         } else {
           setUser(null);
           setIsApproved(false);
           setUserData(null);
+          setLoading(false);
           if (unsubsDoc) {
             unsubsDoc();
             unsubsDoc = null;
@@ -95,7 +103,6 @@ export function AuthProvider({ children }) {
         }
       } catch (error) {
         console.error("Firebase/Auth Error:", error);
-      } finally {
         setLoading(false);
       }
     });
