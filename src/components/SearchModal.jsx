@@ -99,14 +99,14 @@ export default function SearchModal({ isOpen, onClose }) {
               {movies.map((movie) => (
                 <button 
                   key={movie.id} 
-                  onClick={() => handleSelectMovie(movie.slug)} 
+                  onClick={() => handleSelectMovie(movie.id)} 
                   className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 transition-colors text-left"
                 >
-                  <img src={getFullImageUrl(movie.thumb_url)} alt={movie.name} className="w-12 h-16 object-cover rounded-md shadow-md" />
+                  <img src={movie.image} alt={movie.title} className="w-12 h-16 object-cover rounded-md shadow-md bg-zinc-800" />
                   <div className="flex-1 overflow-hidden">
-                    <h4 className="text-white text-sm font-bold truncate">{movie.name}</h4>
-                    <p className="text-zinc-400 text-xs truncate">{movie.origin_name}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <h4 className="text-white text-sm font-bold truncate">{movie.title}</h4>
+                    <p className="text-zinc-400 text-[11px] truncate mt-0.5">{movie.lang}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-[10px] font-bold text-black bg-white px-1.5 py-0.5 rounded-sm">{movie.year}</span>
                       <span className="text-[10px] font-bold text-red-500 bg-red-500/20 px-1.5 py-0.5 rounded-sm uppercase">{movie.quality}</span>
                     </div>
