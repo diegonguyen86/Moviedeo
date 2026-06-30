@@ -134,37 +134,28 @@ export default function MovieDetail() {
         </div>
 
         <div className="md:col-span-3 space-y-12">
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold border-l-4 border-primary pl-4 uppercase tracking-wider">Nội dung phim</h2>
-              <div className="text-zinc-400 leading-relaxed text-lg italic bg-zinc-900/30 p-6 rounded-2xl border border-white/5" dangerouslySetInnerHTML={{ __html: movieDetails.content || "Chưa có nội dung mô tả." }} />
-            </div>
+          
+          {/* PHẦN CHỌN TẬP PHIM (ĐÃ ĐƯỢC ĐẨY LÊN TRÊN ĐỂ TIỆN DỤNG HƠN) */}
+          <div className="bg-zinc-900/50 p-6 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 shadow-inner relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[50px] rounded-full pointer-events-none"></div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-8 gap-x-12 text-sm bg-zinc-900/20 p-8 rounded-2xl border border-white/5">
-              <div className="flex flex-col gap-1"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Đạo diễn</span><span className="text-zinc-200 text-base">{Array.isArray(movieDetails.director) ? movieDetails.director.join(", ") : "Đang cập nhật"}</span></div>
-              <div className="flex flex-col gap-1"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Năm phát hành</span><span className="text-zinc-200 text-base">{movieDetails.year}</span></div>
-              <div className="flex flex-col gap-1 md:col-span-2"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Diễn viên</span><span className="text-zinc-200 text-base leading-relaxed">{Array.isArray(movieDetails.actor) ? movieDetails.actor.join(", ") : "Đang cập nhật"}</span></div>
-            </div>
-          </div>
-
-          <div className="bg-zinc-900/50 p-8 rounded-3xl border border-white/5 shadow-inner">
-            <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-              <span className="material-symbols-outlined text-primary">playlist_play</span>
-              <h3 className="text-xl font-bold uppercase tracking-tight">Chọn tập phim</h3>
+            <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4 relative z-10">
+              <span className="material-symbols-outlined text-primary text-[28px]">playlist_play</span>
+              <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">Danh sách tập phim</h3>
             </div>
             
             {/* SEASON SELECTOR */}
             {relatedSeasons.length > 1 && (
-              <div className="mb-8 border-b border-white/5 pb-6">
-                <h4 className="text-sm font-bold text-zinc-500 uppercase tracking-widest mb-4">Phần phim (Seasons)</h4>
-                <div className="flex flex-wrap gap-3">
+              <div className="mb-8 border-b border-white/5 pb-6 relative z-10">
+                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Phần phim (Seasons)</h4>
+                <div className="flex flex-wrap gap-2 md:gap-3">
                   {relatedSeasons.map(season => {
                     const isActive = season.id === id;
                     return (
                       <button 
                         key={season.id}
                         onClick={() => !isActive && navigate(`/movie/${season.id}`)}
-                        className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 border ${isActive ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)]" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-white hover:bg-zinc-700"}`}
+                        className={`px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all duration-300 border ${isActive ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-105" : "bg-zinc-800/80 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-700 hover:border-zinc-500 hover:scale-105"}`}
                       >
                         Phần {season.seasonNumber}
                       </button>
@@ -175,10 +166,10 @@ export default function MovieDetail() {
             )}
             
             {movieServers.length > 1 && (
-              <div className="flex flex-wrap gap-2 mb-6 p-1.5 bg-black/50 rounded-xl w-fit border border-white/5">
+              <div className="flex flex-wrap gap-2 mb-6 p-1 bg-black/40 rounded-xl w-fit border border-white/5 relative z-10 backdrop-blur-sm">
                 {movieServers.map((server, index) => (
                   <button key={index} onClick={() => setSelectedServerIndex(index)}
-                    className={`px-5 py-2 rounded-lg font-bold text-sm transition-all duration-300 ${selectedServerIndex === index ? "bg-primary text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-zinc-800"}`}
+                    className={`px-4 py-1.5 md:px-5 md:py-2 rounded-lg font-bold text-xs md:text-sm transition-all duration-300 ${selectedServerIndex === index ? "bg-primary text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/10"}`}
                   >
                     {server.server_name}
                   </button>
@@ -186,13 +177,12 @@ export default function MovieDetail() {
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 md:gap-3 relative z-10">
               {currentEpisodes.map((ep) => (
                 <button key={ep.slug}
                   onClick={() => {
                     navigate(`/play/${id}`, { 
                       state: { 
-                        // MAPPING CHUẨN XÁC BAO THẦU CẢ KKPHIM VÀ NGUONC
                         videoUrl: ep.link_m3u8 || ep.m3u8 || "", 
                         embedFallback: ep.link_embed || ep.embed || "", 
                         movieName: movieDetails.name, 
@@ -203,11 +193,25 @@ export default function MovieDetail() {
                       } 
                     });
                   }}
-                  className="min-w-[65px] h-12 px-4 flex items-center justify-center bg-zinc-800 hover:bg-primary text-white rounded-xl font-bold transition-all duration-300 border border-white/5"
+                  className="min-w-[60px] md:min-w-[65px] h-10 md:h-12 px-3 md:px-4 flex items-center justify-center bg-zinc-800/80 hover:bg-primary text-white rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all duration-300 border border-white/5 hover:scale-110 hover:shadow-[0_0_15px_rgba(229,9,20,0.4)]"
                 >
                   {ep.name}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* PHẦN NỘI DUNG PHIM (ĐẨY XUỐNG DƯỚI) */}
+          <div className="space-y-6 md:space-y-8">
+            <div className="space-y-3 md:space-y-4">
+              <h2 className="text-xl md:text-2xl font-bold border-l-4 border-primary pl-4 uppercase tracking-wider">Nội dung phim</h2>
+              <div className="text-zinc-400 leading-relaxed text-base md:text-lg italic bg-zinc-900/30 p-4 md:p-6 rounded-2xl border border-white/5" dangerouslySetInnerHTML={{ __html: movieDetails.content || "Chưa có nội dung mô tả." }} />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 md:gap-y-8 gap-x-12 text-sm bg-zinc-900/20 p-5 md:p-8 rounded-2xl border border-white/5">
+              <div className="flex flex-col gap-1"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Đạo diễn</span><span className="text-zinc-200 text-sm md:text-base">{Array.isArray(movieDetails.director) ? movieDetails.director.join(", ") : "Đang cập nhật"}</span></div>
+              <div className="flex flex-col gap-1"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Năm phát hành</span><span className="text-zinc-200 text-sm md:text-base">{movieDetails.year}</span></div>
+              <div className="flex flex-col gap-1 md:col-span-2"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Diễn viên</span><span className="text-zinc-200 text-sm md:text-base leading-relaxed">{Array.isArray(movieDetails.actor) ? movieDetails.actor.join(", ") : "Đang cập nhật"}</span></div>
             </div>
           </div>
           
