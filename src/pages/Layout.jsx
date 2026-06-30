@@ -23,8 +23,20 @@ export default function Layout() {
         const isDomBlocked = ad.offsetHeight === 0 || window.getComputedStyle(ad).display === 'none';
         document.body.removeChild(ad);
         
-        // Bỏ bẫy network vì nó sẽ bắt nhầm Pi-hole, NextDNS, VPN, hoặc các trình duyệt tự block tracker (như Edge, Safari)
-        resolve(isDomBlocked);
+        if (isDomBlocked) {
+          resolve(true); 
+          return;
+        }
+
+        // 2. Bẫy Network (Bắt AdGuard Desktop, Brave Shields)
+        // Những trình chặn ở cấp độ mạng hoặc trình duyệt sẽ ngắt kết nối fetch.
+        fetch("https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js", { 
+          method: 'HEAD',
+          mode: 'no-cors', 
+          cache: 'no-store' 
+        })
+        .then(() => resolve(false))
+        .catch(() => resolve(true));
       }, 100); 
     });
   };
@@ -38,7 +50,10 @@ export default function Layout() {
       setShowAdblockModal(true);
     } else {
       setShowAdblockModal(false);
-      loginWithGoogle();
+      const result = await loginWithGoogle();
+      if (result && result.reason === 'blocked') {
+        setShowAdblockModal(true);
+      }
     }
   };
   
