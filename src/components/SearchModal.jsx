@@ -67,7 +67,8 @@ export default function SearchModal({ isOpen, onClose }) {
       {/* Vùng vô hình đóng popup khi click ra ngoài */}
       <div className="fixed inset-0 z-40" onClick={onClose}></div>
 
-      <div className="absolute right-0 top-[120%] mt-2 w-[320px] md:w-[400px] bg-zinc-950/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-4 duration-200">
+      {/* MOBILE: fixed top-20 left-4 right-4 | PC: absolute right-0 top-120% */}
+      <div className="fixed md:absolute right-4 left-4 md:left-auto md:right-0 top-[80px] md:top-[120%] md:mt-2 w-auto md:w-[400px] bg-zinc-950/90 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-4 duration-200">
         
         {/* Ô Nhập Liệu */}
         <div className="relative border-b border-white/10">
