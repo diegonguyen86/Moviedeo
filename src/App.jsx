@@ -9,6 +9,7 @@ import VideoPlayer from "./pages/VideoPlayer";
 import BrowsePage from "./pages/BrowsePage";
 import ScrollToTop from "./components/ScrollToTop";
 import LiveCommentTicker from "./components/LiveCommentTicker";
+import TVLogin from "./pages/TVLogin";
 
 // 👇 BƯỚC 1: Import trang Admin Khôi vừa tạo vào đây
 import TrendingManage from "./pages/TrendingManage";
@@ -29,6 +30,7 @@ function App() {
             <Route path="movie/:id" element={<MovieDetail />} />
             <Route path="search" element={<BrowsePage />} />
             <Route path="profile" element={<UserProfile />} />
+            <Route path="tv" element={<TVLogin />} />
             
             {/* 👇 BƯỚC 2: Mở một "cánh cửa ẩn" cho trang Admin */}
             <Route path="admin/trending" element={<TrendingManage />} />
