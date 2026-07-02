@@ -67,32 +67,35 @@ export default function TVLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141414] text-white flex flex-col items-center justify-center p-6">
-      <div className="bg-[#1f1f1f] border border-gray-800 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl">
-        <h2 className="text-3xl font-black mb-2 text-red-600 uppercase tracking-widest">Phim Hay Quá Trời TV</h2>
-        <p className="text-gray-400 mb-8">Đăng nhập cực nhanh trên Smart TV của bạn</p>
+    <div className="min-h-screen bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1925&auto=format&fit=crop')] bg-cover bg-center text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      {/* Background mờ ảo cho glassmorphism */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-0"></div>
+      
+      <div className="relative z-10 bg-white/5 backdrop-blur-xl border border-white/20 p-8 rounded-3xl max-w-md w-full text-center shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+        <h2 className="text-3xl font-black mb-2 text-white uppercase tracking-widest drop-shadow-md">Phim Hay Quá Trời TV</h2>
+        <p className="text-zinc-400 mb-8">Đăng nhập cực nhanh trên Smart TV của bạn</p>
 
         {status === 'success' ? (
           <div className="flex flex-col items-center animate-fade-in">
-            <div className="w-20 h-20 bg-green-600/20 text-green-500 rounded-full flex items-center justify-center mb-6">
+            <div className="w-20 h-20 bg-green-500/20 border border-green-500/30 text-green-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(34,197,94,0.2)]">
               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
             </div>
             <h3 className="text-2xl font-bold mb-2">Thành công!</h3>
-            <p className="text-gray-400 mb-6">TV của bạn đã được đăng nhập. Hãy kiểm tra màn hình TV.</p>
+            <p className="text-zinc-400 mb-6">TV của bạn đã được đăng nhập. Hãy kiểm tra màn hình TV.</p>
             <button 
               onClick={() => navigate('/')}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg w-full transition-colors"
+              className="bg-white/20 border border-white/30 backdrop-blur-md hover:bg-white/30 text-white font-bold py-3 px-8 rounded-xl w-full transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
             >
               Quay lại Trang Chủ
             </button>
           </div>
         ) : (
           <div className="flex flex-col items-center">
-            <div className="w-24 h-24 bg-red-600/10 text-red-500 rounded-full flex items-center justify-center mb-8 border border-red-500/20">
+            <div className="w-24 h-24 bg-white/10 text-white rounded-full flex items-center justify-center mb-8 border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
             </div>
             
-            <p className="text-gray-300 font-medium mb-6">Nhập mã hiển thị trên TV của bạn:</p>
+            <p className="text-zinc-300 font-medium mb-6 drop-shadow-md">Nhập mã hiển thị trên TV của bạn:</p>
             
             <div className="relative w-full mb-2 flex justify-center gap-2 sm:gap-4">
               {[0, 1, 2, 3, 4, 5].map((index) => {
@@ -101,9 +104,9 @@ export default function TVLogin() {
                 return (
                   <div 
                     key={index} 
-                    className={`w-12 h-16 sm:w-14 sm:h-20 flex items-center justify-center text-3xl sm:text-4xl font-black uppercase rounded-xl transition-all duration-300
-                      ${char ? 'bg-red-600 text-white border border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-110' : 'bg-[#141414] border border-gray-700 text-gray-500'}
-                      ${isActive && !char ? 'border-2 border-red-500 bg-[#1a1a1a]' : ''}
+                    className={`w-12 h-16 sm:w-14 sm:h-20 flex items-center justify-center text-3xl sm:text-4xl font-black uppercase rounded-xl transition-all duration-300 backdrop-blur-md
+                      ${char ? 'bg-white/20 text-white border border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.2)] scale-110' : 'bg-white/5 border border-white/10 text-zinc-500'}
+                      ${isActive && !char ? 'border-2 border-white/50 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)]' : ''}
                     `}
                   >
                     {char}
@@ -125,13 +128,13 @@ export default function TVLogin() {
             </div>
             
             {status === 'error' && (
-              <p className="text-red-500 text-sm font-medium mt-4 mb-2 w-full text-center">{errorMessage}</p>
+              <p className="text-error text-sm font-medium mt-4 mb-2 w-full text-center drop-shadow-md">{errorMessage}</p>
             )}
 
             <button 
               onClick={handleApprove}
               disabled={status === 'loading' || code.length < 6}
-              className={`mt-6 w-full py-4 rounded-xl font-bold text-lg transition-all flex justify-center items-center ${code.length === 6 ? 'bg-red-600 hover:bg-red-700 shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
+              className={`mt-6 w-full py-4 rounded-2xl font-bold text-lg transition-all flex justify-center items-center backdrop-blur-md border border-white/20 ${code.length === 6 ? 'bg-white/20 hover:bg-white/30 text-white shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95' : 'bg-white/5 text-zinc-500 cursor-not-allowed border-white/5'}`}
             >
               {status === 'loading' ? (
                 <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -139,11 +142,11 @@ export default function TVLogin() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               ) : (
-                'CẤP QUYỀN ĐĂNG NHẬP'
+                'XÁC NHẬN'
               )}
             </button>
-            <p className="text-gray-500 text-xs mt-4">
-              Bằng cách cấp quyền, TV sẽ đăng nhập dưới tài khoản {user?.email || 'của bạn'}.
+            <p className="text-zinc-500 text-xs mt-4">
+              Bằng cách xác nhận, TV sẽ đăng nhập dưới tài khoản {user?.email || 'của bạn'}.
             </p>
           </div>
         )}

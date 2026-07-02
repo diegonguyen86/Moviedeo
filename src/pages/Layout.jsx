@@ -84,12 +84,12 @@ export default function Layout() {
         )}
 
         <div className="max-w-md text-center space-y-8">
-          <h1 className="text-5xl font-black text-primary uppercase tracking-tighter">KHO ẢNH CAO CẤP</h1>
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">KHO ẢNH CAO CẤP</h1>
           <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để khám phá bộ sưu tập thư viện ảnh nhé!</p>
           <button 
             onClick={handleLoginClick}
             disabled={isCheckingAdblock}
-            className="w-full bg-primary hover:bg-primary-fixed text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(var(--primary-rgb),0.3)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+            className="w-full bg-white/20 border border-white/30 backdrop-blur-md hover:bg-white/30 text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
           >
             {isCheckingAdblock ? (
               <><span className="material-symbols-outlined animate-spin">progress_activity</span> Đang kiểm tra bảo mật...</>
@@ -105,8 +105,8 @@ export default function Layout() {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
         <div className="max-w-xl text-center space-y-6">
-          <span className="material-symbols-outlined text-8xl text-primary animate-pulse">lock_person</span>
-          <h2 className="text-4xl font-black uppercase tracking-tighter text-primary">DỪNG LẠI NÍ ƠI!</h2>
+          <span className="material-symbols-outlined text-8xl text-white animate-pulse">lock_person</span>
+          <h2 className="text-4xl font-black uppercase tracking-tighter text-white">DỪNG LẠI NÍ ƠI!</h2>
           
           <div className="space-y-2">
             <p className="text-xl text-zinc-300 font-bold">Tài khoản của bạn đang chờ phê duyệt.</p>

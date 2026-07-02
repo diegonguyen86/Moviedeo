@@ -30,7 +30,6 @@ function App() {
             <Route path="movie/:id" element={<MovieDetail />} />
             <Route path="search" element={<BrowsePage />} />
             <Route path="profile" element={<UserProfile />} />
-            <Route path="tv" element={<TVLogin />} />
             
             {/* 👇 BƯỚC 2: Mở một "cánh cửa ẩn" cho trang Admin */}
             <Route path="admin/trending" element={<TrendingManage />} />
@@ -39,6 +38,9 @@ function App() {
 
           {/* Trang xem phim (Tự bảo vệ bên trong component) */}
           <Route path="/play/:id" element={<VideoPlayer />} />
+          
+          {/* Trang đăng nhập TV (Không có Menu) */}
+          <Route path="/tv" element={<TVLogin />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
