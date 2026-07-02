@@ -8,7 +8,8 @@ export default function AppLinksManage() {
   const [links, setLinks] = useState({
     android: "",
     ios: "",
-    tv: ""
+    tv: "",
+    latestVersion: ""
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -50,6 +51,19 @@ export default function AppLinksManage() {
       <div className="bg-white/10 p-6 rounded-2xl max-w-2xl">
         <div className="flex flex-col gap-6">
           
+          {/* Phiên bản bắt buộc cập nhật */}
+          <div>
+            <label className="block text-sm font-bold text-zinc-400 mb-2">Phiên bản App mới nhất (Bắt buộc cập nhật)</label>
+            <input 
+              type="text" 
+              value={links.latestVersion || ""}
+              onChange={(e) => setLinks({...links, latestVersion: e.target.value})}
+              placeholder="VD: 1.0.1"
+              className="w-full bg-black/50 border border-white/20 rounded-xl p-4 text-white focus:outline-none focus:border-yellow-500 transition-colors"
+            />
+            <p className="text-zinc-500 text-xs mt-2 italic">* Nếu phiên bản App trên máy người dùng nhỏ hơn số này, họ sẽ bị bắt buộc phải tải app mới.</p>
+          </div>
+
           {/* Android Link */}
           <div>
             <label className="block text-sm font-bold text-zinc-400 mb-2">Link tải Android (APK)</label>
