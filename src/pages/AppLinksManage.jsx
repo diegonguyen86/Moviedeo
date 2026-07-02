@@ -6,10 +6,7 @@ import { useNotification } from "../context/NotificationContext";
 export default function AppLinksManage() {
   const { showToast } = useNotification();
   const [links, setLinks] = useState({
-    android: "",
-    ios: "",
-    tv: "",
-    latestVersion: ""
+    ios: ""
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,51 +48,19 @@ export default function AppLinksManage() {
       <div className="bg-white/10 p-6 rounded-2xl max-w-2xl">
         <div className="flex flex-col gap-6">
           
-          {/* Phiên bản bắt buộc cập nhật */}
-          <div>
-            <label className="block text-sm font-bold text-zinc-400 mb-2">Phiên bản App mới nhất (Bắt buộc cập nhật)</label>
-            <input 
-              type="text" 
-              value={links.latestVersion || ""}
-              onChange={(e) => setLinks({...links, latestVersion: e.target.value})}
-              placeholder="VD: 1.0.1"
-              className="w-full bg-black/50 border border-white/20 rounded-xl p-4 text-white focus:outline-none focus:border-yellow-500 transition-colors"
-            />
-            <p className="text-zinc-500 text-xs mt-2 italic">* Nếu phiên bản App trên máy người dùng nhỏ hơn số này, họ sẽ bị bắt buộc phải tải app mới.</p>
-          </div>
-
-          {/* Android Link */}
-          <div>
-            <label className="block text-sm font-bold text-zinc-400 mb-2">Link tải Android (APK)</label>
-            <input 
-              type="text" 
-              value={links.android || ""}
-              onChange={(e) => setLinks({...links, android: e.target.value})}
-              placeholder="VD: /downloads/moviedeo-latest.apk hoặc https://link-cua-ban..."
-              className="w-full bg-black/50 border border-white/20 rounded-xl p-4 text-white focus:outline-none focus:border-yellow-500 transition-colors"
-            />
-          </div>
+          <p className="text-zinc-500 mb-6 leading-relaxed">
+            * Các đường dẫn tải app cho Android và Smart TV đã được tự động hóa thông qua Github Releases. 
+            Bạn không cần cấu hình tại đây nữa. Khu vực này chỉ dành cho Link tải iOS (IPA hoặc Testflight).
+          </p>
 
           {/* iOS Link */}
           <div>
-            <label className="block text-sm font-bold text-zinc-400 mb-2">Link tải iOS (IPA)</label>
+            <label className="block text-sm font-bold text-zinc-400 mb-2">Link tải iOS (IPA / Testflight)</label>
             <input 
               type="text" 
               value={links.ios || ""}
               onChange={(e) => setLinks({...links, ios: e.target.value})}
-              placeholder="VD: /downloads/moviedeo-latest.ipa"
-              className="w-full bg-black/50 border border-white/20 rounded-xl p-4 text-white focus:outline-none focus:border-yellow-500 transition-colors"
-            />
-          </div>
-
-          {/* TV Link */}
-          <div>
-            <label className="block text-sm font-bold text-zinc-400 mb-2">Link tải Smart TV (APK)</label>
-            <input 
-              type="text" 
-              value={links.tv || ""}
-              onChange={(e) => setLinks({...links, tv: e.target.value})}
-              placeholder="Để trống nếu chưa ra mắt..."
+              placeholder="VD: https://testflight.apple.com/join/..."
               className="w-full bg-black/50 border border-white/20 rounded-xl p-4 text-white focus:outline-none focus:border-yellow-500 transition-colors"
             />
           </div>
