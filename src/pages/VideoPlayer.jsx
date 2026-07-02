@@ -40,6 +40,9 @@ export default function VideoPlayer() {
   
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [seekTime, setSeekTime] = useState(0);
+  const lastSavedTimeRef = useRef(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
@@ -435,22 +438,34 @@ export default function VideoPlayer() {
     const rect = progressBarRef.current.getBoundingClientRect();
     let pos = (e.clientX - rect.left) / rect.width;
     pos = Math.max(0, Math.min(1, pos)); 
-    videoRef.current.currentTime = pos * duration;
+    setSeekTime(pos * duration);
   };
 
   const handlePointerDown = (e) => {
     e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
     handlePointerUpdate(e);
   };
 
   const handlePointerMove = (e) => {
-    if (e.buttons === 1) handlePointerUpdate(e); 
+    if (e.buttons === 1 && isDragging) handlePointerUpdate(e); 
+  };
+
+  const handlePointerUp = (e) => {
+    setIsDragging(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = seekTime;
+    }
   };
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
-      localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, videoRef.current.currentTime);
+    if (videoRef.current && !isDragging) {
+      const current = videoRef.current.currentTime;
+      setCurrentTime(current);
+      if (Math.abs(current - lastSavedTimeRef.current) >= 1) {
+        localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, current);
+        lastSavedTimeRef.current = current;
+      }
     }
   };
 
@@ -558,8 +573,8 @@ export default function VideoPlayer() {
     return `Tập ${String(name).replace(/tập/gi, "").replace(/:/g, "").trim()}`;
   };
 
-  if (!currentVideo && !currentEmbed) return null; 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const displayTime = isDragging ? seekTime : currentTime;
+  const progressPercent = duration > 0 ? (displayTime / duration) * 100 : 0;
 
   return (
     <main className="relative min-h-screen bg-[#050505] text-white pt-6 md:pt-12 pb-20 font-sans overflow-hidden select-none">
@@ -793,6 +808,7 @@ export default function VideoPlayer() {
                   className="w-full h-1 md:h-1 hover:h-2 md:hover:h-2 bg-white/20 rounded-full cursor-pointer relative group/progress mb-3 md:mb-5 flex items-center transition-all duration-200" 
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
                 >
                   <div className="absolute -inset-y-4 inset-x-0 bg-transparent z-10"></div> 
                   <div className="h-full bg-white rounded-full relative pointer-events-none shadow-[0_0_15px_rgba(255,255,255,0.8)]" style={{ width: `${progressPercent}%` }}>
@@ -829,7 +845,7 @@ export default function VideoPlayer() {
                     <div className="h-5 w-px bg-white/20 hidden md:block mx-2"></div>
 
                     <span className="text-[10px] md:text-[14px] font-semibold text-white/90 tracking-wide ml-1 md:ml-0">
-                      {formatTime(currentTime)} <span className="mx-0.5 text-white/40">/</span> {formatTime(duration)}
+                      {formatTime(displayTime)} <span className="mx-0.5 text-white/40">/</span> {formatTime(duration)}
                     </span>
                   </div>
 
