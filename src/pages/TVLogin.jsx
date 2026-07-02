@@ -92,19 +92,40 @@ export default function TVLogin() {
                <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
             </div>
             
-            <p className="text-gray-300 font-medium mb-4">Nhập mã hiển thị trên TV của bạn:</p>
+            <p className="text-gray-300 font-medium mb-6">Nhập mã hiển thị trên TV của bạn:</p>
             
-            <input 
-              type="text" 
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="w-full bg-[#141414] border border-gray-700 rounded-xl text-center text-4xl font-black py-4 mb-2 uppercase tracking-[0.25em]"
-              placeholder="------"
-            />
+            <div className="relative w-full mb-2 flex justify-center gap-2 sm:gap-4">
+              {[0, 1, 2, 3, 4, 5].map((index) => {
+                const char = code[index] || '';
+                const isActive = code.length === index || (code.length === 6 && index === 5);
+                return (
+                  <div 
+                    key={index} 
+                    className={`w-12 h-16 sm:w-14 sm:h-20 flex items-center justify-center text-3xl sm:text-4xl font-black uppercase rounded-xl transition-all duration-300
+                      ${char ? 'bg-red-600 text-white border border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-110' : 'bg-[#141414] border border-gray-700 text-gray-500'}
+                      ${isActive && !char ? 'border-2 border-red-500 bg-[#1a1a1a]' : ''}
+                    `}
+                  >
+                    {char}
+                  </div>
+                );
+              })}
+              
+              {/* Thẻ input thật bị ẩn đi, nhưng vẫn bắt sự kiện gõ phím */}
+              <input 
+                type="text" 
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
+                autoFocus
+                autoComplete="off"
+                spellCheck="false"
+              />
+            </div>
             
             {status === 'error' && (
-              <p className="text-red-500 text-sm font-medium mt-2 mb-4 w-full text-left">{errorMessage}</p>
+              <p className="text-red-500 text-sm font-medium mt-4 mb-2 w-full text-center">{errorMessage}</p>
             )}
 
             <button 
