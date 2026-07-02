@@ -69,7 +69,7 @@ export default function TVLogin() {
   return (
     <div className="min-h-screen bg-[#141414] text-white flex flex-col items-center justify-center p-6">
       <div className="bg-[#1f1f1f] border border-gray-800 p-8 rounded-2xl max-w-md w-full text-center shadow-2xl">
-        <h2 className="text-3xl font-black mb-2 text-red-600 uppercase tracking-widest">Moviedeo TV</h2>
+        <h2 className="text-3xl font-black mb-2 text-red-600 uppercase tracking-widest">Phim Hay Quá Trời TV</h2>
         <p className="text-gray-400 mb-8">Đăng nhập cực nhanh trên Smart TV của bạn</p>
 
         {status === 'success' ? (
