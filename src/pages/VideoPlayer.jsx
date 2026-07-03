@@ -54,6 +54,12 @@ export default function VideoPlayer() {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false); 
 
+  // AUTO-SKIP AD REFS
+  const videoCanvasRef = useRef(document.createElement("canvas"));
+  const templateCanvasRef = useRef(document.createElement("canvas"));
+  const hasSkippedAdRef = useRef(false);
+  const templatePixelsRef = useRef(null);
+
   // Cấu hình thời lượng quảng cáo (Tính bằng giây)
   // GHI CHÚ: Sau khi bạn đo xong chính xác quảng cáo dài bao nhiêu giây, hãy sửa số 15 ở đây thành con số thực tế nhé!
   const AD_DURATION_SECONDS = 31;
@@ -85,6 +91,20 @@ export default function VideoPlayer() {
   // TÌM TẬP TIẾP THEO
   const currentIndex = currentEpisodes.findIndex(e => e.name === currentEpName);
   const nextEpisode = currentIndex !== -1 && currentIndex < currentEpisodes.length - 1 ? currentEpisodes[currentIndex + 1] : null;
+
+  // AUTO-SKIP: LOAD TEMPLATE IMAGE
+  useEffect(() => {
+    const img = new Image();
+    img.src = "/ad-template.png";
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      const ctx = templateCanvasRef.current.getContext("2d", { willReadFrequently: true });
+      templateCanvasRef.current.width = img.width;
+      templateCanvasRef.current.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      templatePixelsRef.current = ctx.getImageData(0, 0, img.width, img.height);
+    };
+  }, []);
 
   useEffect(() => {
     if (!videoUrl && !embedFallback) navigate(`/movie/${currentSlug}`, { replace: true });
@@ -361,6 +381,61 @@ export default function VideoPlayer() {
     }
   };
 
+  const detectAdAndSkip = () => {
+    const video = videoRef.current;
+    const template = templatePixelsRef.current;
+    if (!video || !template || hasSkippedAdRef.current) return;
+
+    const ctx = videoCanvasRef.current.getContext("2d", { willReadFrequently: true });
+    
+    // Tỷ lệ vùng chứa logo PG Điện Tử so với kích thước gốc của video (dựa vào hình ảnh cung cấp)
+    const relX = 0.15; // 15% từ lề trái
+    const relY = 0.09; // 9% từ lề trên
+    const relW = 0.05; // logo chiếm khoảng 5% chiều ngang
+    
+    const sx = video.videoWidth * relX;
+    const sy = video.videoHeight * relY;
+    const sw = video.videoWidth * relW;
+    // Giữ nguyên tỷ lệ khung hình của template gốc
+    const sh = sw * (templateCanvasRef.current.height / templateCanvasRef.current.width);
+
+    // Ép kích thước vùng cắt trên video về đúng bằng kích thước của template để dễ so sánh
+    videoCanvasRef.current.width = templateCanvasRef.current.width;
+    videoCanvasRef.current.height = templateCanvasRef.current.height;
+    
+    // Bắt lỗi khi video chưa có kích thước hợp lệ
+    if (sw === 0 || sh === 0 || isNaN(sw) || isNaN(sh)) return;
+
+    ctx.drawImage(
+      video,
+      sx, sy, sw, sh, // Vùng nguồn (cắt từ video)
+      0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height // Đích đến (canvas)
+    );
+
+    const videoPixels = ctx.getImageData(0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height);
+
+    let matchCount = 0;
+    const totalPixels = templateCanvasRef.current.width * templateCanvasRef.current.height;
+    const tolerance = 40; // Độ lệch màu
+
+    for (let i = 0; i < videoPixels.data.length; i += 4) {
+      const rDiff = Math.abs(videoPixels.data[i] - template.data[i]);
+      const gDiff = Math.abs(videoPixels.data[i+1] - template.data[i+1]);
+      const bDiff = Math.abs(videoPixels.data[i+2] - template.data[i+2]);
+
+      if (rDiff <= tolerance && gDiff <= tolerance && bDiff <= tolerance) {
+        matchCount++;
+      }
+    }
+
+    const similarity = matchCount / totalPixels;
+    if (similarity > 0.85) {
+      console.log(`Đã phát hiện quảng cáo! Độ giống: ${(similarity*100).toFixed(1)}%`);
+      handleSkipAd();
+      hasSkippedAdRef.current = true;
+    }
+  };
+
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
@@ -466,6 +541,11 @@ export default function VideoPlayer() {
         localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, current);
         lastSavedTimeRef.current = current;
       }
+
+      // Auto-skip logic: check between 14th and 16th minute
+      if (current >= 840 && current <= 960 && !hasSkippedAdRef.current) {
+        detectAdAndSkip();
+      }
     }
   };
 
@@ -533,6 +613,7 @@ export default function VideoPlayer() {
   const handleSwitchEpisode = (ep) => {
     saveToFirebase(); 
     setActiveCloudProgress(null); 
+    hasSkippedAdRef.current = false; // Reset cờ skip quảng cáo khi chuyển tập
     
     const newVideo = ep.link_m3u8 || ep.m3u8 || "";
     const newEmbed = ep.link_embed || ep.embed || "";
