@@ -547,9 +547,8 @@ export default function VideoPlayer() {
         lastSavedTimeRef.current = current;
       }
 
-      // Auto-skip logic: check between 14th and 16th minute
-      // Cập nhật lại: Check từ giây 800 (13:20) đến 1000 (16:40) cho chắc
-      if (current >= 800 && current <= 1000 && !hasSkippedAdRef.current) {
+      // Auto-skip logic: Quét từ phút 14 (giây 840) đến phút 17 (giây 1020)
+      if (current >= 840 && current <= 1020 && !hasSkippedAdRef.current) {
         detectAdAndSkip();
       }
     }
