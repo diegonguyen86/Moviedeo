@@ -384,55 +384,65 @@ export default function VideoPlayer() {
   const detectAdAndSkip = () => {
     const video = videoRef.current;
     const template = templatePixelsRef.current;
-    if (!video || !template || hasSkippedAdRef.current) return;
-
-    const ctx = videoCanvasRef.current.getContext("2d", { willReadFrequently: true });
     
-    // Tỷ lệ vùng chứa logo PG Điện Tử so với kích thước gốc của video (dựa vào hình ảnh cung cấp)
-    const relX = 0.15; // 15% từ lề trái
-    const relY = 0.09; // 9% từ lề trên
-    const relW = 0.05; // logo chiếm khoảng 5% chiều ngang
-    
-    const sx = video.videoWidth * relX;
-    const sy = video.videoHeight * relY;
-    const sw = video.videoWidth * relW;
-    // Giữ nguyên tỷ lệ khung hình của template gốc
-    const sh = sw * (templateCanvasRef.current.height / templateCanvasRef.current.width);
-
-    // Ép kích thước vùng cắt trên video về đúng bằng kích thước của template để dễ so sánh
-    videoCanvasRef.current.width = templateCanvasRef.current.width;
-    videoCanvasRef.current.height = templateCanvasRef.current.height;
-    
-    // Bắt lỗi khi video chưa có kích thước hợp lệ
-    if (sw === 0 || sh === 0 || isNaN(sw) || isNaN(sh)) return;
-
-    ctx.drawImage(
-      video,
-      sx, sy, sw, sh, // Vùng nguồn (cắt từ video)
-      0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height // Đích đến (canvas)
-    );
-
-    const videoPixels = ctx.getImageData(0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height);
-
-    let matchCount = 0;
-    const totalPixels = templateCanvasRef.current.width * templateCanvasRef.current.height;
-    const tolerance = 40; // Độ lệch màu
-
-    for (let i = 0; i < videoPixels.data.length; i += 4) {
-      const rDiff = Math.abs(videoPixels.data[i] - template.data[i]);
-      const gDiff = Math.abs(videoPixels.data[i+1] - template.data[i+1]);
-      const bDiff = Math.abs(videoPixels.data[i+2] - template.data[i+2]);
-
-      if (rDiff <= tolerance && gDiff <= tolerance && bDiff <= tolerance) {
-        matchCount++;
-      }
+    // Log báo hiệu trạng thái
+    if (!window.debugAdSkipCount) window.debugAdSkipCount = 0;
+    window.debugAdSkipCount++;
+    if (window.debugAdSkipCount % 4 === 0) {
+      console.log(`[AutoSkip] Đang dò tìm... (Thời gian: ${Math.floor(video?.currentTime || 0)}s). Template Load: ${!!template}`);
     }
 
-    const similarity = matchCount / totalPixels;
-    if (similarity > 0.85) {
-      console.log(`Đã phát hiện quảng cáo! Độ giống: ${(similarity*100).toFixed(1)}%`);
-      handleSkipAd();
-      hasSkippedAdRef.current = true;
+    if (!video || !template || hasSkippedAdRef.current) return;
+
+    try {
+      const ctx = videoCanvasRef.current.getContext("2d", { willReadFrequently: true });
+      
+      const relX = 0.15; 
+      const relY = 0.09; 
+      const relW = 0.05; 
+      
+      const sx = video.videoWidth * relX;
+      const sy = video.videoHeight * relY;
+      const sw = video.videoWidth * relW;
+      const sh = sw * (templateCanvasRef.current.height / templateCanvasRef.current.width);
+
+      videoCanvasRef.current.width = templateCanvasRef.current.width;
+      videoCanvasRef.current.height = templateCanvasRef.current.height;
+      
+      if (sw === 0 || sh === 0 || isNaN(sw) || isNaN(sh)) return;
+
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height);
+
+      const videoPixels = ctx.getImageData(0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height);
+
+      let matchCount = 0;
+      const totalPixels = templateCanvasRef.current.width * templateCanvasRef.current.height;
+      const tolerance = 40; 
+
+      for (let i = 0; i < videoPixels.data.length; i += 4) {
+        const rDiff = Math.abs(videoPixels.data[i] - template.data[i]);
+        const gDiff = Math.abs(videoPixels.data[i+1] - template.data[i+1]);
+        const bDiff = Math.abs(videoPixels.data[i+2] - template.data[i+2]);
+
+        if (rDiff <= tolerance && gDiff <= tolerance && bDiff <= tolerance) {
+          matchCount++;
+        }
+      }
+
+      const similarity = matchCount / totalPixels;
+      if (window.debugAdSkipCount % 4 === 0) {
+         console.log(`[AutoSkip] Mức độ giống: ${(similarity*100).toFixed(2)}% (Mục tiêu: > 85%)`);
+      }
+
+      if (similarity > 0.85) {
+        console.log(`[AutoSkip] BINGO! Đã phát hiện quảng cáo! Độ giống: ${(similarity*100).toFixed(1)}%`);
+        handleSkipAd();
+        hasSkippedAdRef.current = true;
+      }
+    } catch (e) {
+      if (window.debugAdSkipCount % 20 === 0) {
+         console.error("[AutoSkip] Lỗi thuật toán:", e.message);
+      }
     }
   };
 
@@ -543,7 +553,8 @@ export default function VideoPlayer() {
       }
 
       // Auto-skip logic: check between 14th and 16th minute
-      if (current >= 840 && current <= 960 && !hasSkippedAdRef.current) {
+      // Cập nhật lại: Check từ giây 800 (13:20) đến 1000 (16:40) cho chắc
+      if (current >= 800 && current <= 1000 && !hasSkippedAdRef.current) {
         detectAdAndSkip();
       }
     }
