@@ -92,20 +92,6 @@ export default function VideoPlayer() {
   const currentIndex = currentEpisodes.findIndex(e => e.name === currentEpName);
   const nextEpisode = currentIndex !== -1 && currentIndex < currentEpisodes.length - 1 ? currentEpisodes[currentIndex + 1] : null;
 
-  // AUTO-SKIP: LOAD TEMPLATE IMAGE
-  useEffect(() => {
-    const img = new Image();
-    img.src = "/ad-template.png";
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      const ctx = templateCanvasRef.current.getContext("2d", { willReadFrequently: true });
-      templateCanvasRef.current.width = img.width;
-      templateCanvasRef.current.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      templatePixelsRef.current = ctx.getImageData(0, 0, img.width, img.height);
-    };
-  }, []);
-
   useEffect(() => {
     if (!videoUrl && !embedFallback) navigate(`/movie/${currentSlug}`, { replace: true });
   }, [videoUrl, embedFallback, currentSlug, navigate]);
@@ -176,15 +162,24 @@ export default function VideoPlayer() {
     try {
       const currentProgress = videoRef.current?.currentTime || currentTime;
       
+      let epToSave = currentEpName;
+      let progressToSave = currentProgress;
+      
+      // Thuật toán gỡ bẫy End-Credit: Chuyển thẳng sang tập tiếp theo nếu đã xem > 95%
+      if (duration > 0 && currentProgress >= duration * 0.95 && nextEpisode) {
+        epToSave = nextEpisode.name;
+        progressToSave = 0;
+      }
+
       // Backup tiến trình vào máy để chắc chắn 100% không mất
-      if (currentProgress > 0) {
-        localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, currentProgress);
+      if (progressToSave >= 0) {
+        localStorage.setItem(`progress_${currentSlug}_${epToSave}`, progressToSave);
       }
 
       const historyRef = doc(db, "users", user.uid, "watchHistory", currentSlug);
       await setDoc(historyRef, {
-        slug: currentSlug, movieId: currentSlug, title: currentMovieName, epName: currentEpName,
-        image: currentPosterUrl, progress: currentProgress, lastWatched: serverTimestamp() 
+        slug: currentSlug, movieId: currentSlug, title: currentMovieName, epName: epToSave,
+        image: currentPosterUrl, progress: progressToSave, lastWatched: serverTimestamp() 
       });
 
       // Lưu thời gian xem thực tế vào global
@@ -383,59 +378,60 @@ export default function VideoPlayer() {
 
   const detectAdAndSkip = () => {
     const video = videoRef.current;
-    const template = templatePixelsRef.current;
     
-    // Log báo hiệu trạng thái
     if (!window.debugAdSkipCount) window.debugAdSkipCount = 0;
     window.debugAdSkipCount++;
-    if (window.debugAdSkipCount % 4 === 0) {
-      console.log(`[AutoSkip] Đang dò tìm... (Thời gian: ${Math.floor(video?.currentTime || 0)}s). Template Load: ${!!template}`);
-    }
 
-    if (!video || !template || hasSkippedAdRef.current) return;
+    if (!video || hasSkippedAdRef.current) return;
 
     try {
       const ctx = videoCanvasRef.current.getContext("2d", { willReadFrequently: true });
       
-      const relX = 0.15; 
-      const relY = 0.09; 
-      const relW = 0.05; 
+      // THUẬT TOÁN MỚI: QUÉT MÀU ÁO ĐỎ CỦA ANH CHÀNG Ở GIỮA MÀN HÌNH
+      // Vùng quét: X từ 40% đến 60%, Y từ 50% đến 80% (Ngay giữa ngực anh áo đỏ)
+      const relX = 0.40; 
+      const relY = 0.50; 
+      const relW = 0.20; 
+      const relH = 0.30;
       
       const sx = video.videoWidth * relX;
       const sy = video.videoHeight * relY;
       const sw = video.videoWidth * relW;
-      const sh = sw * (templateCanvasRef.current.height / templateCanvasRef.current.width);
+      const sh = video.videoHeight * relH;
 
-      videoCanvasRef.current.width = templateCanvasRef.current.width;
-      videoCanvasRef.current.height = templateCanvasRef.current.height;
-      
       if (sw === 0 || sh === 0 || isNaN(sw) || isNaN(sh)) return;
 
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height);
+      // Ép khung hình về 50x50 pixel để quét cho nhẹ (tốn chưa tới 1 mili-giây)
+      videoCanvasRef.current.width = 50;
+      videoCanvasRef.current.height = 50;
+      
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 50, 50);
 
-      const videoPixels = ctx.getImageData(0, 0, templateCanvasRef.current.width, templateCanvasRef.current.height);
+      const videoPixels = ctx.getImageData(0, 0, 50, 50);
 
-      let matchCount = 0;
-      const totalPixels = templateCanvasRef.current.width * templateCanvasRef.current.height;
-      const tolerance = 40; 
+      let redCount = 0;
+      const totalPixels = 50 * 50;
 
       for (let i = 0; i < videoPixels.data.length; i += 4) {
-        const rDiff = Math.abs(videoPixels.data[i] - template.data[i]);
-        const gDiff = Math.abs(videoPixels.data[i+1] - template.data[i+1]);
-        const bDiff = Math.abs(videoPixels.data[i+2] - template.data[i+2]);
+        const r = videoPixels.data[i];
+        const g = videoPixels.data[i+1];
+        const b = videoPixels.data[i+2];
 
-        if (rDiff <= tolerance && gDiff <= tolerance && bDiff <= tolerance) {
-          matchCount++;
+        // Điều kiện nhận diện màu Đỏ Rực (áo của người đàn ông trong quảng cáo)
+        // Đỏ phải cao (>120), xanh lá và xanh lam phải thấp (<70), và Đỏ phải trội hơn gấp đôi 2 màu kia
+        if (r > 120 && g < 70 && b < 80 && r > g * 2 && r > b * 2) {
+          redCount++;
         }
       }
 
-      const similarity = matchCount / totalPixels;
+      const redPercentage = redCount / totalPixels;
       if (window.debugAdSkipCount % 4 === 0) {
-         console.log(`[AutoSkip] Mức độ giống: ${(similarity*100).toFixed(2)}% (Mục tiêu: > 85%)`);
+         console.log(`[AutoSkip] Đang quét áo đỏ... Tỷ lệ màu đỏ: ${(redPercentage*100).toFixed(2)}% (Mục tiêu > 15%)`);
       }
 
-      if (similarity > 0.85) {
-        console.log(`[AutoSkip] BINGO! Đã phát hiện quảng cáo! Độ giống: ${(similarity*100).toFixed(1)}%`);
+      // Nếu vùng giữa màn hình có hơn 15% là màu đỏ -> Chính là đoạn quảng cáo đó!
+      if (redPercentage > 0.15) {
+        console.log(`[AutoSkip] BINGO! Đã thấy anh áo đỏ! Tỷ lệ đỏ: ${(redPercentage*100).toFixed(1)}%`);
         handleSkipAd();
         hasSkippedAdRef.current = true;
       }

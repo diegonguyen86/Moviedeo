@@ -57,6 +57,8 @@ export default function MovieCard({ movie }) {
     
     showConfirm("Xóa phim này khỏi danh sách đang xem?", async () => {
       try {
+        // Chỉ xóa trên Firebase để ẩn khỏi trang chủ
+        // Cố tình giữ lại LocalStorage để phục hồi tiến trình "zombie" nếu user muốn xem lại
         await deleteDoc(doc(db, "users", user.uid, "watchHistory", movie.docId));
         showToast("Đã xóa khỏi trang chủ", "success");
       } catch (error) {
