@@ -29,8 +29,8 @@ export default function AppDownloadModal({ isOpen, onClose }) {
           console.error("Lỗi khi lấy link tải từ Firebase:", error);
         }
 
-        // 2. Chọc vào Github API để tìm Link Tải Trực Tiếp (APK) cho Mobile và TV
-        let githubLinks = { android: "", tv: "" };
+        // 2. Chọc vào Github API để tìm Link Tải Trực Tiếp (APK, IPA) cho Mobile, iOS và TV
+        let githubLinks = { android: "", ios: "", tv: "" };
         try {
           const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases`);
           if (response.ok) {
@@ -42,6 +42,20 @@ export default function AppDownloadModal({ isOpen, onClose }) {
               const apk = latestMobile.assets.find(asset => asset.name.endsWith('.apk'));
               if (apk) {
                 githubLinks.android = apk.browser_download_url;
+              }
+              // Hỗ trợ trường hợp up file .ipa chung với tag mobile
+              const ipa = latestMobile.assets.find(asset => asset.name.endsWith('.ipa'));
+              if (ipa) {
+                githubLinks.ios = ipa.browser_download_url;
+              }
+            }
+            
+            // Tìm bản iOS mới nhất (nếu tạo tag riêng ios-...)
+            const latestIos = releases.find(r => r.tag_name && r.tag_name.startsWith('ios-'));
+            if (latestIos && latestIos.assets && latestIos.assets.length > 0) {
+              const ipa = latestIos.assets.find(asset => asset.name.endsWith('.ipa'));
+              if (ipa) {
+                githubLinks.ios = ipa.browser_download_url;
               }
             }
             
@@ -58,11 +72,11 @@ export default function AppDownloadModal({ isOpen, onClose }) {
           console.log("Không thể fetch Github API, dùng fallback Firebase", error);
         }
 
-        // Gộp kết quả: Ưu tiên Github cho Android/TV, lấy Firebase cho iOS hoặc nếu Github không có
+        // Gộp kết quả: Ưu tiên Github, lấy Firebase làm fallback
         setAppLinks({
           android: githubLinks.android || firebaseLinks.android,
           tv: githubLinks.tv || firebaseLinks.tv,
-          ios: firebaseLinks.ios // iOS luôn lấy từ Firebase (ví dụ link Testflight)
+          ios: githubLinks.ios || firebaseLinks.ios
         });
       };
       
