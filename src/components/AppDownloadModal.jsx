@@ -50,16 +50,7 @@ export default function AppDownloadModal({ isOpen, onClose }) {
               }
             }
             
-            // Tìm bản iOS mới nhất (nếu tạo tag riêng ios-...) - Chỉ dùng nếu tag mobile không đính kèm ipa
-            if (!githubLinks.ios) {
-              const latestIos = releases.find(r => r.tag_name && r.tag_name.startsWith('ios-'));
-              if (latestIos && latestIos.assets && latestIos.assets.length > 0) {
-                const ipa = latestIos.assets.find(asset => asset.name.endsWith('.ipa'));
-                if (ipa) {
-                  githubLinks.ios = ipa.browser_download_url;
-                }
-              }
-            }
+            // Đã loại bỏ logic lấy ios riêng lẻ. IOS và Android giờ dùng chung tag mobile-
             
             // Tìm bản TV mới nhất
             const latestTV = releases.find(r => r.tag_name && r.tag_name.startsWith('tv-'));
