@@ -2,98 +2,29 @@ import { Outlet } from "react-router-dom";
 import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
+import AuthModal from "../components/AuthModal";
+import ForcePasswordSetup from "../components/ForcePasswordSetup";
 
 export default function Layout() {
-  const { user, isApproved, loginWithGoogle, logout } = useAuth();
+  const { user, isApproved, logout, hasPassword } = useAuth();
   
-  const [showAdblockModal, setShowAdblockModal] = useState(false);
-  const [isCheckingAdblock, setIsCheckingAdblock] = useState(false);
-
-  const detectAdblock = () => {
-    return new Promise((resolve) => {
-      // Lớp 1: Bẫy tàng hình DOM (Bắt uBlock, Adblock Plus)
-      const ad = document.createElement('div');
-      ad.innerHTML = '&nbsp;';
-      ad.className = 'adsbox ad-placement doubleclick ad-placeholder';
-      ad.style.position = 'absolute';
-      ad.style.top = '-1000px';
-      document.body.appendChild(ad);
-      
-      setTimeout(() => {
-        const isDomBlocked = window.getComputedStyle(ad).display === 'none' || ad.offsetHeight === 0;
-        document.body.removeChild(ad);
-        resolve(isDomBlocked);
-      }, 100); 
-    });
-  };
-
-  const handleLoginClick = async () => {
-    setIsCheckingAdblock(true);
-    const hasAdblock = await detectAdblock();
-    setIsCheckingAdblock(false);
-
-    if (hasAdblock) {
-      setShowAdblockModal(true);
-    } else {
-      setShowAdblockModal(false);
-      const result = await loginWithGoogle();
-      if (result && result.reason === 'blocked') {
-        setShowAdblockModal(true);
-      }
-    }
-  };
-  
-  useEffect(() => {
-    // Chỉ kiểm tra khi ở màn hình chưa đăng nhập
-    if (!user) {
-      detectAdblock().then(hasAdblock => {
-        if (hasAdblock) {
-          setShowAdblockModal(true);
-        }
-      });
-    }
-  }, [user]);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // 1. NẾU CHƯA ĐĂNG NHẬP: Bắt buộc đăng nhập
   if (!user) {
     return (
       <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
         
-        {/* Adblock Modal */}
-        {showAdblockModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/90 backdrop-blur-md">
-            <div className="relative w-full max-w-md bg-zinc-900 border border-red-500/50 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.2)] p-6 md:p-8 text-center animate-in zoom-in-95 duration-200">
-              <span className="material-symbols-outlined text-6xl text-red-500 mb-4 animate-bounce">gpp_bad</span>
-              <h2 className="text-2xl font-black text-white uppercase tracking-tighter mb-2">Phát hiện Adblock!</h2>
-              <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
-                Hệ thống phát hiện bạn đang sử dụng <b>Trình chặn quảng cáo (Adblock)</b> hoặc trình duyệt <b>Brave</b>. Điều này sẽ khiến cửa sổ đăng nhập bị lỗi.
-                <br/><br/>
-                Vui lòng <span className="text-white font-bold">TẮT TRÌNH CHẶN QUẢNG CÁO</span> cho trang web này để tiếp tục!
-              </p>
-              <button 
-                onClick={handleLoginClick}
-                disabled={isCheckingAdblock}
-                className="w-full bg-white text-black hover:bg-zinc-200 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2"
-              >
-                {isCheckingAdblock ? (
-                  <><span className="material-symbols-outlined animate-spin">progress_activity</span> Đang quét lại...</>
-                ) : "TÔI ĐÃ TẮT, KIỂM TRA LẠI"}
-              </button>
-            </div>
-          </div>
-        )}
+        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
         <div className="max-w-md text-center space-y-8">
-          <h1 className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">KHO ẢNH CAO CẤP</h1>
-          <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để khám phá bộ sưu tập thư viện ảnh nhé!</p>
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">PHIM HAY QUÁ TRỜI</h1>
+          <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để trải nghiệm xem phim đỉnh cao!</p>
           <button 
-            onClick={handleLoginClick}
-            disabled={isCheckingAdblock}
-            className="w-full bg-white/20 border border-white/30 backdrop-blur-md hover:bg-white/30 text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(255,255,255,0.1)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+            onClick={() => setShowAuthModal(true)}
+            className="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(220,38,38,0.2)] active:scale-95 flex items-center justify-center gap-2"
           >
-            {isCheckingAdblock ? (
-              <><span className="material-symbols-outlined animate-spin">progress_activity</span> Đang kiểm tra bảo mật...</>
-            ) : "ĐĂNG NHẬP BẰNG GOOGLE"}
+            ĐĂNG NHẬP / ĐĂNG KÝ
           </button>
         </div>
       </div>
@@ -135,7 +66,12 @@ export default function Layout() {
     );
   }
 
-  // 3. NẾU ĐÃ ĐĂNG NHẬP VÀ ĐÃ ĐƯỢC DUYỆT: Cho phép vào xem
+  // 3. NẾU ĐÃ DUYỆT NHƯNG CHƯA CÓ MẬT KHẨU (GOOGLE USER CŨ)
+  if (user && isApproved && !hasPassword) {
+    return <ForcePasswordSetup />;
+  }
+
+  // 4. NẾU ĐÃ ĐĂNG NHẬP VÀ ĐÃ ĐƯỢC DUYỆT: Cho phép vào xem
   return (
     <>
       <Header />

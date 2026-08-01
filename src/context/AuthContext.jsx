@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
   const [isApproved, setIsApproved] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasPassword, setHasPassword] = useState(false);
 
   // --- 🤖 CON BOT TELEGRAM (ĐÃ FIX LINK VERCEL) ---
   const notifyAdmin = async (name, email, uid) => {
@@ -60,6 +61,11 @@ export function AuthProvider({ children }) {
       try {
         setLoading(true);
         if (currentUser) {
+          
+          // Kiểm tra xem người dùng có Provider Password hay không
+          const hasPass = currentUser.providerData.some(p => p.providerId === 'password');
+          setHasPassword(hasPass);
+
           const userDocRef = doc(db, "users", currentUser.uid);
           
           // Bước 1: Kiểm tra an toàn bằng getDoc (không bị lỗi cache như onSnapshot)
@@ -76,7 +82,7 @@ export function AuthProvider({ children }) {
                 createdAt: new Date().toISOString()
               });
               // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
-              await notifyAdmin(currentUser.displayName, currentUser.email, currentUser.uid);
+              await notifyAdmin(currentUser.displayName || currentUser.email?.split('@')[0], currentUser.email, currentUser.uid);
             }
           } catch (e) {
             console.error("Lỗi khởi tạo user:", e);
@@ -105,6 +111,7 @@ export function AuthProvider({ children }) {
           setUser(null);
           setIsApproved(false);
           setUserData(null);
+          setHasPassword(false);
           setLoading(false);
           if (unsubsDoc) {
             unsubsDoc();
@@ -155,7 +162,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isApproved, userData, getRankInfo, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, isApproved, userData, getRankInfo, loginWithGoogle, logout, hasPassword }}>
       {!loading ? children : (
         <div className="h-screen bg-black flex items-center justify-center">
           <LoadingLogo className="w-14 h-14" />
