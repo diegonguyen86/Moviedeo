@@ -5,6 +5,23 @@ import { doc, getDoc } from "firebase/firestore";
 
 const GITHUB_REPO = 'diegonguyen86/Moviedeo'; // Nơi chứa file release
 
+const isVersionOlder = (current, latest) => {
+  if (!latest) return false;
+  const cleanLatest = latest.replace('mobile-', '').replace('tv-', '').replace('v', '');
+  const cleanCurrent = current.replace('mobile-', '').replace('tv-', '').replace('v', '');
+  
+  const currParts = cleanCurrent.split('.').map(Number);
+  const latestParts = cleanLatest.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(currParts.length, latestParts.length); i++) {
+    const c = currParts[i] || 0;
+    const l = latestParts[i] || 0;
+    if (c < l) return true;
+    if (c > l) return false;
+  }
+  return false;
+};
+
 export default function AppDownloadModal({ isOpen, onClose }) {
   // Animation state
   const [show, setShow] = useState(false);
@@ -37,7 +54,14 @@ export default function AppDownloadModal({ isOpen, onClose }) {
             const releases = await response.json();
             
             // Tìm bản Mobile mới nhất
-            const latestMobile = releases.find(r => r.tag_name && r.tag_name.startsWith('mobile-'));
+            const mobileReleases = releases.filter(r => r.tag_name && r.tag_name.startsWith('mobile-'));
+            let latestMobile = null;
+            for (const r of mobileReleases) {
+              if (!latestMobile || isVersionOlder(latestMobile.tag_name, r.tag_name)) {
+                latestMobile = r;
+              }
+            }
+            
             if (latestMobile && latestMobile.assets && latestMobile.assets.length > 0) {
               const apk = latestMobile.assets.find(asset => asset.name.endsWith('.apk'));
               if (apk) {
@@ -53,7 +77,14 @@ export default function AppDownloadModal({ isOpen, onClose }) {
             // Đã loại bỏ logic lấy ios riêng lẻ. IOS và Android giờ dùng chung tag mobile-
             
             // Tìm bản TV mới nhất
-            const latestTV = releases.find(r => r.tag_name && r.tag_name.startsWith('tv-'));
+            const tvReleases = releases.filter(r => r.tag_name && r.tag_name.startsWith('tv-'));
+            let latestTV = null;
+            for (const r of tvReleases) {
+              if (!latestTV || isVersionOlder(latestTV.tag_name, r.tag_name)) {
+                latestTV = r;
+              }
+            }
+            
             if (latestTV && latestTV.assets && latestTV.assets.length > 0) {
               const apk = latestTV.assets.find(asset => asset.name.endsWith('.apk'));
               if (apk) {
