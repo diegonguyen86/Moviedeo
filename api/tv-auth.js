@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+import admin from 'firebase-admin';
 
 // Khởi tạo Firebase Admin SDK nếu chưa có
 if (!admin.apps.length) {
