@@ -28,7 +28,7 @@ export default function MovieDetail() {
       return;
     }
     setIsTrailerLoading(true);
-    const key = await apiGetTrailer(movieDetails.origin_name || movieDetails.name);
+    const key = await apiGetTrailer(id);
     setIsTrailerLoading(false);
     if (key) {
       setTrailerKey(key);

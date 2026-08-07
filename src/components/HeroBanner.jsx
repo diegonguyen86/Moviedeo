@@ -21,7 +21,7 @@ export default function HeroBanner({ movies = [] }) {
 
     const fetchTrailer = async () => {
       try {
-        const key = await apiGetTrailer(movie.origin_name || movie.title || movie.name);
+        const key = await apiGetTrailer(movie.id || movie.slug);
         if (isMounted && key) {
           setTrailerKey(key);
         }
