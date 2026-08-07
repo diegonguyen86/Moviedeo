@@ -9,9 +9,11 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
 
   // Drag to scroll states
   const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeftState, setScrollLeftState] = useState(0);
-  const [dragDistance, setDragDistance] = useState(0);
+  
+  // Use refs for values that change rapidly during drag to avoid re-renders
+  const startX = useRef(0);
+  const scrollLeftState = useRef(0);
+  const dragDistance = useRef(0);
 
   const handleScroll = () => {
     if (rowRef.current) {
@@ -50,9 +52,9 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
   // Drag to scroll handlers
   const handleMouseDown = (e) => {
     setIsDragging(true);
-    setStartX(e.pageX - rowRef.current.offsetLeft);
-    setScrollLeftState(rowRef.current.scrollLeft);
-    setDragDistance(0);
+    startX.current = e.pageX - rowRef.current.offsetLeft;
+    scrollLeftState.current = rowRef.current.scrollLeft;
+    dragDistance.current = 0;
   };
 
   const handleMouseLeave = () => {
@@ -67,13 +69,13 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
     if (!isDragging) return;
     e.preventDefault();
     const x = e.pageX - rowRef.current.offsetLeft;
-    const walk = (x - startX) * 1.5; // Tốc độ cuộn (nhân 1.5 để mượt hơn)
-    setDragDistance(Math.abs(walk));
-    rowRef.current.scrollLeft = scrollLeftState - walk;
+    const walk = (x - startX.current) * 1.5; // Tốc độ cuộn (nhân 1.5 để mượt hơn)
+    dragDistance.current = Math.abs(walk);
+    rowRef.current.scrollLeft = scrollLeftState.current - walk;
   };
 
   const handleClickCapture = (e) => {
-    if (dragDistance > 5) {
+    if (dragDistance.current > 5) {
       e.stopPropagation();
       e.preventDefault();
     }
@@ -107,7 +109,7 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
         {/* MŨI TÊN TRÁI - TO HƠN, KÍNH MỜ TRẮNG SÁNG */}
         <button 
           onClick={scrollLeft}
-          className="absolute -left-5 top-1/2 -translate-y-1/2 z-20 w-14 h-14 bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 hover:bg-white/20 hover:border-white/40 hover:scale-110 shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] border border-white/10 cursor-pointer hidden md:flex"
+          className="absolute left-2 top-1/2 -translate-y-1/2 z-30 w-14 h-14 bg-black/60 backdrop-blur-xl rounded-full flex items-center justify-center text-white opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 hover:bg-white/20 hover:border-white/40 hover:scale-110 shadow-[0_0_20px_rgba(0,0,0,0.5)] hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] border border-white/10 cursor-pointer hidden md:flex"
         >
           <span className="material-symbols-outlined text-3xl">chevron_left</span>
         </button>
@@ -149,7 +151,7 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
         {/* MŨI TÊN PHẢI - TO HƠN, KÍNH MỜ TRẮNG SÁNG */}
         <button 
           onClick={scrollRight}
-          className={`absolute -right-5 top-1/2 -translate-y-1/2 z-20 w-14 h-14 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 cursor-pointer hidden md:flex border hover:scale-110 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${
+          className={`absolute right-2 top-1/2 -translate-y-1/2 z-30 w-14 h-14 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover/carousel:opacity-100 transition-all duration-300 cursor-pointer hidden md:flex border hover:scale-110 shadow-[0_0_20px_rgba(0,0,0,0.5)] ${
             isAtEnd && viewAllState
               ? 'bg-yellow-500/90 text-black border-yellow-400 hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(234,179,8,0.5)]'
               : 'bg-black/60 text-white border-white/10 hover:bg-white/20 hover:border-white/40 hover:shadow-[0_0_20px_rgba(255,255,255,0.15)]'
