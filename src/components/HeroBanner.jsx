@@ -1,35 +1,25 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
-import { apiGetMovieLogo, apiGetTrailer } from "../api/api";
-import ReactPlayer from "react-player";
+import { useState, useEffect } from "react";
+import { apiGetMovieLogo } from "../api/api";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [trailerKey, setTrailerKey] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
-  // Lấy media khi đổi phim
+  // Lấy logo khi đổi phim
   useEffect(() => {
     if (!movies || movies.length === 0) return;
     
     let isMounted = true;
     const movie = movies[currentIndex];
     
-    setTrailerKey(null);
     setLogoUrl(null);
-    setIsPlaying(false);
 
     const fetchMedia = async () => {
       try {
-        const [key, logo] = await Promise.all([
-          apiGetTrailer(movie.id || movie.slug, movie.origin_name || movie.title || movie.name),
-          apiGetMovieLogo(movie.origin_name || movie.title || movie.name)
-        ]);
-        
-        if (isMounted) {
-          if (key) setTrailerKey(key);
-          if (logo) setLogoUrl(logo);
+        const logo = await apiGetMovieLogo(movie.origin_name || movie.title || movie.name);
+        if (isMounted && logo) {
+          setLogoUrl(logo);
         }
       } catch (err) {}
     };
@@ -54,47 +44,23 @@ export default function HeroBanner({ movies = [] }) {
 
   return (
     <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden group">
-      <div className="absolute inset-0 z-0 bg-black">
+      <div className="absolute inset-0 z-0 bg-black overflow-hidden">
         
-        {/* VIDEO YOUTUBE LUÔN Ở DƯỚI CÙNG (z-0) ĐỂ TRÌNH DUYỆT BẮT BUỘC RENDER */}
-        {trailerKey && (
-          <div className="absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none z-0">
-            <ReactPlayer 
-              url={`https://www.youtube.com/watch?v=${trailerKey}`}
-              playing={true}
-              muted={true}
-              loop={true}
-              controls={false}
-              width="100%"
-              height="100%"
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onBuffer={() => setIsPlaying(false)}
-              onBufferEnd={() => setIsPlaying(true)}
-              onEnded={() => setIsPlaying(false)}
-              onError={() => setIsPlaying(false)}
-              config={{
-                youtube: {
-                  playerVars: { 
-                    disablekb: 1, 
-                    rel: 0, 
-                    modestbranding: 1, 
-                    iv_load_policy: 3, 
-                    playsinline: 1,
-                    origin: window.location.origin
-                  }
-                }
-              }}
-            />
-          </div>
-        )}
-
-        {/* ẢNH NỀN NẰM TRÊN VIDEO (z-10), SẼ MỜ ĐI KHI VIDEO BẮT ĐẦU CHẠY */}
+        {/* HIỆU ỨNG KEN BURNS (ZOOM & PAN CHẬM) TRÊN ẢNH NỀN */}
         <img
+          key={currentMovie.id || currentIndex}
           alt={currentMovie.title}
-          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 z-10 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
+          className="absolute inset-0 w-full h-full object-cover object-top opacity-70 animate-ken-burns"
           src={currentMovie.image}
+          style={{ animation: 'kenBurns 10s ease-out forwards' }}
         />
+
+        <style>{`
+          @keyframes kenBurns {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.15); }
+          }
+        `}</style>
 
         {/* Lớp phủ Gradient tạo chiều sâu điện ảnh (z-20) */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent z-20"></div>
