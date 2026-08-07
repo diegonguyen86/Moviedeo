@@ -61,6 +61,26 @@ export const apiGetTMDBTrending = async () => {
   } catch (error) { return { results: [] }; }
 };
 
+export const apiGetMovieLogo = async (title) => {
+  try {
+    const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`);
+    const tmdbId = searchRes.data.results?.[0]?.id;
+    const mediaType = searchRes.data.results?.[0]?.media_type || 'movie';
+    if (!tmdbId) return null;
+    
+    // Fetch images without language filter first to get all logos
+    const imageRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/images?api_key=${TMDB_KEY}`);
+    const logos = imageRes.data.logos;
+    if (!logos || logos.length === 0) return null;
+    
+    // Try to find an English or Vietnamese logo first, fallback to the first one available
+    const bestLogo = logos.find(l => l.iso_639_1 === 'en' || l.iso_639_1 === 'vi') || logos[0];
+    return `https://image.tmdb.org/t/p/w500${bestLogo.file_path}`;
+  } catch (error) {
+    return null;
+  }
+};
+
 export const apiGetTrailer = async (slug) => {
   if (!slug) return null;
   try {

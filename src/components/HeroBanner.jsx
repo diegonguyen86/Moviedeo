@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { apiGetTrailer } from "../api/api";
+import { apiGetTrailer, apiGetMovieLogo } from "../api/api";
 import ReactPlayer from "react-player";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [trailerKey, setTrailerKey] = useState(null);
+  const [logoUrl, setLogoUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   // Lấy trailer khi đổi phim
@@ -17,19 +18,24 @@ export default function HeroBanner({ movies = [] }) {
     
     // Reset state khi đổi phim
     setTrailerKey(null);
+    setLogoUrl(null);
     setIsPlaying(false);
 
-    const fetchTrailer = async () => {
+    const fetchMedia = async () => {
       try {
-        const key = await apiGetTrailer(movie.id || movie.slug);
-        if (isMounted && key) {
-          setTrailerKey(key);
+        const [key, logo] = await Promise.all([
+          apiGetTrailer(movie.id || movie.slug),
+          apiGetMovieLogo(movie.origin_name || movie.title || movie.name)
+        ]);
+        if (isMounted) {
+          if (key) setTrailerKey(key);
+          if (logo) setLogoUrl(logo);
         }
       } catch (err) {
         // Lỗi lấy trailer thì bỏ qua, xài ảnh nền
       }
     };
-    fetchTrailer();
+    fetchMedia();
 
     return () => { isMounted = false; };
   }, [currentIndex, movies]);
@@ -104,9 +110,16 @@ export default function HeroBanner({ movies = [] }) {
             </span>
           </div>
           
-          <h2 className="text-4xl md:text-6xl leading-tight font-black text-white tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
-            {currentMovie.title || currentMovie.name}
-          </h2>
+          {logoUrl ? (
+            <div className="space-y-2">
+              <img src={logoUrl} alt={currentMovie.title || currentMovie.name} className="w-full max-w-[400px] max-h-[150px] object-contain object-left drop-shadow-2xl" />
+              <h3 className="text-pink-500 font-bold text-sm tracking-widest uppercase">{currentMovie.title || currentMovie.name}</h3>
+            </div>
+          ) : (
+            <h2 className="text-4xl md:text-6xl leading-tight font-black text-white tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
+              {currentMovie.title || currentMovie.name}
+            </h2>
+          )}
           
           <p className="text-zinc-300 font-medium text-sm md:text-base line-clamp-3 leading-relaxed drop-shadow-md max-w-xl">
             {currentMovie.description || "Một siêu phẩm điện ảnh đang làm mưa làm gió trên các bảng xếp hạng. Khám phá ngay!"}
@@ -126,14 +139,16 @@ export default function HeroBanner({ movies = [] }) {
         </div>
       </div>
 
-      {/* CHUYỂN SLIDE (DOTS) */}
-      <div className="absolute bottom-6 right-6 md:right-12 z-20 flex gap-2">
-        {movies.map((_, i) => (
+      {/* CHUYỂN SLIDE (THUMBNAILS) */}
+      <div className="absolute bottom-6 right-6 md:right-12 z-20 flex gap-3 hidden md:flex">
+        {movies.map((m, i) => (
           <button 
             key={i} 
             onClick={() => setCurrentIndex(i)}
-            className={`h-1.5 rounded-full transition-all duration-500 ${i === currentIndex ? 'w-8 bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]' : 'w-2 bg-white/30 hover:bg-white/60'}`}
-          />
+            className={`w-32 aspect-video rounded-lg overflow-hidden border-2 transition-all duration-500 ${i === currentIndex ? 'border-yellow-500 scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10' : 'border-white/20 hover:border-white/50 opacity-60 hover:opacity-100'}`}
+          >
+            <img src={m.image} alt={m.title} className="w-full h-full object-cover" />
+          </button>
         ))}
       </div>
     </section>
