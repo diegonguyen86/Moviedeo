@@ -75,109 +75,187 @@ export default function MovieDetail() {
   const rawEpisodes = movieServers[selectedServerIndex]?.server_data || movieServers[selectedServerIndex]?.items || [];
   const currentEpisodes = Array.isArray(rawEpisodes) ? rawEpisodes : [];
 
-  return (
-    <main className="pb-20 bg-black min-h-screen text-white">
+    <main className="pb-20 min-h-screen text-zinc-300" style={{ backgroundColor: '#0A0A0A' }}>
       <TrailerModal isOpen={isTrailerOpen} onClose={() => setIsTrailerOpen(false)} youtubeKey={trailerKey} />
       
-      {/* 👇 ĐÃ THÊM overflow-hidden Ở ĐÂY ĐỂ FIX LỖI TRÀN MÀN HÌNH ĐIỆN THOẠI 👇 */}
-      <section className="relative w-full h-[45vh] md:h-[55vh] overflow-hidden">
-        <img className="w-full h-full object-cover opacity-30 scale-105" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-        <div className="absolute inset-0 flex items-end px-4 md:px-12 pb-12">
-          <div className="space-y-4 max-w-4xl">
-            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter drop-shadow-2xl">{movieDetails.name}</h1>
-            <div className="flex flex-wrap gap-2 md:gap-3">
-              <span className="bg-white text-black px-3 py-1 rounded-md text-xs font-black">{movieDetails.year}</span>
-              <span className="bg-primary px-3 py-1 rounded-md text-xs font-black uppercase">{movieDetails.quality}</span>
-              <span className="bg-white/10 backdrop-blur-md px-3 py-1 rounded-md text-xs font-bold">{movieDetails.lang}</span>
-            </div>
-            
-            {/* NÚT XEM TRAILER & LƯU PHIM */}
-            <div className="flex flex-wrap gap-4 pt-2">
-              <button 
-                onClick={handleWatchTrailer}
-                disabled={isTrailerLoading}
-                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-md shadow-lg"
-              >
-                <span className={`material-symbols-outlined text-[20px] ${isTrailerLoading ? "animate-spin" : ""}`}>
-                  {isTrailerLoading ? "progress_activity" : "smart_display"}
-                </span>
-                {isTrailerLoading ? "Đang tìm..." : "Xem Trailer"}
-              </button>
-
-              <button 
-                onClick={() => isSaved(id) ? removeFromWatchlist(id) : addToWatchlist({
-                  slug: id,
-                  name: movieDetails.name,
-                  thumb_url: getFullImageUrl(movieDetails.thumb_url),
-                  year: movieDetails.year
-                })}
-                className={`px-5 py-2.5 border rounded-xl font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-md shadow-lg ${
-                  isSaved(id) 
-                    ? "bg-red-500/20 border-red-500 text-red-500 hover:bg-red-500/30" 
-                    : "bg-white/10 border-white/20 text-white hover:bg-white/20"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isSaved(id) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
-                {isSaved(id) ? "Đã Lưu" : "Lưu Phim"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ẢNH NỀN KHỔNG LỒ */}
+      <section className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden">
+        <img className="w-full h-full object-cover opacity-30 object-top" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-transparent to-transparent" />
       </section>
 
-      <section className="px-4 md:px-12 py-8 grid grid-cols-1 md:grid-cols-4 gap-8">
-        <div className="md:col-span-1">
-          <div className="sticky top-28">
-            <img src={getFullImageUrl(movieDetails.thumb_url)} className="w-full rounded-2xl border border-white/5 shadow-2xl" alt="Poster" />
+      {/* NỘI DUNG CHÍNH (2 CỘT) */}
+      <section className="px-4 md:px-12 -mt-64 relative z-10 grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12 max-w-container-max mx-auto">
+        
+        {/* CỘT TRÁI: POSTER & THÔNG TIN */}
+        <div className="md:col-span-3 space-y-6">
+          <div className="rounded-lg overflow-hidden border border-white/5 shadow-2xl relative aspect-[2/3] w-2/3 md:w-full mx-auto md:mx-0">
+            <img src={getFullImageUrl(movieDetails.thumb_url)} className="w-full h-full object-cover" alt="Poster" />
+            <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-2 py-0.5 rounded text-[10px] font-bold">
+              {movieDetails.quality}
+            </div>
+          </div>
+          
+          <div>
+            <h1 className="text-3xl font-black text-white leading-tight">{movieDetails.name}</h1>
+            <h2 className="text-sm text-zinc-500 font-medium mt-1 uppercase tracking-wider">{movieDetails.origin_name || movieDetails.name}</h2>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+            <span className="bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded border border-yellow-500/30">IMDb N/A</span>
+            <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded border border-blue-500/30">{movieDetails.quality}</span>
+            <span className="bg-white/10 text-white px-2 py-1 rounded border border-white/10">{movieDetails.year}</span>
+            <span className="bg-gradient-to-r from-pink-500/20 to-purple-500/20 text-pink-400 px-2 py-1 rounded border border-pink-500/30">
+              {movieDetails.episode_current}
+            </span>
+          </div>
+
+          {movieDetails.category && (
+            <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+              {movieDetails.category.map(cat => (
+                <span key={cat.id} className="text-zinc-400 bg-white/5 px-2 py-1 rounded-full">{cat.name}</span>
+              ))}
+            </div>
+          )}
+
+          <div className="space-y-4 text-[13px]">
+            <div>
+              <h3 className="font-bold text-white mb-1 uppercase tracking-widest text-[11px]">Giới thiệu:</h3>
+              <div className="text-zinc-400 leading-relaxed line-clamp-6" dangerouslySetInnerHTML={{ __html: movieDetails.content || "Chưa có nội dung mô tả." }} />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+              <div>
+                <span className="text-zinc-500 block mb-1 text-[10px] uppercase">Thời lượng</span>
+                <span className="text-zinc-200 font-medium">{movieDetails.time}</span>
+              </div>
+              <div>
+                <span className="text-zinc-500 block mb-1 text-[10px] uppercase">Quốc Gia</span>
+                <span className="text-zinc-200 font-medium">{Array.isArray(movieDetails.country) ? movieDetails.country.map(c => c.name).join(", ") : "Đang cập nhật"}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-zinc-500 block mb-1 text-[10px] uppercase">Đạo diễn</span>
+                <span className="text-zinc-200 font-medium">{Array.isArray(movieDetails.director) ? movieDetails.director.join(", ") : "Đang cập nhật"}</span>
+              </div>
+              <div className="col-span-2">
+                <span className="text-zinc-500 block mb-1 text-[10px] uppercase">Diễn viên</span>
+                <span className="text-zinc-200 font-medium">{Array.isArray(movieDetails.actor) ? movieDetails.actor.join(", ") : "Đang cập nhật"}</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="md:col-span-3 space-y-12">
+        {/* CỘT PHẢI: HÀNH ĐỘNG & DANH SÁCH TẬP */}
+        <div className="md:col-span-9 md:pl-8">
           
-          {/* PHẦN CHỌN TẬP PHIM (ĐÃ ĐƯỢC ĐẨY LÊN TRÊN ĐỂ TIỆN DỤNG HƠN) */}
-          <div className="bg-zinc-900/50 p-6 md:p-8 rounded-2xl md:rounded-3xl border border-white/5 shadow-inner relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[50px] rounded-full pointer-events-none"></div>
+          {/* NÚT HÀNH ĐỘNG */}
+          <div className="flex items-center gap-6 mb-12">
+            <button 
+              onClick={() => {
+                if (currentEpisodes.length > 0) {
+                  const ep = currentEpisodes[0];
+                  navigate(`/play/${id}`, { 
+                    state: { 
+                      videoUrl: ep.link_m3u8 || ep.m3u8 || "", 
+                      embedFallback: ep.link_embed || ep.embed || "", 
+                      movieName: movieDetails.name, 
+                      epName: ep.name,
+                      allServers: movieServers, 
+                      currentServerIndex: selectedServerIndex, 
+                      posterUrl: getFullImageUrl(movieDetails.poster_url)
+                    } 
+                  });
+                }
+              }}
+              className="flex items-center gap-3 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white px-10 py-4 rounded-full font-black text-lg transition-transform hover:scale-105 shadow-[0_0_30px_rgba(219,39,119,0.4)]"
+            >
+              <span className="material-symbols-outlined filled text-3xl">play_circle</span>
+              XEM NGAY
+            </button>
             
-            <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4 relative z-10">
-              <span className="material-symbols-outlined text-primary text-[28px]">playlist_play</span>
-              <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">Danh sách tập phim</h3>
-            </div>
-            
-            {/* SEASON SELECTOR */}
-            {relatedSeasons.length > 1 && (
-              <div className="mb-8 border-b border-white/5 pb-6 relative z-10">
-                <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Phần phim (Seasons)</h4>
-                <div className="flex flex-wrap gap-2 md:gap-3">
-                  {relatedSeasons.map(season => {
-                    const isActive = season.id === id;
-                    return (
-                      <button 
-                        key={season.id}
-                        onClick={() => !isActive && navigate(`/movie/${season.id}`)}
-                        className={`px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all duration-300 border ${isActive ? "bg-red-600 border-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] scale-105" : "bg-zinc-800/80 border-zinc-700/50 text-zinc-400 hover:text-white hover:bg-zinc-700 hover:border-zinc-500 hover:scale-105"}`}
-                      >
-                        Phần {season.seasonNumber}
-                      </button>
-                    )
-                  })}
-                </div>
+            <button onClick={handleWatchTrailer} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-white transition-colors group">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                <span className="material-symbols-outlined text-xl">smart_display</span>
               </div>
-            )}
-            
-            {movieServers.length > 1 && (
-              <div className="flex flex-wrap gap-2 mb-6 p-1 bg-black/40 rounded-xl w-fit border border-white/5 relative z-10 backdrop-blur-sm">
+              <span className="text-[10px] font-bold uppercase tracking-widest">Trailer</span>
+            </button>
+
+            <button onClick={() => isSaved(id) ? removeFromWatchlist(id) : addToWatchlist({ slug: id, name: movieDetails.name, thumb_url: getFullImageUrl(movieDetails.thumb_url), year: movieDetails.year })} className="flex flex-col items-center gap-1 text-zinc-400 hover:text-pink-400 transition-colors group">
+              <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-pink-500/20 transition-colors">
+                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: isSaved(id) ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest">{isSaved(id) ? "Đã Lưu" : "Yêu Thích"}</span>
+            </button>
+          </div>
+
+          {/* TABS (TẬP PHIM) */}
+          <div className="flex items-center gap-8 border-b border-white/10 mb-8">
+            <div className="text-pink-500 font-bold text-sm tracking-widest uppercase border-b-2 border-pink-500 pb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-lg">format_list_bulleted</span>
+              Tập Phim
+            </div>
+            <div className="text-zinc-500 font-bold text-sm tracking-widest uppercase pb-4 flex items-center gap-2 hover:text-white cursor-pointer transition-colors">
+              <span className="material-symbols-outlined text-lg">info</span>
+              Thông Tin
+            </div>
+          </div>
+
+          {/* SEASON SELECTOR */}
+          {relatedSeasons.length > 1 && (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                <span className="material-symbols-outlined text-lg">layers</span>
+                PHẦN PHIM (SEASONS)
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {relatedSeasons.map(season => {
+                  const isActive = season.id === id;
+                  return (
+                    <button 
+                      key={season.id}
+                      onClick={() => !isActive && navigate(`/movie/${season.id}`)}
+                      className={`px-6 py-2.5 rounded border text-sm font-bold transition-all ${isActive ? "bg-white/10 border-white text-white" : "bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-white"}`}
+                    >
+                      Phần {season.seasonNumber}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* MÁY CHỦ PHÁT (SERVERS) */}
+          {movieServers.length > 1 && (
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                <span className="material-symbols-outlined text-lg">dns</span>
+                MÁY CHỦ PHÁT
+              </div>
+              <div className="flex flex-wrap gap-3">
                 {movieServers.map((server, index) => (
                   <button key={index} onClick={() => setSelectedServerIndex(index)}
-                    className={`px-4 py-1.5 md:px-5 md:py-2 rounded-lg font-bold text-xs md:text-sm transition-all duration-300 ${selectedServerIndex === index ? "bg-primary text-white shadow-lg" : "text-zinc-400 hover:text-white hover:bg-white/10"}`}
+                    className={`px-6 py-2.5 rounded border text-sm font-bold transition-all flex items-center gap-2 ${selectedServerIndex === index ? "bg-pink-500/20 border-pink-500 text-pink-400" : "bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-white"}`}
                   >
+                    <span className="material-symbols-outlined text-[16px]">{selectedServerIndex === index ? "check_circle" : "tv"}</span>
                     {server.server_name}
                   </button>
                 ))}
               </div>
-            )}
+            </div>
+          )}
 
-            <div className="flex flex-wrap gap-2 md:gap-3 relative z-10">
+          {/* DANH SÁCH TẬP */}
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 uppercase tracking-widest">
+                <span className="material-symbols-outlined text-lg">view_module</span>
+                DANH SÁCH TẬP
+                <span className="bg-white/10 text-zinc-400 px-2 py-0.5 rounded ml-2">{currentEpisodes.length} Tập</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
               {currentEpisodes.map((ep) => (
                 <button key={ep.slug}
                   onClick={() => {
@@ -193,30 +271,20 @@ export default function MovieDetail() {
                       } 
                     });
                   }}
-                  className="min-w-[60px] md:min-w-[65px] h-10 md:h-12 px-3 md:px-4 flex items-center justify-center bg-zinc-800/80 hover:bg-primary text-white rounded-lg md:rounded-xl font-bold text-xs md:text-sm transition-all duration-300 border border-white/5 hover:scale-110 hover:shadow-[0_0_15px_rgba(229,9,20,0.4)]"
+                  className="h-12 bg-white/5 hover:bg-white/20 border border-white/5 hover:border-white/30 text-zinc-300 hover:text-white rounded flex items-center justify-center font-bold text-sm transition-all"
                 >
                   {ep.name}
                 </button>
               ))}
             </div>
           </div>
-
-          {/* PHẦN NỘI DUNG PHIM (ĐẨY XUỐNG DƯỚI) */}
-          <div className="space-y-6 md:space-y-8">
-            <div className="space-y-3 md:space-y-4">
-              <h2 className="text-xl md:text-2xl font-bold border-l-4 border-primary pl-4 uppercase tracking-wider">Nội dung phim</h2>
-              <div className="text-zinc-400 leading-relaxed text-base md:text-lg italic bg-zinc-900/30 p-4 md:p-6 rounded-2xl border border-white/5" dangerouslySetInnerHTML={{ __html: movieDetails.content || "Chưa có nội dung mô tả." }} />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 md:gap-y-8 gap-x-12 text-sm bg-zinc-900/20 p-5 md:p-8 rounded-2xl border border-white/5">
-              <div className="flex flex-col gap-1"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Đạo diễn</span><span className="text-zinc-200 text-sm md:text-base">{Array.isArray(movieDetails.director) ? movieDetails.director.join(", ") : "Đang cập nhật"}</span></div>
-              <div className="flex flex-col gap-1"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Năm phát hành</span><span className="text-zinc-200 text-sm md:text-base">{movieDetails.year}</span></div>
-              <div className="flex flex-col gap-1 md:col-span-2"><span className="text-zinc-500 font-bold uppercase text-[10px] tracking-widest">Diễn viên</span><span className="text-zinc-200 text-sm md:text-base leading-relaxed">{Array.isArray(movieDetails.actor) ? movieDetails.actor.join(", ") : "Đang cập nhật"}</span></div>
-            </div>
-          </div>
           
-          {/* --- BÌNH LUẬN --- */}
-          <div className="mt-12">
+          {/* BÌNH LUẬN */}
+          <div className="bg-white/5 border border-white/5 p-6 rounded-xl">
+            <div className="flex items-center gap-2 text-white font-bold text-lg mb-6">
+              <span className="material-symbols-outlined">chat_bubble</span>
+              Bình luận
+            </div>
             <CommentSection movieId={id} />
           </div>
 

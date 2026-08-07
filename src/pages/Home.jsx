@@ -145,11 +145,11 @@ function Home() {
 
   return (
     <main className="pb-24 overflow-hidden bg-black">
-      {/* Banner chính: Ưu tiên chiếu phim Top 1 từ danh sách Admin */}
+      {/* Banner chính: Băng chuyền 5 phim Top Trending */}
       {adminTrending.length > 0 ? (
-        <HeroBanner movie={adminTrending[0]} />
+        <HeroBanner movies={adminTrending.slice(0, 5)} />
       ) : (
-        trending.length > 0 && <HeroBanner movie={trending[0]} />
+        trending.length > 0 && <HeroBanner movies={trending.slice(0, 5)} />
       )}
 
       <div className="space-y-12 mt-8">

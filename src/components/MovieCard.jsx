@@ -122,8 +122,8 @@ export default function MovieCard({ movie }) {
       onClick={movie.isHistory ? handleResume : undefined}
       className={`group cursor-pointer block relative ${!movie.id ? 'opacity-50 pointer-events-none' : ''}`}
     >
-      {/* THIẾT KẾ CARD: Bọc viền trắng mờ xịn xò khi Hover */}
-      <div className="relative aspect-[2/3] rounded-2xl overflow-hidden mb-3 transition-all duration-500 transform group-hover:scale-[1.03] group-hover:-translate-y-2 shadow-lg group-hover:shadow-[0_15px_40px_-10px_rgba(255,255,255,0.15)] border border-white/5 group-hover:border-white/30">
+      {/* THIẾT KẾ CARD: Phẳng, không viền glass, bo góc sắc nét hơn */}
+      <div className="relative aspect-[2/3] rounded-md overflow-hidden mb-2 transition-all duration-300 transform group-hover:scale-[1.02] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         
         {/* HIỆU ỨNG SKELETON KHI CHƯA TẢI XONG ẢNH */}
         {!isImageLoaded && (
@@ -134,7 +134,7 @@ export default function MovieCard({ movie }) {
           alt={movie.title || "Unknown"} 
           loading="lazy"
           onLoad={() => setIsImageLoaded(true)}
-          className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-110 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
+          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
           src={movie.image || "/fallback-image.jpg"} 
         />
         
@@ -148,17 +148,22 @@ export default function MovieCard({ movie }) {
 
         {/* 4K BADGE KÍNH MỜ */}
         {movie.is4K && (
-          <div className="absolute top-2 right-2 bg-white/20 backdrop-blur-md border border-white/20 text-white px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider shadow-lg">
+          <div className="absolute top-2 right-2 bg-yellow-500 text-black px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
             4K
           </div>
         )}
 
-        {/* LỚP PHỦ KHI HOVER VÀ NÚT PLAY KÍNH MỜ (WHITE GLASS) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
-          <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-white/20 border border-white/40 text-white flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 backdrop-blur-xl shadow-[0_0_30px_rgba(255,255,255,0.4)]">
-            {/* Vòng sáng tỏa ra mờ ảo */}
-            <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white"></div>
-            <span className="material-symbols-outlined text-2xl md:text-3xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1", marginLeft: movie.isHistory ? '0' : '4px' }}>
+        {/* NHÃN TẬP PHIM (BADGE GÓC DƯỚI TRÁI) NHƯ VIEFLIX */}
+        {movie.year && (
+          <div className="absolute bottom-2 left-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-1.5 py-0.5 rounded-[3px] text-[10px] md:text-[11px] font-bold shadow-md z-30">
+            {formatEpisodeText(movie.year)}
+          </div>
+        )}
+
+        {/* LỚP PHỦ KHI HOVER VÀ NÚT PLAY */}
+        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center z-20">
+          <div className="relative w-12 h-12 rounded-full bg-yellow-500/90 text-black flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 shadow-[0_0_20px_rgba(234,179,8,0.4)]">
+            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1", marginLeft: movie.isHistory ? '0' : '2px' }}>
               {movie.isHistory ? "resume" : "play_arrow"}
             </span>
           </div>
@@ -167,40 +172,34 @@ export default function MovieCard({ movie }) {
           {movie.isHistory ? (
             <button 
               onClick={handleDeleteHistory}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:bg-red-600 hover:text-white hover:scale-110 shadow-lg z-30"
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center transform opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 z-30"
             >
-              <span className="material-symbols-outlined text-[16px]">
-                close
-              </span>
+              <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
           ) : (
             <button 
               onClick={handleToggleWatchlist}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 border border-white/20 text-white flex items-center justify-center transform scale-50 opacity-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 backdrop-blur-md hover:bg-white hover:text-black hover:scale-110 shadow-lg z-30"
+              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center transform opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-yellow-500 hover:text-black z-30"
             >
-              <span className="material-symbols-outlined text-[20px]">
+              <span className="material-symbols-outlined text-[18px]">
                 {isSaved(movie.id) ? "check" : "add"}
               </span>
             </button>
           )}
         </div>
         
-        {/* THANH PROGRESS LƠ LỬNG KÍNH MỜ (WHITE GLOW) */}
+        {/* THANH PROGRESS LƠ LỬNG MÀU VÀNG CAM */}
         {movie.isHistory && (
-          <div className="absolute bottom-2 left-2 right-2 h-1.5 bg-white/20 backdrop-blur-md z-20 rounded-full overflow-hidden border border-white/10 shadow-lg">
-             <div className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,1)] rounded-full" style={{ width: '50%' }}></div>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-20 overflow-hidden">
+             <div className="h-full bg-gradient-to-r from-orange-500 to-yellow-500" style={{ width: '50%' }}></div>
           </div>
         )}
       </div>
       
       {/* THÔNG TIN PHIM */}
-      <h4 title={movie.title || "Đang tải..."} className="font-bold text-sm md:text-[15px] text-white group-hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)] transition-all truncate tracking-tight">
+      <h4 title={movie.title || "Đang tải..."} className="font-bold text-[13px] md:text-[14px] leading-snug text-zinc-100 group-hover:text-yellow-400 transition-colors line-clamp-2 mt-1">
         {movie.title || "Đang tải..."}
       </h4>
-      <p className="font-medium text-[11px] md:text-xs text-zinc-400 mt-1 uppercase tracking-widest">
-        {/* GỌI HÀM LỌC CHỮ TẬP Ở ĐÂY */}
-        {formatEpisodeText(movie.year)} {movie.genre ? `• ${movie.genre}` : ''}
-      </p>
     </Link>
   );
 }
