@@ -1,15 +1,16 @@
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
-import { apiGetTrailer, apiGetMovieLogo } from "../api/api";
+import { useState, useEffect, useRef } from "react";
+import { apiGetMovieLogo, apiGetPhimDetail } from "../api/api";
 import ReactPlayer from "react-player";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [trailerKey, setTrailerKey] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const playerRef = useRef(null);
 
-  // Lấy trailer khi đổi phim
+  // Lấy media khi đổi phim
   useEffect(() => {
     if (!movies || movies.length === 0) return;
     
@@ -17,22 +18,25 @@ export default function HeroBanner({ movies = [] }) {
     const movie = movies[currentIndex];
     
     // Reset state khi đổi phim
-    setTrailerKey(null);
+    setVideoUrl(null);
     setLogoUrl(null);
     setIsPlaying(false);
 
     const fetchMedia = async () => {
       try {
-        const [key, logo] = await Promise.all([
-          apiGetTrailer(movie.origin_name || movie.title || movie.name),
+        const [detailRes, logo] = await Promise.all([
+          apiGetPhimDetail(movie.id || movie.slug),
           apiGetMovieLogo(movie.origin_name || movie.title || movie.name)
         ]);
+        
         if (isMounted) {
-          if (key) setTrailerKey(key);
+          // Lấy link m3u8 của Tập 1
+          const m3u8Link = detailRes?.episodes?.[0]?.server_data?.[0]?.link_m3u8;
+          if (m3u8Link) setVideoUrl(m3u8Link);
           if (logo) setLogoUrl(logo);
         }
       } catch (err) {
-        // Lỗi lấy trailer thì bỏ qua, xài ảnh nền
+        // Lỗi lấy media thì bỏ qua, xài ảnh nền
       }
     };
     fetchMedia();
@@ -40,18 +44,23 @@ export default function HeroBanner({ movies = [] }) {
     return () => { isMounted = false; };
   }, [currentIndex, movies]);
 
-  // Tự động chuyển slide sau mỗi 8 giây (nếu không có video)
+  // Tự động chuyển slide sau mỗi 25 giây (để kịp xem 20s video + 5s fade)
   useEffect(() => {
     if (!movies || movies.length <= 1) return;
     
-    // Nếu có trailer thì để video chạy (có thể loop hoặc hết video mới qua), ở đây cho autoplay loop.
-    // Nếu vẫn muốn tự trượt khi có video thì bỏ cmt đoạn dưới
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % movies.length);
-    }, 8000);
+    }, 25000);
 
     return () => clearInterval(interval);
-  }, [movies.length, trailerKey]);
+  }, [movies.length]);
+
+  const handleProgress = (state) => {
+    // Nếu chạy quá phút 10 + 20s (620s), lặp lại về phút 10 (600s)
+    if (state.playedSeconds >= 620) {
+      playerRef.current?.seekTo(600, "seconds");
+    }
+  };
 
   if (!movies || movies.length === 0) return null;
   const currentMovie = movies[currentIndex];
@@ -60,30 +69,41 @@ export default function HeroBanner({ movies = [] }) {
     <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden group">
       <div className="absolute inset-0 z-0 bg-black">
         
+        {/* LUÔN HIỆN ẢNH NỀN, NẾU VIDEO CHẠY THÌ ẨN ẢNH ĐI BẰNG OPACITY */}
+        <img
+          alt={currentMovie.title}
+          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${isPlaying ? 'opacity-0' : 'opacity-50'}`}
+          src={currentMovie.image}
+        />
+        
         {/* NẾU CÓ TRAILER -> CHẠY VIDEO NỀN */}
-        {trailerKey ? (
-          <div className="absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] opacity-50 pointer-events-none bg-black">
+        {videoUrl && (
+          <div className={`absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none transition-opacity duration-1000 ${isPlaying ? 'opacity-50' : 'opacity-0'}`}>
             <ReactPlayer 
-              url={`https://www.youtube.com/watch?v=${trailerKey}`}
+              ref={playerRef}
+              url={videoUrl}
               playing={true}
               muted={true}
-              loop={true}
+              loop={false}
               controls={false}
               width="100%"
               height="100%"
+              onReady={() => {
+                // Khi tải xong, tự động tua đến phút thứ 10 (600s)
+                playerRef.current?.seekTo(600, "seconds");
+              }}
+              onPlay={() => setIsPlaying(true)}
+              onProgress={handleProgress}
               config={{
-                youtube: {
-                  playerVars: { disablekb: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, playsinline: 1 }
+                file: {
+                  forceHLS: true,
+                  attributes: {
+                    crossOrigin: "anonymous"
+                  }
                 }
               }}
             />
           </div>
-        ) : (
-          <img
-            alt={currentMovie.title}
-            className="w-full h-full object-cover object-top opacity-50"
-            src={currentMovie.image}
-          />
         )}
 
         {/* Lớp phủ Gradient tạo chiều sâu điện ảnh */}
