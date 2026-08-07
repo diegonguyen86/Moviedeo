@@ -75,6 +75,7 @@ export default function MovieDetail() {
   const rawEpisodes = movieServers[selectedServerIndex]?.server_data || movieServers[selectedServerIndex]?.items || [];
   const currentEpisodes = Array.isArray(rawEpisodes) ? rawEpisodes : [];
 
+  return (
     <main className="pb-20 min-h-screen text-zinc-300" style={{ backgroundColor: '#0A0A0A' }}>
       <TrailerModal isOpen={isTrailerOpen} onClose={() => setIsTrailerOpen(false)} youtubeKey={trailerKey} />
       
