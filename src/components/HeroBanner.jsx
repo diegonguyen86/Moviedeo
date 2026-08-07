@@ -62,7 +62,7 @@ export default function HeroBanner({ movies = [] }) {
         
         {/* NẾU CÓ TRAILER -> CHẠY VIDEO NỀN */}
         {trailerKey ? (
-          <div className="absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] opacity-50 pointer-events-none">
+          <div className="absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] opacity-50 pointer-events-none bg-black">
             <ReactPlayer 
               url={`https://www.youtube.com/watch?v=${trailerKey}`}
               playing={true}
@@ -71,10 +71,9 @@ export default function HeroBanner({ movies = [] }) {
               controls={false}
               width="100%"
               height="100%"
-              onReady={() => setIsPlaying(true)}
               config={{
                 youtube: {
-                  playerVars: { disablekb: 1, rel: 0, modestbranding: 1, iv_load_policy: 3 }
+                  playerVars: { disablekb: 1, rel: 0, modestbranding: 1, iv_load_policy: 3, playsinline: 1 }
                 }
               }}
             />
@@ -83,15 +82,6 @@ export default function HeroBanner({ movies = [] }) {
           <img
             alt={currentMovie.title}
             className="w-full h-full object-cover object-top opacity-50"
-            src={currentMovie.image}
-          />
-        )}
-        
-        {/* FALLBACK ẢNH NẾU VIDEO CHƯA TẢI XONG */}
-        {!isPlaying && trailerKey && (
-          <img
-            alt={currentMovie.title}
-            className="absolute inset-0 w-full h-full object-cover object-top opacity-50 transition-opacity duration-1000"
             src={currentMovie.image}
           />
         )}
