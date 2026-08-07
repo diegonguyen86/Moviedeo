@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import { apiGetMovieLogo, apiGetPhimDetail } from "../api/api";
-import ReactPlayer from "react-player";
+import Hls from "hls.js";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [videoUrl, setVideoUrl] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const playerRef = useRef(null);
+  const videoRef = useRef(null);
 
   // Lấy media khi đổi phim
   useEffect(() => {
@@ -17,7 +17,6 @@ export default function HeroBanner({ movies = [] }) {
     let isMounted = true;
     const movie = movies[currentIndex];
     
-    // Reset state khi đổi phim
     setVideoUrl(null);
     setLogoUrl(null);
     setIsPlaying(false);
@@ -30,21 +29,46 @@ export default function HeroBanner({ movies = [] }) {
         ]);
         
         if (isMounted) {
-          // Lấy link m3u8 của Tập 1
           const m3u8Link = detailRes?.episodes?.[0]?.server_data?.[0]?.link_m3u8;
-          if (m3u8Link) setVideoUrl(m3u8Link);
+          if (m3u8Link) setVideoUrl(m3u8Link.replace("http://", "https://"));
           if (logo) setLogoUrl(logo);
         }
-      } catch (err) {
-        // Lỗi lấy media thì bỏ qua, xài ảnh nền
-      }
+      } catch (err) {}
     };
     fetchMedia();
 
     return () => { isMounted = false; };
   }, [currentIndex, movies]);
 
-  // Tự động chuyển slide sau mỗi 25 giây (để kịp xem 20s video + 5s fade)
+  // Thiết lập HLS cho Video
+  useEffect(() => {
+    if (!videoUrl || !videoRef.current) return;
+    const video = videoRef.current;
+    let hls;
+
+    const startPlaying = () => {
+      video.play().catch(() => {});
+    };
+
+    if (Hls.isSupported()) {
+      hls = new Hls({ debug: false, startPosition: 120 });
+      hls.loadSource(videoUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, startPlaying);
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      // Dành cho Safari
+      video.src = videoUrl;
+      video.currentTime = 120;
+      video.addEventListener("loadedmetadata", startPlaying);
+    }
+
+    return () => {
+      if (hls) hls.destroy();
+      video.removeEventListener("loadedmetadata", startPlaying);
+    };
+  }, [videoUrl]);
+
+  // Tự động chuyển slide sau mỗi 25 giây
   useEffect(() => {
     if (!movies || movies.length <= 1) return;
     
@@ -55,10 +79,10 @@ export default function HeroBanner({ movies = [] }) {
     return () => clearInterval(interval);
   }, [movies.length]);
 
-  const handleProgress = (state) => {
-    // Nếu chạy quá phút thứ 2 + 20s (140s), lặp lại về phút thứ 2 (120s)
-    if (state.playedSeconds >= 140) {
-      playerRef.current?.seekTo(120, "seconds");
+  const handleTimeUpdate = () => {
+    const video = videoRef.current;
+    if (video && video.currentTime >= 140) {
+      video.currentTime = 120;
     }
   };
 
@@ -69,38 +93,23 @@ export default function HeroBanner({ movies = [] }) {
     <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden group">
       <div className="absolute inset-0 z-0 bg-black">
         
-        {/* LUÔN HIỆN ẢNH NỀN, NẾU VIDEO CHẠY THÌ ẨN ẢNH ĐI BẰNG OPACITY */}
         <img
           alt={currentMovie.title}
           className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${isPlaying ? 'opacity-0' : 'opacity-50'}`}
           src={currentMovie.image}
         />
         
-        {/* NẾU CÓ TRAILER -> CHẠY VIDEO NỀN */}
         {videoUrl && (
           <div className={`absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none transition-opacity duration-1000 ${isPlaying ? 'opacity-50' : 'opacity-0'}`}>
-            <ReactPlayer 
-              ref={playerRef}
-              url={videoUrl}
-              playing={true}
-              muted={true}
-              loop={false}
-              controls={false}
-              width="100%"
-              height="100%"
-              onReady={() => {
-                // Khi tải xong, tự động tua đến phút thứ 2 (120s) - tránh phút 10 bị lỗi load hoặc dính cảnh đen
-                playerRef.current?.seekTo(120, "seconds");
-              }}
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              muted
+              playsInline
               onPlay={() => setIsPlaying(true)}
-              onBuffer={() => setIsPlaying(false)}
-              onBufferEnd={() => setIsPlaying(true)}
-              onProgress={handleProgress}
-              config={{
-                file: {
-                  forceHLS: true
-                }
-              }}
+              onPlaying={() => setIsPlaying(true)}
+              onWaiting={() => setIsPlaying(false)}
+              onTimeUpdate={handleTimeUpdate}
             />
           </div>
         )}
