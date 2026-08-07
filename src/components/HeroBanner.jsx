@@ -1,14 +1,13 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { apiGetMovieLogo, apiGetPhimDetail } from "../api/api";
-import Hls from "hls.js";
+import { apiGetMovieLogo, apiGetTrailer } from "../api/api";
+import ReactPlayer from "react-player";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [videoUrl, setVideoUrl] = useState(null);
+  const [trailerKey, setTrailerKey] = useState(null);
   const [logoUrl, setLogoUrl] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef(null);
 
   // Lấy media khi đổi phim
   useEffect(() => {
@@ -17,20 +16,19 @@ export default function HeroBanner({ movies = [] }) {
     let isMounted = true;
     const movie = movies[currentIndex];
     
-    setVideoUrl(null);
+    setTrailerKey(null);
     setLogoUrl(null);
     setIsPlaying(false);
 
     const fetchMedia = async () => {
       try {
-        const [detailRes, logo] = await Promise.all([
-          apiGetPhimDetail(movie.id || movie.slug),
+        const [key, logo] = await Promise.all([
+          apiGetTrailer(movie.id || movie.slug, movie.origin_name || movie.title || movie.name),
           apiGetMovieLogo(movie.origin_name || movie.title || movie.name)
         ]);
         
         if (isMounted) {
-          const m3u8Link = detailRes?.episodes?.[0]?.server_data?.[0]?.link_m3u8;
-          if (m3u8Link) setVideoUrl(m3u8Link.replace("http://", "https://"));
+          if (key) setTrailerKey(key);
           if (logo) setLogoUrl(logo);
         }
       } catch (err) {}
@@ -40,51 +38,16 @@ export default function HeroBanner({ movies = [] }) {
     return () => { isMounted = false; };
   }, [currentIndex, movies]);
 
-  // Thiết lập HLS cho Video
-  useEffect(() => {
-    if (!videoUrl || !videoRef.current) return;
-    const video = videoRef.current;
-    let hls;
-
-    const startPlaying = () => {
-      video.play().catch(() => {});
-    };
-
-    if (Hls.isSupported()) {
-      hls = new Hls({ debug: false, startPosition: 120 });
-      hls.loadSource(videoUrl);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, startPlaying);
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      // Dành cho Safari
-      video.src = videoUrl;
-      video.currentTime = 120;
-      video.addEventListener("loadedmetadata", startPlaying);
-    }
-
-    return () => {
-      if (hls) hls.destroy();
-      video.removeEventListener("loadedmetadata", startPlaying);
-    };
-  }, [videoUrl]);
-
-  // Tự động chuyển slide sau mỗi 25 giây
+  // Tự động chuyển slide sau mỗi 10 giây
   useEffect(() => {
     if (!movies || movies.length <= 1) return;
     
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % movies.length);
-    }, 25000);
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [movies.length]);
-
-  const handleTimeUpdate = () => {
-    const video = videoRef.current;
-    if (video && video.currentTime >= 140) {
-      video.currentTime = 120;
-    }
-  };
 
   if (!movies || movies.length === 0) return null;
   const currentMovie = movies[currentIndex];
@@ -95,21 +58,36 @@ export default function HeroBanner({ movies = [] }) {
         
         <img
           alt={currentMovie.title}
-          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${isPlaying ? 'opacity-0' : 'opacity-50'}`}
+          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
           src={currentMovie.image}
         />
         
-        {videoUrl && (
-          <div className={`absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none transition-opacity duration-1000 ${isPlaying ? 'opacity-50' : 'opacity-0'}`}>
-            <video
-              ref={videoRef}
-              className="w-full h-full object-cover"
-              muted
-              playsInline
+        {trailerKey && (
+          <div className={`absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}>
+            <ReactPlayer 
+              url={`https://www.youtube.com/watch?v=${trailerKey}`}
+              playing={true}
+              muted={true}
+              loop={true}
+              controls={false}
+              width="100%"
+              height="100%"
               onPlay={() => setIsPlaying(true)}
-              onPlaying={() => setIsPlaying(true)}
-              onWaiting={() => setIsPlaying(false)}
-              onTimeUpdate={handleTimeUpdate}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => setIsPlaying(false)}
+              onError={() => setIsPlaying(false)}
+              config={{
+                youtube: {
+                  playerVars: { 
+                    disablekb: 1, 
+                    rel: 0, 
+                    modestbranding: 1, 
+                    iv_load_policy: 3, 
+                    playsinline: 1,
+                    origin: window.location.origin
+                  }
+                }
+              }}
             />
           </div>
         )}
