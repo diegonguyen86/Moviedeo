@@ -124,9 +124,14 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
           onDragStart={(e) => e.preventDefault()}
           onClickCapture={handleClickCapture}
           className={`flex gap-4 md:gap-5 overflow-x-auto hide-scrollbar pt-2 pb-8 ${isTop10 ? 'pr-8 pl-4' : ''} ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
+          style={{ willChange: 'scroll-position', WebkitOverflowScrolling: 'touch' }}
         >
           {movies.map((movie, index) => (
-            <div key={movie.id} className={`shrink-0 relative flex items-center ${isTop10 ? 'w-[180px] md:w-[230px] lg:w-[260px] pl-10 md:pl-16' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}>
+            <div 
+              key={movie.id} 
+              className={`shrink-0 relative flex items-center ${isTop10 ? 'w-[180px] md:w-[230px] lg:w-[260px] pl-10 md:pl-16' : 'w-[140px] md:w-[180px] lg:w-[200px]'}`}
+              style={{ transform: 'translateZ(0)', willChange: 'transform' }}
+            >
               
               {/* SỐ TOP KHỔNG LỒ (Bám sát bên trái, đè lên poster) */}
               {isTop10 && (
@@ -134,7 +139,8 @@ export default function MovieCarousel({ title, movies, viewAllState, isTop10 = f
                   WebkitTextStroke: "2px rgba(255, 255, 255, 0.7)",
                   color: "transparent",
                   textShadow: "0 0 20px rgba(0,0,0,0.8)",
-                  transform: "translateX(-15%)"
+                  transform: "translateX(-15%) translateZ(0)",
+                  willChange: "transform"
                 }}>
                   {index + startNumber}
                 </div>
