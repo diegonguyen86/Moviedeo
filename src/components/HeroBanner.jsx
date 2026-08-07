@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiGetTrailer } from "../api/api";
-import ReactPlayer from "react-player/youtube";
+import ReactPlayer from "react-player";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
