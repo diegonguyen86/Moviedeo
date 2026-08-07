@@ -24,7 +24,7 @@ export default function HeroBanner({ movies = [] }) {
     const fetchMedia = async () => {
       try {
         const [key, logo] = await Promise.all([
-          apiGetTrailer(movie.id || movie.slug),
+          apiGetTrailer(movie.origin_name || movie.title || movie.name),
           apiGetMovieLogo(movie.origin_name || movie.title || movie.name)
         ]);
         if (isMounted) {

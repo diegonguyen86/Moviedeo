@@ -81,17 +81,20 @@ export const apiGetMovieLogo = async (title) => {
   }
 };
 
-export const apiGetTrailer = async (slug) => {
-  if (!slug) return null;
+export const apiGetTrailer = async (title) => {
+  if (!title) return null;
   try {
-    const res = await apiGetPhimDetail(slug);
-    const trailerUrl = res?.movie?.trailer_url;
-    if (trailerUrl && trailerUrl.includes('youtube.com/watch?v=')) {
-      return trailerUrl.split('v=')[1].split('&')[0];
-    } else if (trailerUrl && trailerUrl.includes('youtu.be/')) {
-      return trailerUrl.split('youtu.be/')[1].split('?')[0];
-    }
-    return null;
+    const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`);
+    const tmdbId = searchRes.data.results?.[0]?.id;
+    const mediaType = searchRes.data.results?.[0]?.media_type || 'movie';
+    if (!tmdbId) return null;
+    
+    const videoRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/videos?api_key=${TMDB_KEY}`);
+    const videos = videoRes.data.results;
+    if (!videos || videos.length === 0) return null;
+    
+    const trailer = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube') || videos.find(v => v.site === 'YouTube');
+    return trailer ? trailer.key : null;
   } catch (error) {
     return null;
   }
