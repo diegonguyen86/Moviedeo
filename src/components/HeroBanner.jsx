@@ -56,14 +56,9 @@ export default function HeroBanner({ movies = [] }) {
     <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden group">
       <div className="absolute inset-0 z-0 bg-black">
         
-        <img
-          alt={currentMovie.title}
-          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
-          src={currentMovie.image}
-        />
-        
+        {/* VIDEO YOUTUBE LUÔN Ở DƯỚI CÙNG (z-0) ĐỂ TRÌNH DUYỆT BẮT BUỘC RENDER */}
         {trailerKey && (
-          <div className={`absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none transition-opacity duration-1000 ${isPlaying ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="absolute inset-0 w-full h-full scale-[1.35] md:scale-[1.15] pointer-events-none z-0">
             <ReactPlayer 
               url={`https://www.youtube.com/watch?v=${trailerKey}`}
               playing={true}
@@ -74,6 +69,8 @@ export default function HeroBanner({ movies = [] }) {
               height="100%"
               onPlay={() => setIsPlaying(true)}
               onPause={() => setIsPlaying(false)}
+              onBuffer={() => setIsPlaying(false)}
+              onBufferEnd={() => setIsPlaying(true)}
               onEnded={() => setIsPlaying(false)}
               onError={() => setIsPlaying(false)}
               config={{
@@ -92,9 +89,16 @@ export default function HeroBanner({ movies = [] }) {
           </div>
         )}
 
-        {/* Lớp phủ Gradient tạo chiều sâu điện ảnh */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/90 via-[#0A0A0A]/50 to-transparent"></div>
+        {/* ẢNH NỀN NẰM TRÊN VIDEO (z-10), SẼ MỜ ĐI KHI VIDEO BẮT ĐẦU CHẠY */}
+        <img
+          alt={currentMovie.title}
+          className={`absolute inset-0 w-full h-full object-cover object-top transition-opacity duration-1000 z-10 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
+          src={currentMovie.image}
+        />
+
+        {/* Lớp phủ Gradient tạo chiều sâu điện ảnh (z-20) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent z-20"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/90 via-[#0A0A0A]/50 to-transparent z-20"></div>
       </div>
       
       <div className="relative z-10 px-6 md:px-12 pb-16 md:pb-24 w-full max-w-container-max mx-auto">
