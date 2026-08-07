@@ -56,9 +56,9 @@ export default function HeroBanner({ movies = [] }) {
   }, [movies.length]);
 
   const handleProgress = (state) => {
-    // Nếu chạy quá phút 10 + 20s (620s), lặp lại về phút 10 (600s)
-    if (state.playedSeconds >= 620) {
-      playerRef.current?.seekTo(600, "seconds");
+    // Nếu chạy quá phút thứ 2 + 20s (140s), lặp lại về phút thứ 2 (120s)
+    if (state.playedSeconds >= 140) {
+      playerRef.current?.seekTo(120, "seconds");
     }
   };
 
@@ -89,17 +89,16 @@ export default function HeroBanner({ movies = [] }) {
               width="100%"
               height="100%"
               onReady={() => {
-                // Khi tải xong, tự động tua đến phút thứ 10 (600s)
-                playerRef.current?.seekTo(600, "seconds");
+                // Khi tải xong, tự động tua đến phút thứ 2 (120s) - tránh phút 10 bị lỗi load hoặc dính cảnh đen
+                playerRef.current?.seekTo(120, "seconds");
               }}
               onPlay={() => setIsPlaying(true)}
+              onBuffer={() => setIsPlaying(false)}
+              onBufferEnd={() => setIsPlaying(true)}
               onProgress={handleProgress}
               config={{
                 file: {
-                  forceHLS: true,
-                  attributes: {
-                    crossOrigin: "anonymous"
-                  }
+                  forceHLS: true
                 }
               }}
             />
