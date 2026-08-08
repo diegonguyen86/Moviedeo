@@ -14,13 +14,17 @@ export default function AppDownloadModal({ isOpen, onClose }) {
       
       const fetchLinks = async () => {
         try {
-          const docRef = doc(db, "admin_settings", "app_links");
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setAppLinks(docSnap.data());
+          const res = await fetch("/api/releases");
+          if (res.ok) {
+            const data = await res.json();
+            setAppLinks({
+              android: data.android?.url || "",
+              ios: data.ios?.url || "",
+              tv: data.tv?.url || ""
+            });
           }
         } catch (error) {
-          console.error("Lỗi khi lấy link tải từ Firebase:", error);
+          console.error("Lỗi khi lấy link tải từ API:", error);
         }
       };
       
