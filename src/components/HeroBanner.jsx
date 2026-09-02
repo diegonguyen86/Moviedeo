@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { apiGetMovieLogo } from "../api/api";
+import { apiGetMovieLogo, apiGetPhimDetail } from "../api/api";
 
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [logoUrl, setLogoUrl] = useState(null);
+  const [description, setDescription] = useState("");
 
-  // Lấy logo khi đổi phim
+  // Lấy logo và cốt truyện thật khi đổi phim
   useEffect(() => {
     if (!movies || movies.length === 0) return;
     
@@ -14,12 +15,24 @@ export default function HeroBanner({ movies = [] }) {
     const movie = movies[currentIndex];
     
     setLogoUrl(null);
+    setDescription(movie.description || "");
 
     const fetchMedia = async () => {
       try {
-        const logo = await apiGetMovieLogo(movie.origin_name || movie.title || movie.name);
-        if (isMounted && logo) {
-          setLogoUrl(logo);
+        const logoPromise = apiGetMovieLogo(movie.origin_name || movie.title || movie.name);
+        let descPromise = Promise.resolve(null);
+        
+        if (!movie.description && movie.id) {
+          descPromise = apiGetPhimDetail(movie.id);
+        }
+
+        const [logo, detailRes] = await Promise.all([logoPromise, descPromise]);
+        
+        if (isMounted) {
+          if (logo) setLogoUrl(logo);
+          if (detailRes?.movie?.content) {
+            setDescription(detailRes.movie.content.replace(/<[^>]*>?/gm, ''));
+          }
         }
       } catch (err) {}
     };
@@ -41,6 +54,7 @@ export default function HeroBanner({ movies = [] }) {
 
   if (!movies || movies.length === 0) return null;
   const currentMovie = movies[currentIndex];
+  const activeDesc = description || currentMovie.description;
 
   return (
     <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden group">
@@ -87,9 +101,15 @@ export default function HeroBanner({ movies = [] }) {
             </h2>
           )}
           
-          <p className="text-zinc-300 font-medium text-sm md:text-base line-clamp-3 leading-relaxed drop-shadow-md max-w-xl">
-            {currentMovie.description || "Một siêu phẩm điện ảnh đang làm mưa làm gió trên các bảng xếp hạng. Khám phá ngay!"}
-          </p>
+          {activeDesc ? (
+            <p className="text-zinc-300 font-medium text-sm md:text-base line-clamp-3 leading-relaxed drop-shadow-md max-w-xl">
+              {activeDesc}
+            </p>
+          ) : currentMovie.origin_name ? (
+            <p className="text-zinc-400 font-semibold text-sm tracking-wide drop-shadow-md">
+              {currentMovie.origin_name} {currentMovie.year ? `• ${currentMovie.year}` : ''} {currentMovie.quality ? `• ${currentMovie.quality}` : ''}
+            </p>
+          ) : null}
           
           <div className="flex items-center gap-4 pt-4">
             <Link to={`/movie/${currentMovie.id}`} className="group flex items-center gap-2 bg-white hover:bg-zinc-200 text-black px-8 py-3.5 rounded-full font-black text-sm hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.3)]">

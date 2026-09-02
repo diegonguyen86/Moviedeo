@@ -122,12 +122,16 @@ const getFullImageUrl = (url) => {
 };
 
 export const formatMovieItem = (item) => ({
-  id: item.slug, 
-  title: item.name,
+  id: item.slug || item.id, 
+  title: item.name || item.title || "",
+  name: item.name || item.title || "",
+  origin_name: item.origin_name || item.original_name || item.original_title || "",
   image: getFullImageUrl(item.poster_url || item.thumb_url),
+  thumb_url: getFullImageUrl(item.thumb_url || item.poster_url),
   year: item.year || item.time || "2024",
   quality: item.quality || "HD",
-  lang: item.lang
+  lang: item.lang || "Vietsub",
+  description: item.content?.replace(/<[^>]*>?/gm, '') || item.description || ""
 });
 
 // --- GROUP SEASONS LOGIC ---
