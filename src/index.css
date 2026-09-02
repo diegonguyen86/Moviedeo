@@ -1,9 +1,30 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+/* CHỐNG BÔI ĐEN TOÀN BỘ WEBSITE */
+* {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Cho phép bôi đen & gõ chữ trong ô tìm kiếm / nhập liệu */
+input, textarea {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 @layer base {
   body {
-    @apply bg-background text-text-primary selection:bg-primary selection:text-on-primary font-body-md min-h-[100dvh] overflow-x-hidden;
+    @apply bg-background text-text-primary font-body-md min-h-[100dvh] overflow-x-hidden;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
   }
 }
 

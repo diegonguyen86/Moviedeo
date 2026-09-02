@@ -10,6 +10,7 @@ import BrowsePage from "./pages/BrowsePage";
 import ScrollToTop from "./components/ScrollToTop";
 import LiveCommentTicker from "./components/LiveCommentTicker";
 import TVLogin from "./pages/TVLogin";
+import DevToolsGuard from "./components/DevToolsGuard";
 
 // 👇 BƯỚC 1: Import trang Admin Khôi vừa tạo vào đây
 import TrendingManage from "./pages/TrendingManage";
@@ -20,6 +21,7 @@ function App() {
   return (
     <NotificationProvider>
       <AuthProvider> 
+        <DevToolsGuard />
         <BrowserRouter>
           <ScrollToTop />
           <LiveCommentTicker />
