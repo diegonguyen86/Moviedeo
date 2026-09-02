@@ -32,23 +32,29 @@ export default async function handler(req, res) {
 
     const tags = await response.json();
 
-    let androidTag = null;
-    let tvTag = null;
-    let iosTag = null;
+    const parseVersion = (tag, prefix) => {
+      const v = tag.replace(prefix, '').replace(/^v/, '');
+      return v.split('.').map(n => parseInt(n, 10) || 0);
+    };
 
-    // Find latest tag for each platform (Tags are returned newest first by Github)
-    for (const tagObj of tags) {
-      const tag = tagObj.name || "";
-      if (tag.startsWith("android-v") && !androidTag) {
-        androidTag = tag;
-      } else if (tag.startsWith("tv-v") && !tvTag) {
-        tvTag = tag;
-      } else if (tag.startsWith("ios-v") && !iosTag) {
-        iosTag = tag;
+    const compareTagVersions = (a, b, prefix) => {
+      const aParts = parseVersion(a, prefix);
+      const bParts = parseVersion(b, prefix);
+      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        const pA = aParts[i] || 0;
+        const pB = bParts[i] || 0;
+        if (pA !== pB) return pB - pA; // Descending order
       }
+      return 0;
+    };
 
-      if (androidTag && tvTag && iosTag) break;
-    }
+    const androidTags = tags.filter(t => (t.name || '').startsWith('android-v')).map(t => t.name).sort((a, b) => compareTagVersions(a, b, 'android-v'));
+    const tvTags = tags.filter(t => (t.name || '').startsWith('tv-v')).map(t => t.name).sort((a, b) => compareTagVersions(a, b, 'tv-v'));
+    const iosTags = tags.filter(t => (t.name || '').startsWith('ios-v')).map(t => t.name).sort((a, b) => compareTagVersions(a, b, 'ios-v'));
+
+    const androidTag = androidTags[0] || null;
+    const tvTag = tvTags[0] || null;
+    const iosTag = iosTags[0] || null;
 
     const data = {
       android: { version: null, url: null },
