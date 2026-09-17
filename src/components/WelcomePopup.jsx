@@ -46,10 +46,10 @@ export default function WelcomePopup() {
           
           <div className="space-y-4 text-zinc-300 font-medium leading-relaxed mb-8">
             <p className="text-lg">
-              Trang web được tạo ra <b className="text-white">phi lợi nhuận</b> nên không hề có quảng cáo, để trải nghiệm tốt nhất vui lòng <b className="text-primary">tắt chặn quảng cáo</b> khi xem phim nhé!
+              Trang web được tạo ra <b className="text-white">phi lợi nhuận</b> và <b className="text-primary">hoàn toàn không hề cài bất kỳ quảng cáo nào</b>!
             </p>
             <div className="p-4 bg-white/5 rounded-2xl border border-white/10 italic text-sm text-zinc-400">
-              <span className="font-bold text-zinc-300">P/s:</span> Quảng cáo chạy trong phim đến từ các nguồn phim, web của tui không hề gắn 1 quảng cáo hay kiếm được đồng nào từ quảng cáo trong phim đâu nha 🥺
+              <span className="font-bold text-zinc-300">P/s:</span> Nếu có quảng cáo xuất hiện thì đó là từ nguồn phát phim gốc, web của tui không hề gắn 1 quảng cáo hay kiếm được đồng nào từ quảng cáo đâu nha 🥺 Chúc các ní xem phim vui vẻ!
             </div>
           </div>
 
