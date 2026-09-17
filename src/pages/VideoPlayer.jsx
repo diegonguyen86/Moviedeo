@@ -59,6 +59,8 @@ export default function VideoPlayer() {
   const templateCanvasRef = useRef(document.createElement("canvas"));
   const hasSkippedAdRef = useRef(false);
   const templatePixelsRef = useRef(null);
+  const lastScanTimeRef = useRef(0);
+  const canScanAdRef = useRef(true);
 
   // Cấu hình thời lượng quảng cáo (Tính bằng giây)
   const AD_DURATION_SECONDS = 31.5;
@@ -92,8 +94,44 @@ export default function VideoPlayer() {
   const nextEpisode = currentIndex !== -1 && currentIndex < currentEpisodes.length - 1 ? currentEpisodes[currentIndex + 1] : null;
 
   useEffect(() => {
-    if (!videoUrl && !embedFallback) navigate(`/movie/${currentSlug}`, { replace: true });
-  }, [videoUrl, embedFallback, currentSlug, navigate]);
+    // Tự động khôi phục phim khi người dùng F5 hoặc truy cập trực tiếp link /play/:id
+    if (!currentVideo && !currentEmbed && currentSlug) {
+      let isMounted = true;
+      apiGetPhimDetail(currentSlug)
+        .then((res) => {
+          if (!isMounted) return;
+          if (res && res.movie) {
+            setCurrentMovieName(res.movie.name);
+            setCurrentPosterUrl(
+              res.movie.poster_url?.startsWith("http")
+                ? res.movie.poster_url
+                : `https://phimimg.com/${res.movie.poster_url}`
+            );
+            const servers = res.episodes || [];
+            setCurrentAllServers(servers);
+            const eps = servers[0]?.server_data || servers[0]?.items || [];
+            if (eps.length > 0) {
+              const ep = eps[0];
+              const nVideo = ep.link_m3u8 || ep.m3u8 || "";
+              const nEmbed = ep.link_embed || ep.embed || "";
+              setCurrentVideo(nVideo);
+              setCurrentEmbed(nEmbed);
+              setCurrentEpName(ep.name);
+              setActiveServerIdx(0);
+              setUseIframe(!nVideo && !!nEmbed);
+              return;
+            }
+          }
+          navigate(`/movie/${currentSlug}`, { replace: true });
+        })
+        .catch(() => {
+          if (isMounted) navigate(`/movie/${currentSlug}`, { replace: true });
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [currentVideo, currentEmbed, currentSlug, navigate]);
 
   // Fetch related seasons once
   useEffect(() => {
@@ -377,17 +415,18 @@ export default function VideoPlayer() {
 
   const detectAdAndSkip = () => {
     const video = videoRef.current;
-    
-    if (!window.debugAdSkipCount) window.debugAdSkipCount = 0;
-    window.debugAdSkipCount++;
+    if (!video || hasSkippedAdRef.current || !canScanAdRef.current) return;
 
-    if (!video || hasSkippedAdRef.current) return;
+    // Throttle: chỉ quét tối đa 1 lần mỗi 1.5 giây để tránh giật lag GPU/CPU trên mobile
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 1500) return;
+    lastScanTimeRef.current = now;
 
     try {
-      const ctx = videoCanvasRef.current.getContext("2d", { willReadFrequently: true });
+      const canvas = videoCanvasRef.current;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return;
       
-      // THUẬT TOÁN MỚI: QUÉT MÀU ÁO ĐỎ CỦA ANH CHÀNG Ở GIỮA MÀN HÌNH
-      // Vùng quét: X từ 40% đến 60%, Y từ 50% đến 80% (Ngay giữa ngực anh áo đỏ)
       const relX = 0.40; 
       const relY = 0.50; 
       const relW = 0.20; 
@@ -398,18 +437,16 @@ export default function VideoPlayer() {
       const sw = video.videoWidth * relW;
       const sh = video.videoHeight * relH;
 
-      if (sw === 0 || sh === 0 || isNaN(sw) || isNaN(sh)) return;
+      if (!sw || !sh || isNaN(sw) || isNaN(sh)) return;
 
-      // Ép khung hình về 50x50 pixel để quét cho nhẹ (tốn chưa tới 1 mili-giây)
-      videoCanvasRef.current.width = 50;
-      videoCanvasRef.current.height = 50;
+      canvas.width = 40;
+      canvas.height = 40;
       
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 50, 50);
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 40, 40);
 
-      const videoPixels = ctx.getImageData(0, 0, 50, 50);
-
+      const videoPixels = ctx.getImageData(0, 0, 40, 40);
       let redCount = 0;
-      const totalPixels = 50 * 50;
+      const totalPixels = 40 * 40;
 
       for (let i = 0; i < videoPixels.data.length; i += 4) {
         const r = videoPixels.data[i];
@@ -417,26 +454,21 @@ export default function VideoPlayer() {
         const b = videoPixels.data[i+2];
 
         // Điều kiện nhận diện màu Đỏ Rực (áo của người đàn ông trong quảng cáo)
-        // Đỏ phải cao (>120), xanh lá và xanh lam phải thấp (<70), và Đỏ phải trội hơn gấp đôi 2 màu kia
         if (r > 120 && g < 70 && b < 80 && r > g * 2 && r > b * 2) {
           redCount++;
         }
       }
 
       const redPercentage = redCount / totalPixels;
-      if (window.debugAdSkipCount % 4 === 0) {
-         console.log(`[AutoSkip] Đang quét áo đỏ... Tỷ lệ màu đỏ: ${(redPercentage*100).toFixed(2)}% (Mục tiêu > 15%)`);
-      }
-
-      // Nếu vùng giữa màn hình có hơn 15% là màu đỏ -> Chính là đoạn quảng cáo đó!
       if (redPercentage > 0.15) {
-        console.log(`[AutoSkip] BINGO! Đã thấy anh áo đỏ! Tỷ lệ đỏ: ${(redPercentage*100).toFixed(1)}%`);
         handleSkipAd();
         hasSkippedAdRef.current = true;
       }
     } catch (e) {
-      if (window.debugAdSkipCount % 20 === 0) {
-         console.error("[AutoSkip] Lỗi thuật toán:", e.message);
+      // Nếu dính lỗi CORS (Tainted Canvas do video từ CDN khác nguồn),
+      // tự động dừng quét để không ném ngoại lệ liên tục gây nghẽn render loop
+      if (e.name === "SecurityError" || e.message?.includes("tainted")) {
+        canScanAdRef.current = false;
       }
     }
   };
@@ -468,32 +500,48 @@ export default function VideoPlayer() {
     const elem = playerWrapperRef.current;
     const video = videoRef.current;
 
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      if (elem.requestFullscreen) {
-        await elem.requestFullscreen().catch(() => {});
-      } else if (elem.webkitRequestFullscreen) { 
-        await elem.webkitRequestFullscreen();
-      } else if (video && video.webkitEnterFullscreen) { 
-        video.webkitEnterFullscreen();
+    const isCurrentlyFullscreen = !!(
+      document.fullscreenElement || 
+      document.webkitFullscreenElement ||
+      (video && video.webkitDisplayingFullscreen)
+    );
+
+    if (!isCurrentlyFullscreen) {
+      try {
+        if (elem?.requestFullscreen) {
+          await elem.requestFullscreen();
+        } else if (elem?.webkitRequestFullscreen) { 
+          await elem.webkitRequestFullscreen();
+        } else if (video?.webkitEnterFullscreen) { 
+          video.webkitEnterFullscreen();
+        }
+      } catch (err) {
+        if (video?.webkitEnterFullscreen) {
+          try { video.webkitEnterFullscreen(); } catch (e) {}
+        }
       }
       
       try {
-        if (window.screen && screen.orientation && screen.orientation.lock) {
-          await screen.orientation.lock("landscape");
+        if (window.screen?.orientation?.lock) {
+          await window.screen.orientation.lock("landscape").catch(() => {});
         }
       } catch (error) {}
       
       setIsFullscreen(true);
     } else {
-      if (document.exitFullscreen) {
-        await document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen();
+        } else if (video?.webkitExitFullscreen) {
+          video.webkitExitFullscreen();
+        }
+      } catch (err) {}
 
       try {
-        if (window.screen && screen.orientation && screen.orientation.unlock) {
-          screen.orientation.unlock();
+        if (window.screen?.orientation?.unlock) {
+          window.screen.orientation.unlock();
         }
       } catch (error) {}
 
@@ -503,13 +551,30 @@ export default function VideoPlayer() {
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement));
+      const isFs = !!(
+        document.fullscreenElement || 
+        document.webkitFullscreenElement ||
+        (videoRef.current && videoRef.current.webkitDisplayingFullscreen)
+      );
+      setIsFullscreen(isFs);
     };
+
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+    
+    const video = videoRef.current;
+    if (video) {
+      video.addEventListener("webkitbeginfullscreen", handleFullscreenChange);
+      video.addEventListener("webkitendfullscreen", handleFullscreenChange);
+    }
+
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+      if (video) {
+        video.removeEventListener("webkitbeginfullscreen", handleFullscreenChange);
+        video.removeEventListener("webkitendfullscreen", handleFullscreenChange);
+      }
     };
   }, []);
 
@@ -619,6 +684,7 @@ export default function VideoPlayer() {
     saveToFirebase(); 
     setActiveCloudProgress(null); 
     hasSkippedAdRef.current = false; // Reset cờ skip quảng cáo khi chuyển tập
+    canScanAdRef.current = true;
     
     const newVideo = ep.link_m3u8 || ep.m3u8 || "";
     const newEmbed = ep.link_embed || ep.embed || "";
@@ -666,9 +732,9 @@ export default function VideoPlayer() {
     <main className="relative min-h-screen bg-[#050505] text-white pt-6 md:pt-12 pb-20 font-sans overflow-hidden select-none">
       
       {/* AMBIENT ÁNH SÁNG */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-40 blur-[100px] scale-110 saturate-150 transition-all duration-1000" 
+          className="absolute inset-0 bg-cover bg-center opacity-30 md:opacity-40 blur-2xl md:blur-[100px] scale-105 md:scale-110 saturate-150 transition-all duration-1000 transform-gpu will-change-transform" 
           style={{ backgroundImage: `url(${currentPosterUrl})` }}
         ></div>
         <div className="absolute inset-0 bg-black/60"></div>

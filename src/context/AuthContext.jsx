@@ -57,74 +57,83 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let unsubsDoc = null;
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      try {
-        setLoading(true);
-        if (currentUser) {
-          
-          // Kiểm tra xem người dùng có Provider Password hay không
-          const hasPass = currentUser.providerData.some(p => p.providerId === 'password');
-          setHasPassword(hasPass);
+    let unsubscribe = () => {};
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        try {
+          setLoading(true);
+          if (currentUser) {
+            // Kiểm tra xem người dùng có Provider Password hay không
+            const hasPass = currentUser.providerData.some(p => p.providerId === 'password');
+            setHasPassword(hasPass);
 
-          const userDocRef = doc(db, "users", currentUser.uid);
-          
-          // Bước 1: Kiểm tra an toàn bằng getDoc (không bị lỗi cache như onSnapshot)
-          try {
-            const docSnap = await getDoc(userDocRef);
-            if (!docSnap.exists()) {
-              // TẠO MỚI KHI LẦN ĐẦU ĐĂNG NHẬP
-              await setDoc(userDocRef, {
-                uid: currentUser.uid,
-                email: currentUser.email,
-                displayName: currentUser.displayName,
-                photoURL: currentUser.photoURL,
-                isApproved: false,
-                createdAt: new Date().toISOString()
-              });
-              // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
-              await notifyAdmin(currentUser.displayName || currentUser.email?.split('@')[0], currentUser.email, currentUser.uid);
+            const userDocRef = doc(db, "users", currentUser.uid);
+            
+            // Bước 1: Kiểm tra an toàn bằng getDoc (không bị lỗi cache như onSnapshot)
+            try {
+              const docSnap = await getDoc(userDocRef);
+              if (!docSnap.exists()) {
+                // TẠO MỚI KHI LẦN ĐẦU ĐĂNG NHẬP
+                await setDoc(userDocRef, {
+                  uid: currentUser.uid,
+                  email: currentUser.email,
+                  displayName: currentUser.displayName,
+                  photoURL: currentUser.photoURL,
+                  isApproved: false,
+                  createdAt: new Date().toISOString()
+                });
+                // Gửi thông báo cho Admin (Chỉ gửi 1 lần duy nhất lúc này)
+                await notifyAdmin(currentUser.displayName || currentUser.email?.split('@')[0], currentUser.email, currentUser.uid);
+              }
+            } catch (e) {
+              console.error("Lỗi khởi tạo user:", e);
             }
-          } catch (e) {
-            console.error("Lỗi khởi tạo user:", e);
-          }
 
-          // Bước 2: Lắng nghe thay đổi real-time
-          unsubsDoc = onSnapshot(userDocRef, (docSnap) => {
-            if (docSnap.exists()) {
-              // ĐÃ CÓ TÀI KHOẢN -> Lấy trạng thái duyệt và data
-              setIsApproved(docSnap.data().isApproved || false);
-              setUserData(docSnap.data());
-            } else {
+            // Bước 2: Lắng nghe thay đổi real-time
+            unsubsDoc = onSnapshot(userDocRef, (docSnap) => {
+              if (docSnap.exists()) {
+                // ĐÃ CÓ TÀI KHOẢN -> Lấy trạng thái duyệt và data
+                setIsApproved(docSnap.data().isApproved || false);
+                setUserData(docSnap.data());
+              } else {
+                setIsApproved(false);
+                setUserData(null);
+              }
+              setUser(currentUser);
+              setLoading(false); // Bắt buộc chờ có data mới tắt Loading
+            }, (err) => {
+              console.error("Lỗi kết nối Firestore:", err);
+              // Vẫn phải tắt loading để không bị treo màn hình mãi mãi
+              setUser(currentUser);
               setIsApproved(false);
-              setUserData(null);
-            }
-            setUser(currentUser);
-            setLoading(false); // Bắt buộc chờ có data mới tắt Loading
-          }, (err) => {
-            console.error("Lỗi kết nối Firestore (Có thể do Adblock):", err);
-            // Vẫn phải tắt loading để không bị treo màn hình đen mãi mãi
-            setUser(currentUser);
+              setLoading(false);
+            });
+          } else {
+            setUser(null);
             setIsApproved(false);
+            setUserData(null);
+            setHasPassword(false);
             setLoading(false);
-          });
-        } else {
-          setUser(null);
-          setIsApproved(false);
-          setUserData(null);
-          setHasPassword(false);
-          setLoading(false);
-          if (unsubsDoc) {
-            unsubsDoc();
-            unsubsDoc = null;
+            if (unsubsDoc) {
+              unsubsDoc();
+              unsubsDoc = null;
+            }
           }
+        } catch (error) {
+          console.error("Firebase/Auth Error:", error);
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Firebase/Auth Error:", error);
+      }, (err) => {
+        console.warn("Auth error:", err);
         setLoading(false);
-      }
-    });
+      });
+    } catch (e) {
+      console.warn("Lỗi khởi tạo Auth listener:", e);
+      setLoading(false);
+    }
+
     return () => {
-      unsubscribe();
+      if (typeof unsubscribe === 'function') unsubscribe();
       if (unsubsDoc) unsubsDoc();
     };
   }, []);

@@ -60,7 +60,7 @@ export default function AuthModal({ isOpen, onClose }) {
       onClose();
     } else {
       if (result.reason === 'blocked') {
-        showToast('Vui lòng tắt trình chặn quảng cáo (Adblock) để đăng nhập Google.', 'error');
+        showToast('Không thể mở cửa sổ đăng nhập Google. Vui lòng thử lại!', 'error');
       }
     }
   };

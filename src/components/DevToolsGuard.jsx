@@ -4,58 +4,58 @@ export default function DevToolsGuard() {
   const [isBlackout, setIsBlackout] = useState(false);
 
   useEffect(() => {
-    // 1. Ghi đè toàn bộ hàm console để không xuất log và xóa console
+    // Nhận diện thiết bị di động / máy tính bảng (màn hình cảm ứng)
+    const isTouchOrMobile = () => {
+      return (
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        !window.matchMedia('(hover: hover) and (pointer: fine)').matches
+      );
+    };
+
+    const isMobile = isTouchOrMobile();
+
+    // 1. Ghi đè console để bảo vệ API và đường dẫn không bị soi
     const noop = () => {};
-    ['log', 'debug', 'info', 'warn', 'error', 'table', 'trace', 'dir'].forEach((method) => {
+    ['log', 'debug', 'info', 'warn', 'table', 'trace', 'dir'].forEach((method) => {
       try {
         console[method] = noop;
       } catch (e) {}
     });
 
-    const triggerFreezeAndBlackout = () => {
+    const triggerBlackout = () => {
       setIsBlackout(true);
-      
-      // Xóa sạch console liên tục
       try { console.clear(); } catch(e) {}
-      
-      // Ẩn toàn bộ nội dung DOM của website để chống soi Elements
-      try {
-        const root = document.getElementById('root');
-        if (root) root.style.display = 'none';
-        document.body.style.backgroundColor = '#000000';
-      } catch(e) {}
-
-      // Vòng lặp debugger vô tận để đóng băng (Freeze / Trap) DevTools
-      setInterval(() => {
-        try {
-          (function() { return false; }["constructor"]("debugger")());
-        } catch(e) {}
-      }, 50);
     };
 
-    // 2. Chặn chuột phải (Inspect Element)
+    const restoreNormal = () => {
+      setIsBlackout(false);
+    };
+
+    // 2. Chặn chuột phải (Inspect Element / Context Menu)
     const handleContextMenu = (e) => {
       e.preventDefault();
       return false;
     };
 
-    // 3. Chặn các phím F12, Ctrl+Shift+I/J/C, Ctrl+U
+    // 3. Chặn các phím F12, Ctrl+Shift+I/J/C, Ctrl+U (và Cmd tương đương trên Mac)
     const handleKeyDown = (e) => {
       // F12
       if (e.key === 'F12' || e.keyCode === 123) {
         e.preventDefault();
         e.stopPropagation();
-        triggerFreezeAndBlackout();
+        triggerBlackout();
         return false;
       }
 
       // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (hoặc Cmd trên Mac)
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && (e.shiftKey || e.altKey)) {
         const key = (e.key || '').toUpperCase();
         if (key === 'I' || key === 'J' || key === 'C') {
           e.preventDefault();
           e.stopPropagation();
-          triggerFreezeAndBlackout();
+          triggerBlackout();
           return false;
         }
       }
@@ -64,60 +64,44 @@ export default function DevToolsGuard() {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
         e.preventDefault();
         e.stopPropagation();
-        triggerFreezeAndBlackout();
+        triggerBlackout();
         return false;
       }
     };
 
-    // 4. Phát hiện mở DevTools bằng Timing Check (Debugger Benchmark)
-    const detectTiming = () => {
-      const startTime = performance.now();
-      try {
-        (function() { return false; }["constructor"]("debugger")());
-      } catch(e) {}
-      const endTime = performance.now();
-      if (endTime - startTime > 80) {
-        triggerFreezeAndBlackout();
-      }
-    };
-
-    // 5. Phát hiện mở DevTools bằng kích thước cửa sổ
+    // 4. Phát hiện mở DevTools bằng kích thước cửa sổ (CHỈ CHẠY TRÊN PC CÓ CHUỘT)
+    // Tuyệt đối không chạy trên điện thoại vì thanh địa chỉ/xoay màn hình/fullscreen làm lệch kích thước
     const checkWindowSize = () => {
-      const threshold = 160;
+      if (isMobile) return;
+
+      const threshold = 180;
       const widthThreshold = window.outerWidth - window.innerWidth > threshold;
       const heightThreshold = window.outerHeight - window.innerHeight > threshold;
       
       if (widthThreshold || heightThreshold) {
-        triggerFreezeAndBlackout();
+        triggerBlackout();
+      } else {
+        // Tự động khôi phục nếu người dùng đã đóng DevTools trên PC
+        restoreNormal();
       }
     };
 
-    // 6. Phát hiện mở Console qua Object Getter
-    const element = new Image();
-    Object.defineProperty(element, 'id', {
-      get: function() {
-        triggerFreezeAndBlackout();
-      }
-    });
-
     window.addEventListener('contextmenu', handleContextMenu, true);
     window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('resize', checkWindowSize);
 
-    const timer = setInterval(() => {
-      detectTiming();
-      checkWindowSize();
-      try {
-        console.log('%c', element);
-        console.clear();
-      } catch(e) {}
-    }, 500);
+    let timer = null;
+    if (!isMobile) {
+      window.addEventListener('resize', checkWindowSize);
+      timer = setInterval(checkWindowSize, 800);
+    }
 
     return () => {
       window.removeEventListener('contextmenu', handleContextMenu, true);
       window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('resize', checkWindowSize);
-      clearInterval(timer);
+      if (!isMobile) {
+        window.removeEventListener('resize', checkWindowSize);
+        if (timer) clearInterval(timer);
+      }
     };
   }, []);
 
@@ -129,11 +113,41 @@ export default function DevToolsGuard() {
         position: 'fixed',
         inset: 0,
         zIndex: 2147483647,
-        backgroundColor: '#000000',
-        width: '100vw',
-        height: '100vh',
-        pointerEvents: 'all'
+        backgroundColor: '#09090b',
+        color: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        padding: '24px',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
       }} 
-    />
+    >
+      <div style={{ maxWidth: '480px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🛡️</div>
+        <h2 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '12px', color: '#f43f5e' }}>
+          Đã phát hiện công cụ kiểm tra (DevTools)
+        </h2>
+        <p style={{ color: '#a1a1aa', fontSize: '14px', lineHeight: 1.6, marginBottom: '24px' }}>
+          Vui lòng đóng cửa sổ DevTools (Inspect) hoặc nhấn F12 để tiếp tục thưởng thức phim nhé!
+        </p>
+        <button
+          onClick={() => setIsBlackout(false)}
+          style={{
+            padding: '10px 24px',
+            backgroundColor: '#ffffff',
+            color: '#000000',
+            fontWeight: 'bold',
+            fontSize: '13px',
+            borderRadius: '10px',
+            border: 'none',
+            cursor: 'pointer'
+          }}
+        >
+          Tôi đã đóng DevTools
+        </button>
+      </div>
+    </div>
   );
 }

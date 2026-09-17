@@ -41,8 +41,7 @@
           ) {
             e.preventDefault();
             e.stopPropagation();
-            document.documentElement.innerHTML = '<body style="background:#000;width:100vw;height:100vh;"></body>';
-            setInterval(function() { Function("debugger")(); }, 50);
+            return false;
           }
         }, true);
       })();
