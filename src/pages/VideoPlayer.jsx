@@ -6,7 +6,7 @@ import { db } from "../firebase";
 import { doc, setDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
 import CommentSection from "../components/CommentSection";
-import { apiGetRelatedSeasons, apiGetPhimDetail } from "../api/api";
+import { apiGetRelatedSeasons, apiGetPhimDetail, apiGetPhimTheoTheLoai } from "../api/api";
 
 export default function VideoPlayer() {
   const navigate = useNavigate();
@@ -33,12 +33,18 @@ export default function VideoPlayer() {
   const [relatedSeasons, setRelatedSeasons] = useState([]);
   const [isLoadingSeason, setIsLoadingSeason] = useState(false);
   
+  // ĐỀ XUẤT PHIM CÙNG THỂ LOẠI KHI HẾT PHIM (BUG 6 NÂNG CẤP)
+  const [recommendedMovies, setRecommendedMovies] = useState([]);
+  const [recommendCategoryName, setRecommendCategoryName] = useState("");
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  
   // Quản lý tiến trình Firebase (Trị Zombie Progress)
   const [activeCloudProgress, setActiveCloudProgress] = useState(cloudProgress);
 
   const [useIframe, setUseIframe] = useState(!videoUrl && !!embedFallback);
   
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [seekTime, setSeekTime] = useState(0);
@@ -133,6 +139,33 @@ export default function VideoPlayer() {
     }
   }, [currentVideo, currentEmbed, currentSlug, navigate]);
 
+  // Tự động lấy danh sách phim cùng thể loại để đề xuất khi hết phim
+  useEffect(() => {
+    if (!currentSlug) return;
+    let isMounted = true;
+    apiGetPhimDetail(currentSlug)
+      .then((res) => {
+        if (!isMounted || !res || !res.movie) return;
+        const categories = res.movie.category || [];
+        if (categories.length > 0) {
+          const mainCat = categories[0];
+          setRecommendCategoryName(mainCat.name);
+          apiGetPhimTheoTheLoai(mainCat.slug, 1)
+            .then((catRes) => {
+              if (!isMounted) return;
+              const items = catRes?.data?.items || catRes?.items || [];
+              const filtered = items.filter((m) => m.slug !== currentSlug);
+              setRecommendedMovies(filtered.slice(0, 6));
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [currentSlug]);
+
   // Fetch related seasons once
   useEffect(() => {
     if (movieName) {
@@ -170,6 +203,7 @@ export default function VideoPlayer() {
           setActiveServerIdx(0);
           setUseIframe(!nVideo && !!nEmbed);
           setActiveCloudProgress(null); // start from 0 for new season
+          setShowRecommendations(false);
 
           // Cập nhật lại đường dẫn URL trên trình duyệt để tránh bị lỗi khi user ấn F5
           navigate(`/play/${seasonSlug}`, {
@@ -203,9 +237,14 @@ export default function VideoPlayer() {
       let progressToSave = currentProgress;
       
       // Thuật toán gỡ bẫy End-Credit: Chuyển thẳng sang tập tiếp theo nếu đã xem > 95%
-      if (duration > 0 && currentProgress >= duration * 0.95 && nextEpisode) {
-        epToSave = nextEpisode.name;
-        progressToSave = 0;
+      if (duration > 0 && currentProgress >= duration * 0.95) {
+        if (nextEpisode) {
+          epToSave = nextEpisode.name;
+          progressToSave = 0;
+        } else {
+          // Phim lẻ hoặc tập cuối: Reset tiến trình về 0 để không bị kẹt ở credit
+          progressToSave = 0;
+        }
       }
 
       // Backup tiến trình vào máy để chắc chắn 100% không mất
@@ -262,6 +301,18 @@ export default function VideoPlayer() {
     };
   }, []);
 
+  // AUTO-SAVE TIẾT KIỆM QUOTA FIREBASE:
+  // Tiến trình chi tiết đã được lưu liên tục mỗi giây vào localStorage của máy.
+  // Lên Firebase chỉ đẩy định kỳ mỗi 15 phút (hoặc khi thoát/đổi tập/ẩn tab/hết phim) để tránh hao quota 20k writes/ngày của gói Free.
+  useEffect(() => {
+    if (!isPlaying) return;
+    const FIFTEEN_MINUTES = 15 * 60 * 1000;
+    const interval = setInterval(() => {
+      saveProgressRef.current();
+    }, FIFTEEN_MINUTES);
+    return () => clearInterval(interval);
+  }, [isPlaying]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video || useIframe || !currentVideo) return;
@@ -285,13 +336,19 @@ export default function VideoPlayer() {
     };
 
     const onError = () => {
-      // Nếu lỗi (đặc biệt khi từ background quay lại), thử load lại trước khi bỏ cuộc
+      // Tự động phục hồi nếu video bị lỗi do thuộc tính crossorigin trên mobile
+      if (video && video.hasAttribute("crossorigin")) {
+        video.removeAttribute("crossorigin");
+        canScanAdRef.current = false;
+        video.src = safeVideoUrl;
+        video.load();
+        video.play().catch(() => {});
+        return;
+      }
       if (retryCount < 3) {
         retryCount++;
-        // Đọc lại time mới nhất từ ổ cứng (tránh trường hợp video bị crash làm mất currentTime)
         const freshestTime = localStorage.getItem(`progress_${currentSlug}_${currentEpName}`);
         const recoverTime = freshestTime ? parseFloat(freshestTime) : (savedTime ? parseFloat(savedTime) : 0);
-        
         video.src = safeVideoUrl;
         video.load();
         video.currentTime = recoverTime;
@@ -305,7 +362,16 @@ export default function VideoPlayer() {
 
     const initHls = (autoPlay = true) => {
       if (hls) hls.destroy();
-      hls = new Hls({ debug: false, enableWorker: true });
+      hls = new Hls({
+        debug: false,
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 60,
+        maxBufferLength: 30,
+        maxMaxBufferLength: 60,
+        maxBufferSize: 30 * 1000 * 1000,
+        startFragPrefetch: true
+      });
       
       hls.on(Hls.Events.MEDIA_ATTACHED, () => {
         hls.loadSource(safeVideoUrl);
@@ -397,8 +463,37 @@ export default function VideoPlayer() {
 
   const togglePlay = () => {
     if (videoRef.current) {
-      if (isPlaying) videoRef.current.pause();
-      else videoRef.current.play();
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        const p = videoRef.current.play();
+        if (p !== undefined) {
+          p.catch((err) => {
+            console.warn("Autoplay bị trình duyệt chặn:", err);
+            setIsPlaying(false);
+            setShowControls(true);
+          });
+        }
+      }
+    }
+  };
+
+  // 👇 XỬ LÝ CHẠM MÀN HÌNH CHUẨN XÁC TRÊN CẢ MOBILE VÀ PC:
+  // - Nếu video đang dừng: Chạm bất cứ đâu là PHÁT NGAY LẬP TỨC (không bị đơ, không cần reload trang)
+  // - Nếu video đang phát: Trên PC bấm để Pause, trên Mobile chạm để bật/tắt thanh điều khiển
+  const handlePlayerTap = (e) => {
+    e?.stopPropagation();
+    if (!isPlaying) {
+      togglePlay();
+      handleUserActivity();
+      return;
+    }
+    const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    if (isDesktop) {
+      togglePlay();
+      handleUserActivity();
+    } else {
+      toggleControls(e);
     }
   };
 
@@ -774,36 +869,43 @@ export default function VideoPlayer() {
               <video
                 ref={videoRef}
                 playsInline
+                webkit-playsinline="true"
+                x5-playsinline="true"
+                preload="auto"
+                crossOrigin="anonymous"
                 poster={currentPosterUrl}
                 className="w-full h-full object-contain cursor-pointer"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  
-                  // Tuyệt chiêu soi phần cứng: Máy có chuột thật không?
-                  const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-
-                  if (isDesktop) {
-                    // PC (Có chuột): Bấm thẳng vào video để Play/Pause
-                    togglePlay();
-                    handleUserActivity();
-                  } else {
-                    // Mobile & iPad (Cảm ứng): Bấm vào video chỉ bật/tắt Menu
-                    toggleControls(e);
-                  }
-                }}
+                onClick={handlePlayerTap}
                 onTimeUpdate={handleTimeUpdate}
                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                onPlay={() => setIsPlaying(true)}
+                onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
                 onPause={() => setIsPlaying(false)}
+                onWaiting={() => setIsBuffering(true)}
+                onPlaying={() => { setIsBuffering(false); setIsPlaying(true); }}
+                onCanPlay={() => setIsBuffering(false)}
+                onSeeking={() => setIsBuffering(true)}
+                onSeeked={() => setIsBuffering(false)}
                 onEnded={() => {
                   setIsPlaying(false);
+                  saveToFirebase();
                   if (nextEpisode) {
                     setIsAutoNexting(true);
                     setAutoNextCounter(5);
                     setShowControls(true);
+                  } else {
+                    setShowRecommendations(true);
+                    setShowControls(true);
                   }
                 }}
               />
+
+                            {/* HIỆU ỨNG BUFFERING KHI MẠNG MOBILE CHẬM */}
+              {isBuffering && isPlaying && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30 bg-black/30 backdrop-blur-[2px]">
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-yellow-500/20 border-t-yellow-500 animate-spin shadow-[0_0_20px_rgba(234,179,8,0.5)]"></div>
+                  <span className="text-[11px] font-bold text-yellow-400/80 mt-2 tracking-widest uppercase">Đang tải...</span>
+                </div>
+              )}
 
               {/* MÀN HÌNH AUTO-NEXT */}
               {isAutoNexting && (
@@ -819,18 +921,124 @@ export default function VideoPlayer() {
                 </div>
               )}
 
+              {/* MÀN HÌNH ĐỀ XUẤT PHIM CÙNG THỂ LOẠI (KHI HẾT PHIM / TẬP CUỐI) */}
+              {showRecommendations && (
+                <div className="absolute inset-0 bg-black/95 backdrop-blur-xl z-40 flex flex-col justify-between p-4 md:p-6 lg:p-8 animate-in fade-in duration-300 pointer-events-auto">
+                  {/* Header đề xuất */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5 text-yellow-400 text-xs md:text-sm font-black uppercase tracking-wider mb-1">
+                        <span className="material-symbols-outlined text-base md:text-lg">auto_awesome</span>
+                        <span>Đề xuất tiếp theo</span>
+                      </div>
+                      <h3 className="text-base md:text-xl lg:text-2xl font-black text-white uppercase tracking-tight">
+                        Cùng thể loại {recommendCategoryName ? `"${recommendCategoryName}"` : ""}
+                      </h3>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setShowRecommendations(false);
+                          if (videoRef.current) {
+                            videoRef.current.currentTime = 0;
+                            videoRef.current.play().catch(() => {});
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs md:text-sm font-bold transition-all border border-white/10 shadow-lg hover:scale-105 active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-base">replay</span>
+                        <span>Xem lại</span>
+                      </button>
+                      <button
+                        onClick={() => setShowRecommendations(false)}
+                        className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white flex items-center justify-center transition-all border border-white/10"
+                        title="Đóng"
+                      >
+                        <span className="material-symbols-outlined text-base md:text-lg">close</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Lưới phim đề xuất */}
+                  <div className="my-auto py-2">
+                    {recommendedMovies.length > 0 ? (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 md:gap-3 lg:gap-4">
+                        {recommendedMovies.map((movie) => {
+                          const poster = movie.poster_url?.startsWith("http")
+                            ? movie.poster_url
+                            : `https://phimimg.com/${movie.poster_url || movie.thumb_url}`;
+                          return (
+                            <div
+                              key={movie.slug}
+                              onClick={() => {
+                                setShowRecommendations(false);
+                                saveToFirebase();
+                                navigate(`/movie/${movie.slug}`);
+                              }}
+                              className="group/rec cursor-pointer flex flex-col"
+                            >
+                              <div className="relative aspect-[2/3] rounded-lg md:rounded-xl overflow-hidden border border-white/10 group-hover/rec:border-yellow-500/80 transition-all duration-300 transform group-hover/rec:scale-105 shadow-lg group-hover/rec:shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+                                <img
+                                  src={poster}
+                                  alt={movie.name}
+                                  className="w-full h-full object-cover transition-transform duration-500 group-hover/rec:scale-110"
+                                  loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/rec:opacity-100 transition-opacity flex items-center justify-center">
+                                  <div className="w-10 h-10 rounded-full bg-yellow-500 text-black flex items-center justify-center shadow-lg transform group-hover/rec:scale-110 transition-transform">
+                                    <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+                                  </div>
+                                </div>
+                                {movie.quality && (
+                                  <span className="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-yellow-400 text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded">
+                                    {movie.quality}
+                                  </span>
+                                )}
+                                {movie.year && (
+                                  <span className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-md text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                    {movie.year}
+                                  </span>
+                                )}
+                              </div>
+                              <h4 className="text-white text-[11px] md:text-xs lg:text-sm font-bold truncate mt-1.5 group-hover/rec:text-yellow-400 transition-colors">
+                                {movie.name}
+                              </h4>
+                              <p className="text-zinc-500 text-[9px] md:text-[10px] truncate">
+                                {movie.origin_name || movie.time || "Phim"}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-zinc-500">
+                        <LoadingLogo className="w-8 h-8 mb-2" />
+                        <span className="text-xs">Đang tìm các phim phù hợp...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between text-[11px] md:text-xs text-zinc-400 border-t border-white/10 pt-2.5">
+                    <span>Chọn phim bất kỳ để xem chi tiết & phát</span>
+                    <button
+                      onClick={() => {
+                        saveToFirebase();
+                        navigate("/");
+                      }}
+                      className="hover:text-yellow-400 transition-colors font-medium"
+                    >
+                      Về Trang Chủ →
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* LỚP PHỦ MỜ KHI HIỆN CONTROLS VÀ VÙNG NHẬN SỰ KIỆN CLICK (TỐI ƯU CẢ PC VÀ MOBILE) */}
               <div 
                 className={`absolute inset-0 bg-black/40 transition-opacity duration-300 z-10 flex items-center justify-center ${!isPlaying || showControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
-                onClick={(e) => {
-                  const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
-                  if (isDesktop) {
-                    togglePlay();
-                    handleUserActivity();
-                  } else {
-                    toggleControls(e);
-                  }
-                }}
+                onClick={handlePlayerTap}
                 onDoubleClick={(e) => {
                   const isDesktop = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
                   if (isDesktop) {
@@ -861,19 +1069,26 @@ export default function VideoPlayer() {
                     </button>
 
                     {/* Play/Pause */}
-                    <button 
-                      className="relative w-16 h-16 md:w-20 md:h-20 bg-white/10 border border-white/40 text-white rounded-full flex items-center justify-center backdrop-blur-xl hover:bg-white hover:text-black hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] group/play"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        togglePlay();
-                        handleUserActivity();
-                      }}
-                    >
-                      {!isPlaying && <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-white group-hover/play:bg-black group-hover/play:opacity-10"></div>}
-                      <span className="material-symbols-outlined text-4xl md:text-5xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1", marginLeft: isPlaying ? '0' : '4px' }}>
-                        {isPlaying ? 'pause' : 'play_arrow'}
-                      </span>
-                    </button>
+                    <div className="flex flex-col items-center">
+                      <button 
+                        className="relative w-16 h-16 md:w-20 md:h-20 bg-white/10 border border-white/40 text-white rounded-full flex items-center justify-center backdrop-blur-xl hover:bg-white hover:text-black hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] group/play"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePlay();
+                          handleUserActivity();
+                        }}
+                      >
+                        {!isPlaying && <div className="absolute inset-0 rounded-full animate-ping opacity-25 bg-yellow-400 group-hover/play:bg-black"></div>}
+                        <span className="material-symbols-outlined text-4xl md:text-5xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1", marginLeft: isPlaying ? '0' : '4px' }}>
+                          {isPlaying ? 'pause' : 'play_arrow'}
+                        </span>
+                      </button>
+                      {!isPlaying && (
+                        <span className="md:hidden text-[10px] font-black text-yellow-400 bg-black/80 border border-yellow-500/40 px-2.5 py-0.5 rounded-full mt-2 tracking-wider uppercase shadow-md animate-pulse">
+                          Chạm để phát
+                        </span>
+                      )}
+                    </div>
 
                     {/* Tiến 10s */}
                     <button 

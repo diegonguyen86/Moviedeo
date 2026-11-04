@@ -64,7 +64,7 @@ export default function HeroBanner({ movies = [] }) {
         <img
           key={currentMovie.id || currentIndex}
           alt={currentMovie.title}
-          className="absolute inset-0 w-full h-full object-cover object-top opacity-70 animate-ken-burns"
+          loading="eager" fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover object-top opacity-70 animate-ken-burns"
           src={currentMovie.image}
           style={{ animation: 'kenBurns 10s ease-out forwards' }}
         />

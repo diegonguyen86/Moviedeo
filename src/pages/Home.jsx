@@ -5,7 +5,9 @@ import WelcomePopup from "../components/WelcomePopup";
 import { 
   apiGetPhimTheoDanhSach, 
   apiGetPhimTheoQuocGia, 
-  formatMovieItem 
+  formatMovieItem,
+  getCachedData,
+  setCachedData
 } from "../api/api";
 
 // --- IMPORT FIREBASE ---
@@ -35,12 +37,54 @@ const sortMoviesByYearDesc = (movies) => {
   });
 };
 
+// Hàm đọc dữ liệu đệm ban đầu để hiển thị trang chủ NGAY LẬP TỨC trong 0ms (SWR Pattern)
+const getInitialHomeData = () => {
+  try {
+    const cachedAdmin = getCachedData("admin_top_trending");
+    const cachedChieuRap = getCachedData("/v1/api/danh-sach/phim-chieu-rap?page=1");
+    
+    let admin = [];
+    if (cachedAdmin && Array.isArray(cachedAdmin)) {
+      admin = cachedAdmin.map(formatMovieItem).filter(m => m.id && m.image);
+    }
+    
+    let chieuRap = [];
+    const crItems = cachedChieuRap?.data?.items || cachedChieuRap?.items || [];
+    if (crItems.length > 0) {
+      chieuRap = sortMoviesByYearDesc(crItems.map(formatMovieItem));
+    }
+
+    const countries = COUNTRY_LIST.map(country => {
+      const cData = getCachedData(`/v1/api/quoc-gia/${country.slug}?page=1`);
+      const items = cData?.data?.items || cData?.items || [];
+      if (items.length > 0) {
+        return {
+          title: `${country.emoji} ${country.name}`,
+          movies: sortMoviesByYearDesc(items.map(formatMovieItem)),
+          viewAllState: { type: 'quoc-gia', slug: country.slug, title: country.name }
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    return {
+      adminTrending: admin,
+      trending: chieuRap,
+      countrySections: countries,
+      hasCache: admin.length > 0 || chieuRap.length > 0 || countries.length > 0
+    };
+  } catch (e) {
+    return { adminTrending: [], trending: [], countrySections: [], hasCache: false };
+  }
+};
+
 function Home() {
-  // Đổi tên state từ tmdbTrending thành adminTrending cho chuẩn ý nghĩa
-  const [adminTrending, setAdminTrending] = useState([]); 
-  const [trending, setTrending] = useState([]);       
-  const [countrySections, setCountrySections] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCache = getInitialHomeData();
+  const [adminTrending, setAdminTrending] = useState(initialCache.adminTrending); 
+  const [trending, setTrending] = useState(initialCache.trending);       
+  const [countrySections, setCountrySections] = useState(initialCache.countrySections);
+  // Nếu đã có cache thì render UI ngay trong 0ms, không bắt người dùng nhìn màn hình loading!
+  const [loading, setLoading] = useState(!initialCache.hasCache);
 
   // --- STATE & AUTH ---
   const [watchingHistory, setWatchingHistory] = useState([]);
@@ -81,35 +125,38 @@ function Home() {
   useEffect(() => {
     const fetchHomeData = async () => {
       try {
-        setLoading(true);
-        
-        // 👇 ĐÃ FIX CHỖ NÀY: Dịch và lọc dữ liệu từ Admin để tương thích với MovieCard / HeroBanner
-        const adminDocRef = doc(db, "admin_settings", "top_trending");
-        const adminDocSnap = await getDoc(adminDocRef);
-        if (adminDocSnap.exists()) {
-          const rawMovies = adminDocSnap.data().movies || [];
-          
+        // TẢI SONG SONG 100% (Loại bỏ hoàn toàn Waterfall gây trễ 1-2 giây)
+        const [adminRes, trendingRes, ...countryResults] = await Promise.allSettled([
+          getDoc(doc(db, "admin_settings", "top_trending")),
+          apiGetPhimTheoDanhSach('phim-chieu-rap', 1),
+          ...COUNTRY_LIST.map(country => apiGetPhimTheoQuocGia(country.slug, 1))
+        ]);
+
+        // 1. Cập nhật Top Trending Admin
+        if (adminRes.status === "fulfilled" && adminRes.value?.exists()) {
+          const rawMovies = adminRes.value.data().movies || [];
+          setCachedData("admin_top_trending", rawMovies); // Lưu cache để lần sau vào có ngay 0ms
           const formattedAdminMovies = rawMovies
             .map(formatMovieItem)
-            .filter(movie => movie.id && movie.image); // Lọc bỏ nếu lỡ có phim bị lỗi trống id hoặc image
-            
-          setAdminTrending(formattedAdminMovies);
+            .filter(movie => movie.id && movie.image);
+          if (formattedAdminMovies.length > 0) {
+            setAdminTrending(formattedAdminMovies);
+          }
         }
 
-        // 2. Lấy Phim Chiếu Rạp
-        const trendingRes = await apiGetPhimTheoDanhSach('phim-chieu-rap', 1);
-        const trendingItems = trendingRes?.data?.items || trendingRes?.items || [];
-        if (trendingItems.length > 0) {
-          const formatted = trendingItems.map(formatMovieItem);
-          setTrending(sortMoviesByYearDesc(formatted));
+        // 2. Cập nhật Phim Chiếu Rạp
+        if (trendingRes.status === "fulfilled" && trendingRes.value) {
+          const trendingItems = trendingRes.value?.data?.items || trendingRes.value?.items || [];
+          if (trendingItems.length > 0) {
+            const formatted = trendingItems.map(formatMovieItem);
+            setTrending(sortMoviesByYearDesc(formatted));
+          }
         }
 
-        // 3. Lấy Phim Theo Quốc Gia
-        const countryPromises = COUNTRY_LIST.map(country => apiGetPhimTheoQuocGia(country.slug, 1));
-        const results = await Promise.allSettled(countryPromises);
+        // 3. Cập nhật Phim Theo Quốc Gia
         const compiled = COUNTRY_LIST.map((country, index) => {
-          const res = results[index];
-          if (res.status === "fulfilled" && res.value) {
+          const res = countryResults[index];
+          if (res?.status === "fulfilled" && res.value) {
             const items = res.value?.data?.items || res.value?.items || [];
             if (items.length > 0) {
               const formatted = items.map(formatMovieItem);
@@ -123,7 +170,9 @@ function Home() {
           return null;
         }).filter(Boolean);
 
-        setCountrySections(compiled);
+        if (compiled.length > 0) {
+          setCountrySections(compiled);
+        }
       } catch (error) {
         console.error("Lỗi trang chủ:", error);
       } finally {
@@ -161,37 +210,26 @@ function Home() {
           />
         )}
 
-        {/* Top Trending do Admin tự cấu hình */}
-        {adminTrending.length > 0 && (
-          <MovieCarousel 
-            title="✨ Top Trending" 
-            movies={adminTrending} 
-            isTop10={true}
-            startNumber={1}
-          />
-        )}
-
         {/* Phim Chiếu Rạp */}
         {trending.length > 0 && (
           <MovieCarousel 
-            title="🍿 Phim Chiếu Rạp" 
+            title="🔥 Phim Chiếu Rạp Mới Nhất" 
             movies={trending} 
             viewAllState={{ type: 'danh-sach', slug: 'phim-chieu-rap', title: 'Phim Chiếu Rạp' }}
           />
         )}
-        
-        {/* Danh sách các quốc gia hot */}
-        {countrySections.map((section, index) => (
+
+        {/* Danh sách các quốc gia */}
+        {countrySections.map((section) => (
           <MovieCarousel 
-            key={index} 
+            key={section.title} 
             title={section.title} 
             movies={section.movies} 
-            viewAllState={section.viewAllState} 
+            viewAllState={section.viewAllState}
           />
         ))}
       </div>
-      
-      {/* Popup thông báo web không cài quảng cáo */}
+
       <WelcomePopup />
     </main>
   );

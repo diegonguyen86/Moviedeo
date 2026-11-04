@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, where, getDocs } from "firebase/firestore";
 import { useNotification } from "../context/NotificationContext";
 
 export default function CommentSection({ movieId, movieName }) {
@@ -79,10 +79,27 @@ export default function CommentSection({ movieId, movieName }) {
     }
   };
 
-  const handleDelete = async (commentId) => {
+  const handleDelete = async (commentId, comment) => {
     if (!window.confirm("Bạn có chắc chắn muốn xoá bình luận này?")) return;
     try {
+      // 1. Xoá khỏi bình luận của phim
       await deleteDoc(doc(db, "comments", movieId, "list", commentId));
+
+      // 2. Xoá khỏi luồng bình luận toàn cục (global_comments)
+      try {
+        const globalQuery = query(
+          collection(db, "global_comments"),
+          where("uid", "==", comment.uid),
+          where("movieId", "==", movieId),
+          where("text", "==", comment.text)
+        );
+        const globalSnap = await getDocs(globalQuery);
+        const deletePromises = globalSnap.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(deletePromises);
+      } catch (globalErr) {
+        console.warn("Không thể xoá global_comments:", globalErr);
+      }
+
       showToast("Đã xoá bình luận", "success");
     } catch (error) {
       console.error("Lỗi xoá bình luận:", error);
@@ -119,7 +136,7 @@ export default function CommentSection({ movieId, movieName }) {
       <form onSubmit={handleSubmit} className="mb-8 flex gap-3 md:gap-4 items-start">
         {user ? (
           <div className={`relative shrink-0 rounded-full border-2 ${currentUserRank.border} ${currentUserRank.glow}`}>
-            <img src={user.photoURL} alt="Avatar" className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
+            <img src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email?.split('@')[0] || 'U')}&background=random`} alt="Avatar" className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
             <div className={`absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-[8px] md:text-[10px] ${currentUserRank.color}`} title={currentUserRank.name}>
               {currentUserRank.icon}
             </div>
@@ -186,7 +203,7 @@ export default function CommentSection({ movieId, movieName }) {
                       {/* Nút Xoá */}
                       {user && (user.uid === comment.uid || user.uid === "qD9qHFwiucgQOj6bXHoCIuHuoWv1") && (
                         <button 
-                          onClick={() => handleDelete(comment.id)}
+                          onClick={() => handleDelete(comment.id, comment)}
                           className="ml-2 text-zinc-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                           title="Xoá bình luận"
                         >

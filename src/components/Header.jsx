@@ -132,7 +132,7 @@ export default function Header() {
                 className={`relative rounded-full transition-all duration-300 border-2 flex items-center justify-center ${rank.border} ${rank.glow} hover:scale-110`}
                 title={`${rank.name} (${Math.floor((userData?.totalWatchSeconds || 0)/3600)} giờ xem)`}
               >
-                <img src={user.photoURL} alt="Avatar" className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover" />
+                <img src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email?.split('@')[0] || 'U')}&background=random`} alt="Avatar" className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover" />
                 <div className={`absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-[10px] md:text-[12px] ${rank.color}`} title={rank.name}>
                   {rank.icon}
                 </div>

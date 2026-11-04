@@ -28,7 +28,7 @@ export default function MovieDetail() {
       return;
     }
     setIsTrailerLoading(true);
-    const key = await apiGetTrailer(movieDetails.origin_name || movieDetails.name);
+    const key = await apiGetTrailer(id, movieDetails.origin_name || movieDetails.name);
     setIsTrailerLoading(false);
     if (key) {
       setTrailerKey(key);
@@ -286,7 +286,7 @@ export default function MovieDetail() {
               <span className="material-symbols-outlined">chat_bubble</span>
               Bình luận
             </div>
-            <CommentSection movieId={id} />
+            <CommentSection movieId={id} movieName={movieDetails.name} />
           </div>
 
         </div>

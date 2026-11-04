@@ -1,45 +1,108 @@
 import axios from "axios";
 
-// ĐỔI SANG /phim-proxy ĐỂ TRÁNH XUNG ĐỘT VỚI VERCEL SERVERLESS FUNCTION
-const baseURL = '/phim-proxy'; 
-const apiClient = axios.create({ baseURL });
+// Ưu tiên gọi trực tiếp https://phimapi.com để tránh độ trễ qua Vercel Serverless proxy (tiết kiệm 300-800ms)
+// PhimAPI đã bật sẵn CORS (Access-Control-Allow-Origin: *)
+const PRIMARY_BASE_URL = 'https://phimapi.com';
+const FALLBACK_BASE_URL = '/phim-proxy';
 
-// --- LOGIC CACHE ---
-const CACHE_TIME = 24 * 60 * 60 * 1000; 
+const apiClient = axios.create({ 
+  baseURL: PRIMARY_BASE_URL,
+  timeout: 8000 // 8s timeout tránh treo request
+});
 
-const getCachedData = (key) => {
-  const cached = localStorage.getItem("kkphim_" + key);
-  if (!cached) return null;
-  const { data, timestamp } = JSON.parse(cached);
-  if (Date.now() - timestamp > CACHE_TIME) {
-    localStorage.removeItem("kkphim_" + key);
+// --- BỘ NHỚ ĐỆM KÉP: RAM (Memory Cache 0ms) + LocalStorage (Persistent) ---
+const CACHE_TIME = 24 * 60 * 60 * 1000; // 24 giờ
+const STALE_TIME = 10 * 60 * 1000;      // 10 phút (SWR: sau 10p sẽ âm thầm tải mới ở background)
+
+const memoryCache = new Map();
+
+export const getCachedData = (key) => {
+  // 1. Kiểm tra RAM trước (Tốc độ 0ms, không tốn CPU parse JSON)
+  if (memoryCache.has(key)) {
+    const mem = memoryCache.get(key);
+    if (Date.now() - mem.timestamp < CACHE_TIME) {
+      return mem.data;
+    }
+    memoryCache.delete(key);
+  }
+
+  // 2. Kiểm tra LocalStorage
+  try {
+    const cached = localStorage.getItem("kkphim_" + key);
+    if (!cached) return null;
+    const { data, timestamp } = JSON.parse(cached);
+    if (Date.now() - timestamp > CACHE_TIME) {
+      localStorage.removeItem("kkphim_" + key);
+      return null;
+    }
+    // Đưa ngược vào RAM để lần sau gọi có ngay trong 0ms
+    memoryCache.set(key, { data, timestamp });
+    return data;
+  } catch (e) {
     return null;
   }
-  return data;
 };
 
-const setCachedData = (key, data) => {
+export const setCachedData = (key, data) => {
+  const timestamp = Date.now();
+  memoryCache.set(key, { data, timestamp });
   try {
-    localStorage.setItem("kkphim_" + key, JSON.stringify({ data, timestamp: Date.now() }));
+    localStorage.setItem("kkphim_" + key, JSON.stringify({ data, timestamp }));
   } catch (error) {
-    console.warn("Lỗi lưu cache (có thể do quá dung lượng):", error);
+    // Nếu LocalStorage đầy, dọn bớt các cache cũ
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("kkphim_")) {
+          localStorage.removeItem(k);
+          break;
+        }
+      }
+    } catch (_) {}
   }
 };
 
-const safeGet = async (url) => {
+// CƠ CHẾ SWR (Stale-While-Revalidate):
+// - Nếu đã có cache: Trả về NGAY LẬP TỨC trong 0ms cho UI hiển thị
+// - Nếu cache đã cũ (> 10 phút): Tự động fetch ngầm ở background để cập nhật cache mới nhất
+export const safeGet = async (url) => {
   const cached = getCachedData(url);
-  if (cached) return cached;
-  
+  const mem = memoryCache.get(url);
+  const isStale = !mem || (Date.now() - mem.timestamp > STALE_TIME);
+
+  if (cached) {
+    // Nếu cache đã hơi cũ (> 10 phút), âm thầm tải mới ở background
+    if (isStale) {
+      fetchAndCache(url).catch(() => {});
+    }
+    return cached;
+  }
+
+  // Chưa có cache -> Phải chờ lấy dữ liệu lần đầu
+  return await fetchAndCache(url);
+};
+
+const fetchAndCache = async (url) => {
   try {
+    // Thử gọi trực tiếp phimapi.com
     const res = await apiClient.get(url);
-    if (res.data) { 
-        setCachedData(url, res.data); 
-        return res.data; 
+    if (res.data) {
+      setCachedData(url, res.data);
+      return res.data;
     }
   } catch (error) {
-    console.error("Lỗi gọi API:", url, error);
-    return { status: false, items: [], data: { items: [] } }; 
+    // Nếu lỗi mạng, thử fallback qua proxy /phim-proxy
+    try {
+      const fallbackRes = await axios.get(`${FALLBACK_BASE_URL}${url}`, { timeout: 8000 });
+      if (fallbackRes.data) {
+        setCachedData(url, fallbackRes.data);
+        return fallbackRes.data;
+      }
+    } catch (fallbackError) {
+      console.warn("Lỗi gọi API (cả trực tiếp và proxy):", url);
+    }
   }
+  return { status: false, items: [], data: { items: [] } };
 };
 
 // --- CÁC HÀM EXPORT ---
@@ -54,43 +117,72 @@ export const apiSearchByTitle = (title) => safeGet(`/v1/api/tim-kiem?keyword=${e
 
 const TMDB_KEY = import.meta.env.VITE_TMDB_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+
 export const apiGetTMDBTrending = async () => {
+  const cacheKey = "tmdb_trending_day";
+  const cached = getCachedData(cacheKey);
+  if (cached) return cached;
+
   try {
     const res = await axios.get(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_KEY}&language=vi-VN&region=VN`);
+    if (res.data) {
+      setCachedData(cacheKey, res.data);
+    }
     return res.data;
-  } catch (error) { return { results: [] }; }
+  } catch (error) { 
+    return { results: [] }; 
+  }
 };
 
 export const apiGetMovieLogo = async (title) => {
+  if (!title) return null;
+  const cacheKey = `logo_${title.toLowerCase().trim()}`;
+  const cached = getCachedData(cacheKey);
+  if (cached !== null && cached !== undefined) return cached;
+
   try {
-    const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`);
+    const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`, { timeout: 4000 });
     const tmdbId = searchRes.data.results?.[0]?.id;
     const mediaType = searchRes.data.results?.[0]?.media_type || 'movie';
-    if (!tmdbId) return null;
+    if (!tmdbId) {
+      setCachedData(cacheKey, "");
+      return null;
+    }
     
-    // Fetch images without language filter first to get all logos
-    const imageRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/images?api_key=${TMDB_KEY}`);
+    const imageRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/images?api_key=${TMDB_KEY}`, { timeout: 4000 });
     const logos = imageRes.data.logos;
-    if (!logos || logos.length === 0) return null;
+    if (!logos || logos.length === 0) {
+      setCachedData(cacheKey, "");
+      return null;
+    }
     
-    // Try to find an English or Vietnamese logo first, fallback to the first one available
     const bestLogo = logos.find(l => l.iso_639_1 === 'en' || l.iso_639_1 === 'vi') || logos[0];
-    return `https://image.tmdb.org/t/p/w500${bestLogo.file_path}`;
+    const logoUrl = `https://image.tmdb.org/t/p/w500${bestLogo.file_path}`;
+    setCachedData(cacheKey, logoUrl);
+    return logoUrl;
   } catch (error) {
     return null;
   }
 };
 
 export const apiGetTrailer = async (slug, title) => {
+  const cacheKey = `trailer_${(slug || title || "").toLowerCase().trim()}`;
+  const cached = getCachedData(cacheKey);
+  if (cached !== null && cached !== undefined) return cached;
+
   // 1. Thử lấy trailer chính chủ từ PhimAPI trước (đảm bảo sống 100%)
   if (slug) {
     try {
       const res = await apiGetPhimDetail(slug);
       const trailerUrl = res?.movie?.trailer_url;
       if (trailerUrl && trailerUrl.includes('youtube.com/watch?v=')) {
-        return trailerUrl.split('v=')[1].split('&')[0];
+        const key = trailerUrl.split('v=')[1].split('&')[0];
+        setCachedData(cacheKey, key);
+        return key;
       } else if (trailerUrl && trailerUrl.includes('youtu.be/')) {
-        return trailerUrl.split('youtu.be/')[1].split('?')[0];
+        const key = trailerUrl.split('youtu.be/')[1].split('?')[0];
+        setCachedData(cacheKey, key);
+        return key;
       }
     } catch (error) {}
   }
@@ -98,17 +190,25 @@ export const apiGetTrailer = async (slug, title) => {
   // 2. Nếu PhimAPI không có, quét bằng TMDB
   if (title) {
     try {
-      const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`);
+      const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`, { timeout: 4000 });
       const tmdbId = searchRes.data.results?.[0]?.id;
       const mediaType = searchRes.data.results?.[0]?.media_type || 'movie';
-      if (!tmdbId) return null;
+      if (!tmdbId) {
+        setCachedData(cacheKey, "");
+        return null;
+      }
       
-      const videoRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/videos?api_key=${TMDB_KEY}`);
+      const videoRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/videos?api_key=${TMDB_KEY}`, { timeout: 4000 });
       const videos = videoRes.data.results;
-      if (!videos || videos.length === 0) return null;
+      if (!videos || videos.length === 0) {
+        setCachedData(cacheKey, "");
+        return null;
+      }
       
       const trailer = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube') || videos.find(v => v.site === 'YouTube');
-      return trailer ? trailer.key : null;
+      const key = trailer ? trailer.key : null;
+      setCachedData(cacheKey, key || "");
+      return key;
     } catch (error) {}
   }
   
@@ -213,8 +313,7 @@ export const deduplicateSeasons = (movies) => {
       groups[normalizedBase] = { bestMovie: movie, maxSeason: seasonNum };
     } else {
       if (seasonNum > groups[normalizedBase].maxSeason) {
-        groups[normalizedBase].bestMovie = movie;
-        groups[normalizedBase].maxSeason = seasonNum;
+        groups[normalizedBase] = { bestMovie: movie, maxSeason: seasonNum };
       }
     }
   }

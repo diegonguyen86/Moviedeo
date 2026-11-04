@@ -77,7 +77,12 @@ export default function SearchModal({ isOpen, onClose }) {
             ref={inputRef}
             type="text" 
             value={query} 
-            onChange={(e) => setQuery(e.target.value)} 
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && movies.length > 0) {
+                handleSelectMovie(movies[0].id);
+              }
+            }}
             placeholder="Tìm kiếm phim..."
             className="w-full bg-transparent text-white placeholder-zinc-500 pl-12 pr-10 py-4 text-sm font-bold outline-none" 
           />

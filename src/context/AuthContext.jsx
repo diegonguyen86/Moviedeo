@@ -78,7 +78,7 @@ export function AuthProvider({ children }) {
                   uid: currentUser.uid,
                   email: currentUser.email,
                   displayName: currentUser.displayName,
-                  photoURL: currentUser.photoURL,
+                  photoURL: currentUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.displayName || currentUser.email?.split('@')[0] || 'U')}&background=random`,
                   isApproved: false,
                   createdAt: new Date().toISOString()
                 });

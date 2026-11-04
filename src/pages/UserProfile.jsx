@@ -94,7 +94,7 @@ export default function UserProfile() {
         {/* THÔNG TIN USER (GLASSMORPHISM TRẮNG) */}
         <section className="flex flex-col md:flex-row gap-6 md:gap-10 items-center md:items-start mb-12 bg-white/5 p-6 md:p-8 rounded-[2rem] border border-white/10 backdrop-blur-2xl shadow-2xl">
           <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white/30 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-            <img src={user.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+            <img src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email?.split('@')[0] || 'U')}&background=random`} alt="Avatar" className="w-full h-full object-cover" />
           </div>
           <div className="flex-1 text-center md:text-left space-y-3 mt-1">
             <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter drop-shadow-md text-white">{user.displayName}</h2>

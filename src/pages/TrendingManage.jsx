@@ -2,10 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import { db } from "../firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useNotification } from "../context/NotificationContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function AdminTrending() {
   const { showToast } = useNotification();
+  const { user } = useAuth();
   const [trendingList, setTrendingList] = useState([]);
+
+  // Kiểm tra quyền Admin
+  if (!user || user.uid !== "qD9qHFwiucgQOj6bXHoCIuHuoWv1") {
+    return <div className="min-h-screen bg-black flex items-center justify-center text-white text-2xl font-bold">⛔ Không có quyền truy cập</div>;
+  }
   const [isLoading, setIsLoading] = useState(false);
 
   // Tham chiếu dùng cho tính năng Kéo thả (Drag & Drop)

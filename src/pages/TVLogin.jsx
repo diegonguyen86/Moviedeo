@@ -8,7 +8,7 @@ export default function TVLogin() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const initialCode = searchParams.get('code') || '';
+  const initialCode = searchParams.get('code') || sessionStorage.getItem('tv_pending_code') || '';
   const [code, setCode] = useState(initialCode);
   const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [errorMessage, setErrorMessage] = useState('');
@@ -20,6 +20,7 @@ export default function TVLogin() {
       // We assume user is null if not logged in
       const timer = setTimeout(() => {
         if (!auth.currentUser) {
+          sessionStorage.setItem('tv_pending_code', code || initialCode);
           alert("Vui lòng đăng nhập trên điện thoại/web trước khi cấp quyền cho TV.");
           navigate('/');
         }
@@ -56,6 +57,7 @@ export default function TVLogin() {
 
       if (res.ok) {
         setStatus('success');
+        sessionStorage.removeItem('tv_pending_code');
       } else {
         setStatus('error');
         setErrorMessage(data.error || "Đã xảy ra lỗi không xác định");

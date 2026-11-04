@@ -191,7 +191,7 @@ export default function MovieCard({ movie }) {
         {/* THANH PROGRESS LƠ LỬNG MÀU VÀNG CAM */}
         {movie.isHistory && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-20 overflow-hidden">
-             <div className="h-full bg-gradient-to-r from-orange-500 to-yellow-500" style={{ width: '50%' }}></div>
+             <div className="h-full bg-gradient-to-r from-orange-500 to-yellow-500" style={{ width: `${movie.progress ? Math.min(Math.round((movie.progress / (movie.duration || 5400)) * 100), 100) : 5}%` }}></div>
           </div>
         )}
       </div>

@@ -1,8 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNotification } from "../context/NotificationContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function AppLinksManage() {
   const { showToast } = useNotification();
+  const { user } = useAuth();
+
+  // Kiểm tra quyền Admin
+  if (!user || user.uid !== "qD9qHFwiucgQOj6bXHoCIuHuoWv1") {
+    return <div className="min-h-screen bg-black flex items-center justify-center text-white text-2xl font-bold">⛔ Không có quyền truy cập</div>;
+  }
+
   const [links, setLinks] = useState({
     android: { version: "", url: "" },
     tv: { version: "", url: "" },
