@@ -92,7 +92,7 @@ export default function MovieCard({ movie }) {
         if (!targetEp) targetEp = (allServers[0]?.server_data || allServers[0]?.items || [])[0];
 
         if (targetEp) {
-          navigate(`/play/${data.movie.slug}`, {
+          navigate(`/play/${data.movie.slug || movie.id}`, {
             state: {
               videoUrl: targetEp.link_m3u8 || targetEp.m3u8 || "",
               embedFallback: targetEp.link_embed || targetEp.embed || "",

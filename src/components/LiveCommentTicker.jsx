@@ -72,8 +72,11 @@ export default function LiveCommentTicker() {
       >
         <div className={`relative shrink-0 rounded-full border border-white/20 ${rank.border}`}>
           <img 
-            src={currentComment.photoURL} 
+            src={currentComment.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentComment.displayName || 'U')}&background=random`} 
             alt={currentComment.displayName} 
+            onError={(e) => {
+              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentComment.displayName || 'U')}&background=random`;
+            }}
             className="w-8 h-8 rounded-full object-cover" 
           />
         </div>

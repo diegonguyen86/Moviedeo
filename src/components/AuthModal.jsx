@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
@@ -15,6 +15,15 @@ export default function AuthModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const { loginWithGoogle } = useAuth();
   const { showToast } = useNotification();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -66,8 +75,8 @@ export default function AuthModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
-      <div className="relative w-full max-w-md bg-zinc-900 border border-white/20 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.1)] p-6 md:p-8 animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md" onClick={onClose}>
+      <div className="relative w-full max-w-md bg-zinc-900 border border-white/20 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(255,255,255,0.1)] p-6 md:p-8 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
         
         {/* Nút đóng */}
         <button 

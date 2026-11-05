@@ -6,7 +6,7 @@ import { useNotification } from "../context/NotificationContext";
 
 export default function CommentSection({ movieId, movieName }) {
   const { user, userData, getRankInfo, loginWithGoogle } = useAuth();
-  const { showToast } = useNotification();
+  const { showToast, showConfirm } = useNotification();
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
@@ -186,7 +186,14 @@ export default function CommentSection({ movieId, movieName }) {
               return (
                 <div key={comment.id} className="flex gap-3 md:gap-4 group">
                   <div className={`relative shrink-0 rounded-full border-2 h-fit ${rank.border}`}>
-                    <img src={comment.photoURL} alt={comment.displayName} className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
+                    <img 
+                      src={comment.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.displayName || 'U')}&background=random`} 
+                      alt={comment.displayName} 
+                      onError={(e) => {
+                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.displayName || 'U')}&background=random`;
+                      }}
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" 
+                    />
                     <div className={`absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-[8px] md:text-[10px] ${rank.color}`} title={rank.name}>
                       {rank.icon}
                     </div>

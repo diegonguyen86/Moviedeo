@@ -221,7 +221,7 @@ export default function BrowsePage() {
             <span className="text-xl uppercase tracking-tighter">Bộ Lọc Phim</span>
           </div>
           <div className="max-h-[70vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
-            <FilterSection title="Định Đạng" items={types} />
+            <FilterSection title="Định Dạng" items={types} />
             <FilterSection title="Thể Loại" items={categories} />
             <FilterSection title="Quốc Gia" items={countries} />
             <FilterSection title="Năm Phát Hành" items={years} />

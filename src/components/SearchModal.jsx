@@ -107,7 +107,14 @@ export default function SearchModal({ isOpen, onClose }) {
                   onClick={() => handleSelectMovie(movie.id)} 
                   className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/10 transition-colors text-left"
                 >
-                  <img src={movie.image} alt={movie.title} className="w-12 h-16 object-cover rounded-md shadow-md bg-zinc-800" />
+                  <img 
+                    src={movie.image} 
+                    alt={movie.title} 
+                    onError={(e) => {
+                      e.currentTarget.src = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=500&auto=format&fit=crop";
+                    }}
+                    className="w-12 h-16 object-cover rounded-md shadow-md bg-zinc-800" 
+                  />
                   <div className="flex-1 overflow-hidden">
                     <h4 className="text-white text-sm font-bold truncate">{movie.title}</h4>
                     <p className="text-zinc-400 text-[11px] truncate mt-0.5">{movie.lang}</p>

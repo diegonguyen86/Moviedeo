@@ -81,7 +81,16 @@ export default function MovieDetail() {
       
       {/* ẢNH NỀN KHỔNG LỒ */}
       <section className="relative w-full h-[60vh] md:h-[70vh] overflow-hidden">
-        <img className="w-full h-full object-cover opacity-30 object-top" src={getFullImageUrl(movieDetails.poster_url)} alt={movieDetails.name} />
+        <img 
+          className="w-full h-full object-cover opacity-30 object-top" 
+          src={getFullImageUrl(movieDetails.thumb_url || movieDetails.poster_url)} 
+          onError={(e) => {
+            if (movieDetails.poster_url && e.currentTarget.src !== getFullImageUrl(movieDetails.poster_url)) {
+              e.currentTarget.src = getFullImageUrl(movieDetails.poster_url);
+            }
+          }}
+          alt={movieDetails.name} 
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-transparent to-transparent" />
       </section>
@@ -92,7 +101,19 @@ export default function MovieDetail() {
         {/* CỘT TRÁI: POSTER & THÔNG TIN */}
         <div className="md:col-span-3 space-y-6">
           <div className="rounded-lg overflow-hidden border border-white/5 shadow-2xl relative aspect-[2/3] w-2/3 md:w-full mx-auto md:mx-0">
-            <img src={getFullImageUrl(movieDetails.thumb_url)} className="w-full h-full object-cover" alt="Poster" />
+            <img 
+              src={getFullImageUrl(movieDetails.poster_url || movieDetails.thumb_url)} 
+              onError={(e) => {
+                const altSrc = getFullImageUrl(movieDetails.thumb_url);
+                if (movieDetails.thumb_url && e.currentTarget.src !== altSrc) {
+                  e.currentTarget.src = altSrc;
+                } else {
+                  e.currentTarget.src = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=600&auto=format&fit=crop";
+                }
+              }}
+              className="w-full h-full object-cover" 
+              alt={movieDetails.name} 
+            />
             <div className="absolute top-2 right-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-2 py-0.5 rounded text-[10px] font-bold">
               {movieDetails.quality}
             </div>
@@ -207,7 +228,7 @@ export default function MovieDetail() {
             <div className="mb-8">
               <div className="flex items-center gap-2 mb-4 text-xs font-bold text-zinc-400 uppercase tracking-widest">
                 <span className="material-symbols-outlined text-lg">layers</span>
-                PHẦN PHIM (SEASONS)
+                CÁC PHẦN & MOVIE LIÊN QUAN
               </div>
               <div className="flex flex-wrap gap-3">
                 {relatedSeasons.map(season => {
@@ -218,7 +239,7 @@ export default function MovieDetail() {
                       onClick={() => !isActive && navigate(`/movie/${season.id}`)}
                       className={`px-6 py-2.5 rounded border text-sm font-bold transition-all ${isActive ? "bg-white/10 border-white text-white" : "bg-transparent border-white/10 text-zinc-500 hover:border-white/30 hover:text-white"}`}
                     >
-                      Phần {season.seasonNumber}
+                      {season.label || `Phần ${season.seasonNumber}`}
                     </button>
                   )
                 })}

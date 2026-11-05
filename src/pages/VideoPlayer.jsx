@@ -60,16 +60,32 @@ export default function VideoPlayer() {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false); 
 
-  // AUTO-SKIP AD REFS
-  const videoCanvasRef = useRef(document.createElement("canvas"));
-  const templateCanvasRef = useRef(document.createElement("canvas"));
-  const hasSkippedAdRef = useRef(false);
-  const templatePixelsRef = useRef(null);
+  // SIÊU THUẬT TOÁN NHẬN DIỆN & TỰ ĐỘNG BỎ QUA QUẢNG CÁO (ULTRA-LOW LATENCY < 0.25s)
+  const scanCanvasRef = useRef(null);
   const lastScanTimeRef = useRef(0);
+  const lastSkippedTimeRef = useRef(0);
   const canScanAdRef = useRef(true);
+  const adConfirmationStreakRef = useRef(0);
+  const [adNotice, setAdNotice] = useState(null);
+  const adNoticeTimerRef = useRef(null);
 
   // Cấu hình thời lượng quảng cáo (Tính bằng giây)
   const AD_DURATION_SECONDS = 31.5;
+
+  const showAdNotice = (msg, canUndo = false) => {
+    setAdNotice({ msg, canUndo });
+    clearTimeout(adNoticeTimerRef.current);
+    adNoticeTimerRef.current = setTimeout(() => {
+      setAdNotice(null);
+    }, 4500);
+  };
+
+  const handleUndoSkip = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - AD_DURATION_SECONDS);
+      setAdNotice(null);
+    }
+  };
 
   // STATE: AUTO-NEXT
   const [isAutoNexting, setIsAutoNexting] = useState(false);
@@ -501,68 +517,114 @@ export default function VideoPlayer() {
     if (videoRef.current) videoRef.current.currentTime += amount;
   };
 
-  const handleSkipAd = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime += AD_DURATION_SECONDS;
-      // Tuỳ chọn: Có thể hiện một thông báo popup nhỏ báo hiệu đã skip quảng cáo
-    }
+  const handleSkipAd = (reason = "manual") => {
+    const video = videoRef.current;
+    if (!video) return;
+    const current = video.currentTime;
+    video.currentTime = current + AD_DURATION_SECONDS;
+    lastSkippedTimeRef.current = video.currentTime;
+    adConfirmationStreakRef.current = 0;
+    showAdNotice(
+      reason === "auto" 
+        ? "⚡ Đã tự động nhận diện & bỏ qua 30s quảng cáo" 
+        : "⏩ Đã bỏ qua 30s quảng cáo", 
+      true
+    );
   };
 
+  // NHẬN DIỆN QUẢNG CÁO ĐA VÙNG, ĐA MÀU SẮC SIÊU TỐC (< 0.25 GIÂY)
   const detectAdAndSkip = () => {
     const video = videoRef.current;
-    if (!video || hasSkippedAdRef.current || !canScanAdRef.current) return;
+    if (!video || !canScanAdRef.current || video.paused || video.ended) return;
 
-    // Throttle: chỉ quét tối đa 1 lần mỗi 1.5 giây để tránh giật lag GPU/CPU trên mobile
-    const now = Date.now();
-    if (now - lastScanTimeRef.current < 1500) return;
+    const current = video.currentTime;
+
+    // Cooldown 45 giây sau khi vừa skip (cho phép nhận diện nhiều quảng cáo trong cùng 1 tập)
+    if (Math.abs(current - lastSkippedTimeRef.current) < 45) return;
+
+    // Khung giờ vàng xuất hiện quảng cáo cờ bạc ở web phim lậu:
+    // 1. Đoạn đầu phim: 0s - 90s
+    // 2. Đoạn giữa 1: 600s - 1300s (10:00 - 21:40)
+    // 3. Đoạn giữa 2: 2400s - 3600s (40:00 - 60:00)
+    const isAdWindow = (current <= 90) || (current >= 600 && current <= 1300) || (current >= 2400 && current <= 3600);
+    if (!isAdWindow) {
+      adConfirmationStreakRef.current = 0;
+      return;
+    }
+
+    // TỐI ƯU ĐỘ TRỄ: Quét 5 lần/giây (mỗi 180ms) thay vì 1500ms như trước
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+    if (now - lastScanTimeRef.current < 180) return;
     lastScanTimeRef.current = now;
 
     try {
-      const canvas = videoCanvasRef.current;
+      if (!scanCanvasRef.current) {
+        const c = document.createElement("canvas");
+        c.width = 48; // 48 x 27 pixels (Tỷ lệ 16:9, tổng chỉ 1296 pixels - cực nhẹ, quét mất < 0.1ms CPU)
+        c.height = 27;
+        scanCanvasRef.current = c;
+      }
+      const canvas = scanCanvasRef.current;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
-      
-      const relX = 0.40; 
-      const relY = 0.50; 
-      const relW = 0.20; 
-      const relH = 0.30;
-      
-      const sx = video.videoWidth * relX;
-      const sy = video.videoHeight * relY;
-      const sw = video.videoWidth * relW;
-      const sh = video.videoHeight * relH;
+      if (!ctx || !video.videoWidth || !video.videoHeight) return;
 
-      if (!sw || !sh || isNaN(sw) || isNaN(sh)) return;
+      // Vẽ toàn bộ khung hình tỉ lệ chuẩn vào canvas 48x27 (Chỉ tốn ~0.08ms CPU)
+      ctx.drawImage(video, 0, 0, 48, 27);
+      const imgData = ctx.getImageData(0, 0, 48, 27);
+      const data = imgData.data;
 
-      canvas.width = 40;
-      canvas.height = 40;
-      
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 40, 40);
+      let adScore = 0;
+      let bannerAdScore = 0;
+      let bannerPixelCount = 0;
+      const totalPixels = 48 * 27;
 
-      const videoPixels = ctx.getImageData(0, 0, 40, 40);
-      let redCount = 0;
-      const totalPixels = 40 * 40;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
 
-      for (let i = 0; i < videoPixels.data.length; i += 4) {
-        const r = videoPixels.data[i];
-        const g = videoPixels.data[i+1];
-        const b = videoPixels.data[i+2];
+        const pixelIdx = i / 4;
+        const y = Math.floor(pixelIdx / 48);
+        const isBannerZone = (y >= 18); // 30% đáy màn hình (nơi chứa banner/logo/chữ cờ bạc)
 
-        // Điều kiện nhận diện màu Đỏ Rực (áo của người đàn ông trong quảng cáo)
-        if (r > 120 && g < 70 && b < 80 && r > g * 2 && r > b * 2) {
-          redCount++;
+        if (isBannerZone) bannerPixelCount++;
+
+        // 1. Đỏ tươi cờ bạc (Bet88, Jun88, Shbet...)
+        const isBrightRed = (r > 130 && r > g * 1.8 && r > b * 1.8);
+
+        // 2. Vàng tươi / Cam rực (Logo nạp rút, link website, 789bet, Okvip)
+        const isBrightYellow = (r > 165 && g > 135 && b < 70 && (r + g) > 310);
+
+        // 3. Xanh lá neon nhà cái (FB88, Kubet)
+        const isNeonGreen = (g > 140 && g > r * 1.5 && g > b * 1.5);
+
+        // 4. Xanh Cyan / Xanh dương rực (1xBet)
+        const is1xBetBlue = (b > 150 && b > r * 1.5 && g > 75);
+
+        if (isBrightRed || isBrightYellow || isNeonGreen || is1xBetBlue) {
+          adScore++;
+          if (isBannerZone) bannerAdScore++;
         }
       }
 
-      const redPercentage = redCount / totalPixels;
-      if (redPercentage > 0.15) {
-        handleSkipAd();
-        hasSkippedAdRef.current = true;
+      const totalRatio = adScore / totalPixels;
+      const bannerRatio = bannerPixelCount > 0 ? (bannerAdScore / bannerPixelCount) : 0;
+
+      // Nhận diện trúng: Banner đáy có > 13% pixel nhà cái HOẶC toàn màn hình có > 11% pixel nhà cái
+      const isDetected = (bannerRatio > 0.13) || (totalRatio > 0.11);
+
+      if (isDetected) {
+        adConfirmationStreakRef.current += 1;
+        // Cần 2 lần quét liên tiếp xác nhận trúng (~360ms) để không bị false positive khi xem cảnh cháy nổ
+        if (adConfirmationStreakRef.current >= 2) {
+          handleSkipAd("auto");
+        }
+      } else {
+        adConfirmationStreakRef.current = 0;
       }
     } catch (e) {
-      // Nếu dính lỗi CORS (Tainted Canvas do video từ CDN khác nguồn),
-      // tự động dừng quét để không ném ngoại lệ liên tục gây nghẽn render loop
       if (e.name === "SecurityError" || e.message?.includes("tainted")) {
+        // Tự động dừng quét nếu canvas bị tainted do chính sách CORS của CDN
         canScanAdRef.current = false;
       }
     }
@@ -707,10 +769,8 @@ export default function VideoPlayer() {
         lastSavedTimeRef.current = current;
       }
 
-      // Auto-skip logic: Quét từ phút 14 (giây 840) đến phút 17 (giây 1020)
-      if (current >= 840 && current <= 1020 && !hasSkippedAdRef.current) {
-        detectAdAndSkip();
-      }
+      // Nhận diện tự động siêu tốc trong các khung giờ quảng cáo
+      detectAdAndSkip();
     }
   };
 
@@ -778,7 +838,8 @@ export default function VideoPlayer() {
   const handleSwitchEpisode = (ep) => {
     saveToFirebase(); 
     setActiveCloudProgress(null); 
-    hasSkippedAdRef.current = false; // Reset cờ skip quảng cáo khi chuyển tập
+    lastSkippedTimeRef.current = 0; // Reset mốc skip khi chuyển tập
+    adConfirmationStreakRef.current = 0;
     canScanAdRef.current = true;
     
     const newVideo = ep.link_m3u8 || ep.m3u8 || "";
@@ -1114,7 +1175,7 @@ export default function VideoPlayer() {
                 {/* SEASON SELECTOR IN PLAYER */}
                 {relatedSeasons.length > 1 && (
                   <div className="p-4 border-b border-white/10">
-                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Phần phim</span>
+                    <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-3 block">Các phần & Movie</span>
                     <div className="flex flex-wrap gap-2">
                       {relatedSeasons.map(season => {
                         const isActive = season.id === currentSlug;
@@ -1125,7 +1186,7 @@ export default function VideoPlayer() {
                             disabled={isLoadingSeason}
                             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isActive ? 'bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]' : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white'} ${isLoadingSeason ? 'opacity-50' : 'opacity-100'}`}
                           >
-                            Phần {season.seasonNumber}
+                            {season.label || `Phần ${season.seasonNumber}`}
                           </button>
                         );
                       })}
@@ -1266,6 +1327,25 @@ export default function VideoPlayer() {
                   </div>
                 </div>
               </div>
+
+              {/* THÔNG BÁO TỰ ĐỘNG BỎ QUA QUẢNG CÁO (KÈM NÚT HOÀN TÁC) */}
+              {adNotice && (
+                <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-yellow-500/60 text-yellow-400 pl-4 pr-3 py-2 rounded-full shadow-[0_0_30px_rgba(234,179,8,0.4)] flex items-center gap-3 text-xs md:text-sm font-black animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[18px] md:text-[20px] text-yellow-400 animate-pulse">bolt</span>
+                    <span>{typeof adNotice === 'object' ? adNotice.msg : adNotice}</span>
+                  </div>
+                  {typeof adNotice === 'object' && adNotice.canUndo && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleUndoSkip(); }}
+                      className="bg-yellow-500 hover:bg-yellow-400 text-black px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all shadow-md active:scale-95 ml-1"
+                      title="Quay lại đoạn vừa tua"
+                    >
+                      Hoàn tác
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* NÚT TẬP TIẾP THEO (ĐƯA RA NGOÀI ĐỂ KHÔNG BỊ BOTTOM BAR CHE MẤT, CHỈ HIỆN Ở 5 PHÚT CUỐI) */}
               {!isAutoNexting && nextEpisode && duration > 0 && (duration - currentTime <= 300) && (

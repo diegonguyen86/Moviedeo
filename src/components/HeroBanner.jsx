@@ -133,7 +133,14 @@ export default function HeroBanner({ movies = [] }) {
             onClick={() => setCurrentIndex(i)}
             className={`w-32 aspect-video rounded-lg overflow-hidden border-2 transition-all duration-500 ${i === currentIndex ? 'border-yellow-500 scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10' : 'border-white/20 hover:border-white/50 opacity-60 hover:opacity-100'}`}
           >
-            <img src={m.image} alt={m.title} className="w-full h-full object-cover" />
+            <img 
+              src={m.image} 
+              alt={m.title} 
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=600&auto=format&fit=crop";
+              }}
+              className="w-full h-full object-cover" 
+            />
           </button>
         ))}
       </div>

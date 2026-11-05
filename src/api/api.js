@@ -234,20 +234,26 @@ export const formatMovieItem = (item) => ({
   description: item.content?.replace(/<[^>]*>?/gm, '') || item.description || ""
 });
 
-// --- GROUP SEASONS LOGIC ---
+// --- GROUP SEASONS & MOVIES LOGIC (THUẬT TOÁN GỘP PHẦN VÀ MOVIE THEO NĂM PHÁT HÀNH) ---
 export const apiGetRelatedSeasons = async (movieName, originalName) => {
   if (!movieName) return [];
   
-  const seasonRegex = /(.+?)\s*(?:Phần|Season|Mùa)\s*(\d+)/i;
+  // 1. Tách tên gốc của phim (loại bỏ "Phần X", "Season X", "Mùa X", "SS X")
+  const seasonRegex = /(.+?)\s*(?:[\(\[-]?\s*(?:Phần|Season|Mùa|SS|S)\s*(\d+)[\)\]-]?)/i;
   const match = movieName.match(seasonRegex);
   
   let baseName = movieName;
   if (match) {
     baseName = match[1].trim();
   } else if (originalName) {
-    baseName = originalName;
+    const origMatch = originalName.match(seasonRegex);
+    baseName = origMatch ? origMatch[1].trim() : originalName.trim();
   }
+
+  // Dọn dẹp ký tự thừa ở đuôi (dấu hai chấm, gạch nối, ngoặc)
+  baseName = baseName.replace(/[:\-–—\(\)]+$/, '').trim();
   
+  // 2. Tìm kiếm các phim liên quan theo baseName
   const searchRes = await apiSearchByTitle(baseName);
   const items = searchRes?.data?.items || searchRes?.items || [];
   
@@ -257,35 +263,84 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
   const normalizedBase = normalize(baseName);
   
   const related = items.filter(item => {
-    const nName = normalize(item.name);
+    const nName = normalize(item.name || '');
     const nOrig = normalize(item.origin_name || item.original_name || '');
-    return nName.includes(normalizedBase) || nOrig.includes(normalizedBase);
+    return nName.includes(normalizedBase) || (normalizedBase.length >= 4 && nOrig.includes(normalizedBase));
   });
 
   if (related.length <= 1) return [];
 
-  const seasons = related.map(item => {
-    const m = item.name.match(seasonRegex);
-    const seasonNumber = m ? parseInt(m[2]) : 1; 
-    return {
-      ...formatMovieItem(item),
-      seasonNumber,
-      rawName: item.name
-    };
-  });
+  // 3. Phân loại chuẩn: Có chữ "Phần/Season" xếp vào Seasons, Không có chữ "Phần" xếp vào Movies
+  const extractNumRegex = /(?:Phần|Mùa|Season|SS)\s*(\d+)/i;
+  const slugNumRegex = /(?:phan|mua|season|ss)-?(\d+)/i;
 
-  seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+  const numberedSeasons = [];
+  const movieExtras = [];
 
-  const uniqueSeasons = [];
+  for (const item of related) {
+    let sNum = null;
+    const m = (item.name && item.name.match(extractNumRegex)) ||
+              (item.origin_name && item.origin_name.match(extractNumRegex)) ||
+              (item.slug && item.slug.match(slugNumRegex));
+    if (m) {
+      sNum = parseInt(m[1]);
+    }
+
+    if (sNum !== null) {
+      numberedSeasons.push({
+        ...formatMovieItem(item),
+        seasonNumber: sNum,
+        label: `Phần ${sNum}`,
+        rawName: item.name
+      });
+    } else {
+      movieExtras.push(item);
+    }
+  }
+
+  // Sắp xếp các Phần theo thứ tự: Phần 1, Phần 2, Phần 3...
+  numberedSeasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+
+  // Khử trùng lặp: Mỗi phần chỉ lấy 1 bản chuẩn duy nhất
   const seenSeasons = new Set();
-  for (const s of seasons) {
+  const uniqueSeasons = [];
+  for (const s of numberedSeasons) {
     if (!seenSeasons.has(s.seasonNumber)) {
       seenSeasons.add(s.seasonNumber);
       uniqueSeasons.push(s);
     }
   }
 
-  return uniqueSeasons;
+  // Sắp xếp các Movie dựa vào thời gian phát hành (Năm / Year) từ cũ đến mới (Ascending)
+  const getYear = (it) => {
+    const match = String(it.year || it.time || '').match(/\d{4}/);
+    return match ? parseInt(match[0]) : 0;
+  };
+  movieExtras.sort((a, b) => getYear(a) - getYear(b));
+
+  // Gán nhãn cho Movie: Nếu chỉ có 1 movie thì nhãn là "Movie", nếu có từ 2 movie trở lên thì là "Movie 1", "Movie 2", "Movie 3"...
+  const formattedMovies = movieExtras.map((item, idx) => {
+    const label = movieExtras.length === 1 ? 'Movie' : `Movie ${idx + 1}`;
+    return {
+      ...formatMovieItem(item),
+      seasonNumber: 1000 + idx,
+      label,
+      rawName: item.name
+    };
+  });
+
+  // Khử trùng lặp giữa các Movie (tránh trùng slug)
+  const seenIds = new Set(uniqueSeasons.map(s => s.id));
+  const uniqueMovies = [];
+  for (const m of formattedMovies) {
+    if (!seenIds.has(m.id)) {
+      seenIds.add(m.id);
+      uniqueMovies.push(m);
+    }
+  }
+
+  // Trả về danh sách gồm các Phần phim trước, tiếp theo là các Movie sắp xếp theo năm phát hành
+  return [...uniqueSeasons, ...uniqueMovies];
 };
 
 export const deduplicateSeasons = (movies) => {
