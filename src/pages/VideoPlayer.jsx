@@ -60,12 +60,11 @@ export default function VideoPlayer() {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false); 
 
-  // SIÊU THUẬT TOÁN NHẬN DIỆN & TỰ ĐỘNG BỎ QUA QUẢNG CÁO (ULTRA-LOW LATENCY < 0.25s)
-  const scanCanvasRef = useRef(null);
+  // AUTO-SKIP AD REFS (QUÉT CHUẨN MÀU ĐỎ PHÚT 15 - SIÊU NHANH & KHÔNG TRỄ)
+  const videoCanvasRef = useRef(null);
+  const hasSkippedAdRef = useRef(false);
   const lastScanTimeRef = useRef(0);
-  const lastSkippedTimeRef = useRef(0);
   const canScanAdRef = useRef(true);
-  const adConfirmationStreakRef = useRef(0);
   const [adNotice, setAdNotice] = useState(null);
   const adNoticeTimerRef = useRef(null);
 
@@ -83,6 +82,7 @@ export default function VideoPlayer() {
   const handleUndoSkip = () => {
     if (videoRef.current) {
       videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - AD_DURATION_SECONDS);
+      hasSkippedAdRef.current = false;
       setAdNotice(null);
     }
   };
@@ -518,113 +518,75 @@ export default function VideoPlayer() {
   };
 
   const handleSkipAd = (reason = "manual") => {
-    const video = videoRef.current;
-    if (!video) return;
-    const current = video.currentTime;
-    video.currentTime = current + AD_DURATION_SECONDS;
-    lastSkippedTimeRef.current = video.currentTime;
-    adConfirmationStreakRef.current = 0;
-    showAdNotice(
-      reason === "auto" 
-        ? "⚡ Đã tự động nhận diện & bỏ qua 30s quảng cáo" 
-        : "⏩ Đã bỏ qua 30s quảng cáo", 
-      true
-    );
+    if (videoRef.current) {
+      videoRef.current.currentTime += AD_DURATION_SECONDS;
+      hasSkippedAdRef.current = true;
+      showAdNotice(
+        reason === "auto" 
+          ? "⚡ Đã tự động bỏ qua quảng cáo" 
+          : "⏩ Đã bỏ qua 30s quảng cáo", 
+        true
+      );
+    }
   };
 
-  // NHẬN DIỆN QUẢNG CÁO ĐA VÙNG, ĐA MÀU SẮC SIÊU TỐC (< 0.25 GIÂY)
+  // NHẬN DIỆN CHUẨN MÀU ĐỎ Ở PHÚT 15 - ĐÃ TỐI ƯU ĐỘ TRỄ (< 0.2 GIÂY)
   const detectAdAndSkip = () => {
     const video = videoRef.current;
-    if (!video || !canScanAdRef.current || video.paused || video.ended) return;
+    if (!video || hasSkippedAdRef.current || !canScanAdRef.current || video.paused || video.ended) return;
 
-    const current = video.currentTime;
-
-    // Cooldown 45 giây sau khi vừa skip (cho phép nhận diện nhiều quảng cáo trong cùng 1 tập)
-    if (Math.abs(current - lastSkippedTimeRef.current) < 45) return;
-
-    // Khung giờ vàng xuất hiện quảng cáo cờ bạc ở web phim lậu:
-    // 1. Đoạn đầu phim: 0s - 90s
-    // 2. Đoạn giữa 1: 600s - 1300s (10:00 - 21:40)
-    // 3. Đoạn giữa 2: 2400s - 3600s (40:00 - 60:00)
-    const isAdWindow = (current <= 90) || (current >= 600 && current <= 1300) || (current >= 2400 && current <= 3600);
-    if (!isAdWindow) {
-      adConfirmationStreakRef.current = 0;
-      return;
-    }
-
-    // TỐI ƯU ĐỘ TRỄ: Quét 5 lần/giây (mỗi 180ms) thay vì 1500ms như trước
-    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    if (now - lastScanTimeRef.current < 180) return;
+    // TỐI ƯU ĐỘ TRỄ: Quét mỗi 200ms (thay vì 1500ms như trước) để bắt dính ngay lập tức
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 200) return;
     lastScanTimeRef.current = now;
 
     try {
-      if (!scanCanvasRef.current) {
+      if (!videoCanvasRef.current) {
         const c = document.createElement("canvas");
-        c.width = 48; // 48 x 27 pixels (Tỷ lệ 16:9, tổng chỉ 1296 pixels - cực nhẹ, quét mất < 0.1ms CPU)
-        c.height = 27;
-        scanCanvasRef.current = c;
+        c.width = 40;
+        c.height = 40;
+        videoCanvasRef.current = c;
       }
-      const canvas = scanCanvasRef.current;
+      const canvas = videoCanvasRef.current;
       const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx || !video.videoWidth || !video.videoHeight) return;
+      if (!ctx) return;
+      
+      const relX = 0.40; 
+      const relY = 0.50; 
+      const relW = 0.20; 
+      const relH = 0.30;
+      
+      const sx = video.videoWidth * relX;
+      const sy = video.videoHeight * relY;
+      const sw = video.videoWidth * relW;
+      const sh = video.videoHeight * relH;
 
-      // Vẽ toàn bộ khung hình tỉ lệ chuẩn vào canvas 48x27 (Chỉ tốn ~0.08ms CPU)
-      ctx.drawImage(video, 0, 0, 48, 27);
-      const imgData = ctx.getImageData(0, 0, 48, 27);
-      const data = imgData.data;
+      if (!sw || !sh || isNaN(sw) || isNaN(sh)) return;
 
-      let adScore = 0;
-      let bannerAdScore = 0;
-      let bannerPixelCount = 0;
-      const totalPixels = 48 * 27;
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 40, 40);
 
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i+1];
-        const b = data[i+2];
+      const videoPixels = ctx.getImageData(0, 0, 40, 40);
+      let redCount = 0;
+      const totalPixels = 40 * 40;
 
-        const pixelIdx = i / 4;
-        const y = Math.floor(pixelIdx / 48);
-        const isBannerZone = (y >= 18); // 30% đáy màn hình (nơi chứa banner/logo/chữ cờ bạc)
+      for (let i = 0; i < videoPixels.data.length; i += 4) {
+        const r = videoPixels.data[i];
+        const g = videoPixels.data[i+1];
+        const b = videoPixels.data[i+2];
 
-        if (isBannerZone) bannerPixelCount++;
-
-        // 1. Đỏ tươi cờ bạc (Bet88, Jun88, Shbet...)
-        const isBrightRed = (r > 130 && r > g * 1.8 && r > b * 1.8);
-
-        // 2. Vàng tươi / Cam rực (Logo nạp rút, link website, 789bet, Okvip)
-        const isBrightYellow = (r > 165 && g > 135 && b < 70 && (r + g) > 310);
-
-        // 3. Xanh lá neon nhà cái (FB88, Kubet)
-        const isNeonGreen = (g > 140 && g > r * 1.5 && g > b * 1.5);
-
-        // 4. Xanh Cyan / Xanh dương rực (1xBet)
-        const is1xBetBlue = (b > 150 && b > r * 1.5 && g > 75);
-
-        if (isBrightRed || isBrightYellow || isNeonGreen || is1xBetBlue) {
-          adScore++;
-          if (isBannerZone) bannerAdScore++;
+        // Điều kiện chuẩn xác ban đầu: Nhận diện màu Đỏ Rực (áo người trong quảng cáo)
+        // Không thêm bất kỳ màu nào khác để tránh tuyệt đối việc nhầm lẫn với phim
+        if (r > 120 && g < 70 && b < 80 && r > g * 2 && r > b * 2) {
+          redCount++;
         }
       }
 
-      const totalRatio = adScore / totalPixels;
-      const bannerRatio = bannerPixelCount > 0 ? (bannerAdScore / bannerPixelCount) : 0;
-
-      // Nhận diện trúng: Banner đáy có > 13% pixel nhà cái HOẶC toàn màn hình có > 11% pixel nhà cái
-      const isDetected = (bannerRatio > 0.13) || (totalRatio > 0.11);
-
-      if (isDetected) {
-        adConfirmationStreakRef.current += 1;
-        // Cần 2 lần quét liên tiếp xác nhận trúng (~360ms) để không bị false positive khi xem cảnh cháy nổ
-        if (adConfirmationStreakRef.current >= 2) {
-          handleSkipAd("auto");
-        }
-      } else {
-        adConfirmationStreakRef.current = 0;
+      const redPercentage = redCount / totalPixels;
+      if (redPercentage > 0.15) {
+        handleSkipAd("auto");
       }
     } catch (e) {
       if (e.name === "SecurityError" || e.message?.includes("tainted")) {
-        // Tự động dừng quét nếu canvas bị tainted do chính sách CORS của CDN
         canScanAdRef.current = false;
       }
     }
@@ -769,8 +731,10 @@ export default function VideoPlayer() {
         lastSavedTimeRef.current = current;
       }
 
-      // Nhận diện tự động siêu tốc trong các khung giờ quảng cáo
-      detectAdAndSkip();
+      // Quét tự động ở phút 15 (từ giây 840 đến giây 1020)
+      if (current >= 840 && current <= 1020 && !hasSkippedAdRef.current) {
+        detectAdAndSkip();
+      }
     }
   };
 
@@ -838,8 +802,7 @@ export default function VideoPlayer() {
   const handleSwitchEpisode = (ep) => {
     saveToFirebase(); 
     setActiveCloudProgress(null); 
-    lastSkippedTimeRef.current = 0; // Reset mốc skip khi chuyển tập
-    adConfirmationStreakRef.current = 0;
+    hasSkippedAdRef.current = false; // Reset cờ skip quảng cáo khi chuyển tập
     canScanAdRef.current = true;
     
     const newVideo = ep.link_m3u8 || ep.m3u8 || "";
