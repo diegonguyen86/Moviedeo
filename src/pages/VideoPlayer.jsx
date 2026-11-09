@@ -8,6 +8,7 @@ import LoadingLogo from "../components/LoadingLogo";
 import CommentSection from "../components/CommentSection";
 import { PlayIcon, PauseIcon, Back10Icon, Fwd10Icon, VolumeIcon, EpisodesIcon, SpeedIcon, SubtitlesIcon, FullscreenIcon, ExitFullscreenIcon, NextIcon } from "../components/PlayerIcons";
 import { apiGetRelatedSeasons, apiGetPhimDetail, apiGetPhimTheoTheLoai } from "../api/api";
+import { findAdBreaks } from "../utils/adBreaks";
 
 const toFullImageUrl = (url) => {
   if (!url) return "";
@@ -77,31 +78,30 @@ function VideoPlayer() {
   const [showEpisodes, setShowEpisodes] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false); 
 
-  // AUTO-SKIP AD REFS (QUÉT CHUẨN MÀU ĐỎ PHÚT 15 - SIÊU NHANH & KHÔNG TRỄ)
-  const videoCanvasRef = useRef(null);
-  const hasSkippedAdRef = useRef(false);
-  const lastScanTimeRef = useRef(0);
-  const canScanAdRef = useRef(true);
-  const [adNotice, setAdNotice] = useState(null);
+  // TỰ BỎ QUA QUẢNG CÁO: đọc m3u8 của TỪNG TẬP để biết chính xác quảng cáo chèn ở giây nào
+  // (thường ~15:00-15:33 nhưng mỗi tập lệch vài giây). Xem src/utils/adBreaks.js.
+  // Trước đây soi màu đỏ trên khung hình + tua cố định 31,5s -> hay trượt hoặc tua lố.
+  const [adBreaks, setAdBreaks] = useState([]); // [{ start, end }] (giây)
+  const adBreaksRef = useRef([]);
+  const skippedAdsRef = useRef(new Set()); // chỉ số các đoạn đã tự bỏ qua (hoàn tác thì không bỏ qua lại)
+  const [adNotice, setAdNotice] = useState(null); // { msg, canUndo, index }
   const adNoticeTimerRef = useRef(null);
 
-  // Cấu hình thời lượng quảng cáo (Tính bằng giây)
-  const AD_DURATION_SECONDS = 31.5;
-
-  const showAdNotice = (msg, canUndo = false) => {
-    setAdNotice({ msg, canUndo });
+  const showAdNotice = (msg, canUndo = false, index = null) => {
+    setAdNotice({ msg, canUndo, index });
     clearTimeout(adNoticeTimerRef.current);
     adNoticeTimerRef.current = setTimeout(() => {
       setAdNotice(null);
-    }, 4500);
+    }, 6000);
   };
 
   const handleUndoSkip = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - AD_DURATION_SECONDS);
-      hasSkippedAdRef.current = false;
-      setAdNotice(null);
+    const b = adBreaksRef.current[adNotice?.index];
+    if (videoRef.current && b) {
+      videoRef.current.currentTime = Math.max(0, b.start);
     }
+    clearTimeout(adNoticeTimerRef.current);
+    setAdNotice(null);
   };
 
   // STATE: AUTO-NEXT
@@ -228,8 +228,6 @@ function VideoPlayer() {
           setCurrentPosterUrl(toFullImageUrl(res.movie.poster_url));
           setCurrentAllServers(newServers);
           setCurrentSlug(seasonSlug);
-          hasSkippedAdRef.current = false;
-          canScanAdRef.current = true;
 
           const nVideo = firstEp.link_m3u8 || firstEp.m3u8 || "";
           const nEmbed = firstEp.link_embed || firstEp.embed || "";
@@ -382,7 +380,6 @@ function VideoPlayer() {
       // Tự động phục hồi nếu video bị lỗi do thuộc tính crossorigin trên mobile
       if (video && video.hasAttribute("crossorigin")) {
         video.removeAttribute("crossorigin");
-        canScanAdRef.current = false;
         video.src = safeVideoUrl;
         video.load();
         video.play().catch(() => {});
@@ -581,81 +578,34 @@ function VideoPlayer() {
     if (videoRef.current) videoRef.current.currentTime += amount;
   };
 
-  const handleSkipAd = (reason = "manual") => {
-    if (videoRef.current) {
-      videoRef.current.currentTime += AD_DURATION_SECONDS;
-      hasSkippedAdRef.current = true;
-      showAdNotice(
-        reason === "auto" 
-          ? "⚡ Đã tự động bỏ qua quảng cáo" 
-          : "⏩ Đã bỏ qua 30s quảng cáo", 
-        true
-      );
-    }
-  };
+  // Tải danh sách quảng cáo mỗi khi đổi tập / đổi phiên bản
+  useEffect(() => {
+    let alive = true;
+    adBreaksRef.current = [];
+    skippedAdsRef.current = new Set();
+    setAdBreaks([]);
+    setAdNotice(null);
+    findAdBreaks(currentVideo).then((list) => {
+      if (!alive) return;
+      adBreaksRef.current = list;
+      setAdBreaks(list);
+    });
+    return () => { alive = false; };
+  }, [currentVideo]);
 
-  // NHẬN DIỆN CHUẨN MÀU ĐỎ Ở PHÚT 15 - ĐÃ TỐI ƯU ĐỘ TRỄ (< 0.2 GIÂY)
-  const detectAdAndSkip = () => {
+  // Gọi trong onTimeUpdate: phát tới (hoặc mở "xem tiếp" rơi vào giữa) đoạn quảng cáo -> tua qua
+  const checkAdSkip = (current) => {
     const video = videoRef.current;
-    if (!video || hasSkippedAdRef.current || !canScanAdRef.current || video.paused || video.ended) return;
-
-    // TỐI ƯU ĐỘ TRỄ: Quét mỗi 200ms (thay vì 1500ms như trước) để bắt dính ngay lập tức
-    const now = Date.now();
-    if (now - lastScanTimeRef.current < 200) return;
-    lastScanTimeRef.current = now;
-
-    try {
-      if (!videoCanvasRef.current) {
-        const c = document.createElement("canvas");
-        c.width = 40;
-        c.height = 40;
-        videoCanvasRef.current = c;
+    if (!video || video.paused) return;
+    adBreaksRef.current.forEach((b, i) => {
+      if (skippedAdsRef.current.has(i)) return;
+      if (current >= b.start - 0.5 && current < b.end - 1) {
+        skippedAdsRef.current.add(i);
+        video.currentTime = b.end + 0.3;
+        showAdNotice(`⚡ Đã tự bỏ qua ${Math.round(b.end - b.start)} giây quảng cáo`, true, i);
       }
-      const canvas = videoCanvasRef.current;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
-      
-      const relX = 0.40; 
-      const relY = 0.50; 
-      const relW = 0.20; 
-      const relH = 0.30;
-      
-      const sx = video.videoWidth * relX;
-      const sy = video.videoHeight * relY;
-      const sw = video.videoWidth * relW;
-      const sh = video.videoHeight * relH;
-
-      if (!sw || !sh || isNaN(sw) || isNaN(sh)) return;
-
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, 40, 40);
-
-      const videoPixels = ctx.getImageData(0, 0, 40, 40);
-      let redCount = 0;
-      const totalPixels = 40 * 40;
-
-      for (let i = 0; i < videoPixels.data.length; i += 4) {
-        const r = videoPixels.data[i];
-        const g = videoPixels.data[i+1];
-        const b = videoPixels.data[i+2];
-
-        // Điều kiện chuẩn xác ban đầu: Nhận diện màu Đỏ Rực (áo người trong quảng cáo)
-        // Không thêm bất kỳ màu nào khác để tránh tuyệt đối việc nhầm lẫn với phim
-        if (r > 120 && g < 70 && b < 80 && r > g * 2 && r > b * 2) {
-          redCount++;
-        }
-      }
-
-      const redPercentage = redCount / totalPixels;
-      if (redPercentage > 0.15) {
-        handleSkipAd("auto");
-      }
-    } catch (e) {
-      if (e.name === "SecurityError" || e.message?.includes("tainted")) {
-        canScanAdRef.current = false;
-      }
-    }
+    });
   };
-
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
@@ -795,10 +745,7 @@ function VideoPlayer() {
         lastSavedTimeRef.current = current;
       }
 
-      // Quét tự động ở phút 15 (từ giây 840 đến giây 1020)
-      if (current >= 840 && current <= 1020 && !hasSkippedAdRef.current) {
-        detectAdAndSkip();
-      }
+      checkAdSkip(current);
     }
   };
 
@@ -872,9 +819,7 @@ function VideoPlayer() {
   const handleSwitchEpisode = (ep) => {
     if (!ep) return;
     saveToFirebase();
-    setActiveCloudProgress(null); 
-    hasSkippedAdRef.current = false; // Reset cờ skip quảng cáo khi chuyển tập
-    canScanAdRef.current = true;
+    setActiveCloudProgress(null);
     
     const newVideo = ep.link_m3u8 || ep.m3u8 || "";
     const newEmbed = ep.link_embed || ep.embed || "";
@@ -1284,7 +1229,16 @@ function VideoPlayer() {
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
                 >
-                  <div className="absolute -inset-y-4 inset-x-0 bg-transparent z-10"></div> 
+                  <div className="absolute -inset-y-4 inset-x-0 bg-transparent z-10"></div>
+                  {/* Vạch vàng: đoạn quảng cáo sẽ được tự bỏ qua */}
+                  {duration > 0 && adBreaks.map((b, i) => (
+                    <div
+                      key={i}
+                      className="pointer-events-none absolute inset-y-0 rounded-full bg-yellow-400/90"
+                      style={{ left: `${(b.start / duration) * 100}%`, width: `max(3px, ${((b.end - b.start) / duration) * 100}%)` }}
+                      title="Quảng cáo (tự bỏ qua)"
+                    />
+                  ))}
                   <div className="pointer-events-none relative h-full rounded-full bg-gradient-to-r from-brand to-accent-to" style={{ width: `${progressPercent}%` }}>
                     <div className={`absolute right-0 top-1/2 size-3.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-white transition-transform md:scale-0 md:group-hover/progress:scale-100 ${isDragging ? 'md:scale-100' : ''}`}></div>
                   </div>
@@ -1390,9 +1344,9 @@ function VideoPlayer() {
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleUndoSkip(); }}
                       className="bg-white hover:bg-white text-black px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all shadow-md active:scale-95 ml-1"
-                      title="Quay lại đoạn vừa tua"
+                      title="Quay lại xem đoạn quảng cáo vừa bỏ qua"
                     >
-                      Hoàn tác
+                      Xem lại
                     </button>
                   )}
                 </div>

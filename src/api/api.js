@@ -259,13 +259,34 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
   
   if (items.length <= 1) return [];
 
-  const normalize = (str) => String(str).toLowerCase().replace(/[^a-z0-9]/g, '');
-  const normalizedBase = normalize(baseName);
-  
+  // Bỏ dấu tiếng Việt trước khi so (trước đây [^a-z0-9] xoá luôn chữ có dấu -> "Chức Nữ" thành "chcn")
+  const normalize = (str) => String(str || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd')
+    .toLowerCase().replace(/[^a-z0-9]/g, '');
+  const stripSeason = (str) => {
+    const m = String(str || '').match(seasonRegex);
+    return (m ? m[1] : String(str || '')).replace(/[:\-–—()]+$/, '').trim();
+  };
+  // Hai tên "cùng gốc": trùng nhau, hoặc tên này chứa tên kia (đủ dài để không bắt nhầm chữ ngắn như "Yêu")
+  const sameBase = (a, b) => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const shorter = a.length < b.length ? a : b;
+    return shorter.length >= 6 && (a.includes(b) || b.includes(a));
+  };
+
+  const vnBase = normalize(stripSeason(movieName));
+  const origBase = normalize(stripSeason(originalName));
+
+  // LỖI CŨ: chỉ cần trùng tên gốc tiếng Anh là bị gộp -> "Ngưu Lang Chức Nữ" (2025) và "Yêu Điên Dại" (2001)
+  // cùng tên "Head Over Heels" bị gộp thành Movie 1 / Movie 2.
+  // Giờ phải cùng tên tiếng Việt (bỏ "Phần X"); nếu cả hai đều có tên gốc thì tên gốc cũng không được khác hẳn nhau.
   const related = items.filter(item => {
-    const nName = normalize(item.name || '');
-    const nOrig = normalize(item.origin_name || item.original_name || '');
-    return nName.includes(normalizedBase) || (normalizedBase.length >= 4 && nOrig.includes(normalizedBase));
+    const itemVn = normalize(stripSeason(item.name));
+    if (!sameBase(itemVn, vnBase)) return false;
+    const itemOrig = normalize(stripSeason(item.origin_name || item.original_name));
+    if (origBase && itemOrig && !sameBase(itemOrig, origBase)) return false;
+    return true;
   });
 
   if (related.length <= 1) return [];
@@ -289,6 +310,7 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
     if (sNum !== null) {
       numberedSeasons.push({
         ...formatMovieItem(item),
+        exactName: normalize(stripSeason(item.name)) === vnBase,
         seasonNumber: sNum,
         label: `Phần ${sNum}`,
         rawName: item.name
@@ -299,7 +321,8 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
   }
 
   // Sắp xếp các Phần theo thứ tự: Phần 1, Phần 2, Phần 3...
-  numberedSeasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+  // Cùng số phần thì ưu tiên bản trùng đúng tên (vd "Trò Chơi Con Mực (Phần 2)" thắng "Thử Thách Trò Chơi Con Mực (Phần 2)")
+  numberedSeasons.sort((a, b) => (a.seasonNumber - b.seasonNumber) || (b.exactName - a.exactName));
 
   // Khử trùng lặp: Mỗi phần chỉ lấy 1 bản chuẩn duy nhất
   const seenSeasons = new Set();

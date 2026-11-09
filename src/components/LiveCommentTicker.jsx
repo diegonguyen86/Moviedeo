@@ -10,6 +10,17 @@ export default function LiveCommentTicker() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
+  // Bấm X -> ẩn đi, chỉ hiện lại khi có bình luận MỚI hơn (nhớ id bình luận mới nhất lúc tắt)
+  const [dismissedId, setDismissedId] = useState(() => {
+    try { return localStorage.getItem("live_comment_dismissed") || ""; } catch { return ""; }
+  });
+  const dismiss = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const latestId = comments[0]?.id || "";
+    setDismissedId(latestId);
+    try { localStorage.setItem("live_comment_dismissed", latestId); } catch { /* bỏ qua */ }
+  };
 
   // Chỉ hiện cho thành viên đã được duyệt, và không hiện ở trang xem phim / trang đăng nhập TV
   const isHidden = !user || !isApproved || location.pathname.startsWith("/play/") || location.pathname.startsWith("/tv");
@@ -57,6 +68,7 @@ export default function LiveCommentTicker() {
   }
 
   if (comments.length === 0) return null;
+  if (dismissedId && comments[0]?.id === dismissedId) return null;
 
   // Đảm bảo không bị crash nếu comments bị xoá bớt khiến currentIndex vượt quá mảng
   const safeIndex = currentIndex >= comments.length ? 0 : currentIndex;
@@ -69,10 +81,19 @@ export default function LiveCommentTicker() {
   return (
     // Chỉ hiện trên máy tính: ở điện thoại khung cố định này đè lên nút của trang
     <div
-      className="fixed bottom-5 left-5 z-40 hidden md:block"
+      className="group/ticker fixed bottom-5 left-5 z-40 hidden md:block"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Tắt bình luận mới"
+        title="Tắt (hiện lại khi có bình luận mới)"
+        className="absolute -right-2 -top-2 z-10 flex size-6 items-center justify-center rounded-full border border-line bg-raised text-fg-2 shadow-lg transition-colors hover:bg-white hover:text-black"
+      >
+        <span className="material-symbols-outlined text-[16px]">close</span>
+      </button>
       <Link
         key={currentComment.id}
         to={`/movie/${currentComment.movieId}`}
