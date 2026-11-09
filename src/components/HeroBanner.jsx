@@ -2,147 +2,149 @@ import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiGetMovieLogo, apiGetPhimDetail } from "../api/api";
 
+const SLIDE_MS = 9000;
+
 export default function HeroBanner({ movies = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [logoUrl, setLogoUrl] = useState(null);
   const [description, setDescription] = useState("");
+  const [isPaused, setIsPaused] = useState(false);
 
-  // Lấy logo và cốt truyện thật khi đổi phim
+  // Danh sách phim đổi (cache cũ -> dữ liệu mới ít phim hơn) thì về slide đầu, tránh crash
+  const safeIndex = currentIndex < movies.length ? currentIndex : 0;
+  const currentMovieId = movies[safeIndex]?.id;
+
+  // Logo phim + mô tả thật khi đổi slide
   useEffect(() => {
-    if (!movies || movies.length === 0) return;
-    
+    const movie = movies[safeIndex];
+    if (!movie) return;
     let isMounted = true;
-    const movie = movies[currentIndex];
-    
     setLogoUrl(null);
     setDescription(movie.description || "");
 
-    const fetchMedia = async () => {
+    (async () => {
       try {
-        const logoPromise = apiGetMovieLogo(movie.origin_name || movie.title || movie.name);
-        let descPromise = Promise.resolve(null);
-        
-        if (!movie.description && movie.id) {
-          descPromise = apiGetPhimDetail(movie.id);
-        }
-
-        const [logo, detailRes] = await Promise.all([logoPromise, descPromise]);
-        
-        if (isMounted) {
-          if (logo) setLogoUrl(logo);
-          if (detailRes?.movie?.content) {
-            setDescription(detailRes.movie.content.replace(/<[^>]*>?/gm, ''));
-          }
-        }
-      } catch (err) {}
-    };
-    fetchMedia();
+        const [logo, detailRes] = await Promise.all([
+          apiGetMovieLogo(movie.origin_name || movie.title || movie.name),
+          !movie.description && movie.id ? apiGetPhimDetail(movie.id) : Promise.resolve(null),
+        ]);
+        if (!isMounted) return;
+        if (logo) setLogoUrl(logo);
+        if (detailRes?.movie?.content) setDescription(detailRes.movie.content.replace(/<[^>]*>?/gm, ""));
+      } catch {}
+    })();
 
     return () => { isMounted = false; };
-  }, [currentIndex, movies]);
+    // Chỉ chạy lại khi phim đang hiển thị thực sự đổi (không phải mỗi lần trang chủ vẽ lại)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMovieId]);
 
-  // Tự động chuyển slide sau mỗi 10 giây
+  // Tự chuyển slide; rê chuột vào banner thì dừng
   useEffect(() => {
-    if (!movies || movies.length <= 1) return;
-    
-    const interval = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % movies.length);
-    }, 10000);
+    if (movies.length <= 1 || isPaused) return;
+    const timer = setInterval(() => setCurrentIndex((prev) => (prev + 1) % movies.length), SLIDE_MS);
+    return () => clearInterval(timer);
+  }, [movies.length, isPaused]);
 
-    return () => clearInterval(interval);
-  }, [movies.length]);
-
-  if (!movies || movies.length === 0) return null;
-  const currentMovie = movies[currentIndex];
-  const activeDesc = description || currentMovie.description;
+  if (!movies.length) return null;
+  const movie = movies[safeIndex];
+  const title = movie.title || movie.name;
+  const meta = [movie.year, movie.quality, movie.lang].filter(Boolean).join(" · ");
 
   return (
-    <section className="relative w-full h-[70vh] md:h-[85vh] lg:h-[95vh] flex items-end overflow-hidden group">
-      <div className="absolute inset-0 z-0 bg-black overflow-hidden">
-        
-        {/* HIỆU ỨNG KEN BURNS (ZOOM & PAN CHẬM) TRÊN ẢNH NỀN */}
-        <img
-          key={currentMovie.id || currentIndex}
-          alt={currentMovie.title}
-          loading="eager" fetchPriority="high" decoding="async" className="absolute inset-0 w-full h-full object-cover object-top opacity-70 animate-ken-burns"
-          src={currentMovie.image}
-          style={{ animation: 'kenBurns 10s ease-out forwards' }}
-        />
-
-        <style>{`
-          @keyframes kenBurns {
-            0% { transform: scale(1); }
-            100% { transform: scale(1.15); }
-          }
-        `}</style>
-
-        {/* Lớp phủ Gradient tạo chiều sâu điện ảnh (z-20) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/40 to-transparent z-20"></div>
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A]/90 via-[#0A0A0A]/50 to-transparent z-20"></div>
+    <section
+      // Chiều cao TỐI THIỂU thay vì cố định + chừa chỗ cho header (pt-24): màn thấp thì banner tự cao thêm,
+      // chữ không bao giờ trượt lên nằm dưới thanh header
+      className="relative flex min-h-[62vh] w-full items-end overflow-hidden pt-24 md:min-h-[78vh]"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      aria-roledescription="carousel"
+      aria-label="Phim nổi bật"
+    >
+      {/* Ảnh nền: render SẴN ảnh của mọi slide, xếp chồng, chỉ đổi độ mờ.
+          Trước đây ảnh slide nào chỉ bắt đầu tải khi tới slide đó -> mỗi lần chuyển là màn đen chờ ảnh. */}
+      <div className="absolute inset-0 bg-canvas">
+        {movies.map((m, i) => (
+          <img
+            key={`${m.id}-${i}`}
+            src={m.thumb_url || m.image}
+            alt=""
+            loading="eager"
+            fetchPriority={i === safeIndex ? "high" : "low"}
+            decoding="async"
+            aria-hidden={i !== safeIndex}
+            className={`absolute inset-0 h-full w-full object-cover object-top transition-opacity duration-700 ease-out ${i === safeIndex ? "hero-zoom opacity-100" : "opacity-0"}`}
+          />
+        ))}
+        {/* Lớp phủ để chữ luôn đọc được (đo ở chỗ ảnh sáng nhất) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/45 to-canvas/10" />
+        <div className="absolute inset-0 bg-gradient-to-r from-canvas/90 via-canvas/40 to-transparent" />
       </div>
-      
-      <div className="relative z-10 px-6 md:px-12 pb-16 md:pb-24 w-full max-w-container-max mx-auto">
-        <div className="space-y-6 max-w-2xl">
-          
-          <div className="flex items-center gap-2">
-            <span className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-4 py-1.5 rounded-[4px] font-black text-xs uppercase tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.3)]">
-              Top {currentIndex + 1} Trending
-            </span>
-          </div>
-          
+
+      <style>{`
+        @keyframes heroZoom { from { transform: scale(1.05) } to { transform: scale(1) } }
+        .hero-zoom { animation: heroZoom 6s cubic-bezier(.16,1,.3,1) both; }
+        @media (prefers-reduced-motion: reduce) { .hero-zoom { animation: none } }
+      `}</style>
+
+      <div className="relative mx-auto w-full max-w-container-max px-4 pb-12 sm:px-6 md:pb-20">
+        <div className="max-w-xl">
+          <p className="mb-3 text-xs font-medium uppercase tracking-[0.14em] text-fg-2">
+            Top {safeIndex + 1} thịnh hành
+          </p>
+
           {logoUrl ? (
-            <div className="space-y-2">
-              <img src={logoUrl} alt={currentMovie.title || currentMovie.name} className="w-full max-w-[400px] max-h-[150px] object-contain object-left drop-shadow-2xl" />
-              <h3 className="text-pink-500 font-bold text-sm tracking-widest uppercase">{currentMovie.title || currentMovie.name}</h3>
-            </div>
+            <>
+              <img src={logoUrl} alt={title} className="mb-3 max-h-[110px] w-auto max-w-[320px] object-contain object-left md:max-h-[140px] md:max-w-[420px]" />
+              <h2 className="sr-only">{title}</h2>
+            </>
           ) : (
-            <h2 className="text-4xl md:text-6xl leading-tight font-black text-white tracking-tighter drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">
-              {currentMovie.title || currentMovie.name}
-            </h2>
+            <h2 className="mb-3 text-3xl font-bold leading-tight tracking-tight text-fg md:text-5xl">{title}</h2>
           )}
-          
-          {activeDesc ? (
-            <p className="text-zinc-300 font-medium text-sm md:text-base line-clamp-3 leading-relaxed drop-shadow-md max-w-xl">
-              {activeDesc}
+
+          {meta && <p className="mb-3 text-sm text-fg-2">{logoUrl ? `${title} · ${meta}` : meta}</p>}
+
+          {(description || movie.description) && (
+            <p className="mb-6 line-clamp-2 text-sm leading-relaxed text-fg/80 md:line-clamp-3 md:text-base">
+              {description || movie.description}
             </p>
-          ) : currentMovie.origin_name ? (
-            <p className="text-zinc-400 font-semibold text-sm tracking-wide drop-shadow-md">
-              {currentMovie.origin_name} {currentMovie.year ? `• ${currentMovie.year}` : ''} {currentMovie.quality ? `• ${currentMovie.quality}` : ''}
-            </p>
-          ) : null}
-          
-          <div className="flex items-center gap-4 pt-4">
-            <Link to={`/movie/${currentMovie.id}`} className="group flex items-center gap-2 bg-white hover:bg-zinc-200 text-black px-8 py-3.5 rounded-full font-black text-sm hover:scale-105 transition-all duration-300 shadow-[0_0_30px_rgba(255,255,255,0.3)]">
-              <span className="material-symbols-outlined filled text-[28px]">play_circle</span>
-              XEM NGAY
+          )}
+
+          <div className="flex items-center gap-3">
+            <Link
+              to={`/movie/${movie.id}`}
+              className="btn-primary flex h-11 items-center gap-2 rounded-xl px-5 text-sm font-semibold"
+            >
+              <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+              Xem ngay
             </Link>
-            
-            <Link to={`/movie/${currentMovie.id}`} className="group flex items-center gap-2 bg-white/10 text-white px-8 py-3.5 rounded-full font-bold text-sm border border-white/20 hover:bg-white/20 transition-all duration-300 backdrop-blur-md hover:shadow-[0_0_20px_rgba(255,255,255,0.1)]">
-              <span className="material-symbols-outlined text-[28px]">info</span>
-              CHI TIẾT
+            <Link
+              to={`/movie/${movie.id}`}
+              className="flex h-11 items-center gap-2 rounded-xl bg-white/10 px-5 text-sm font-medium text-fg transition-colors hover:bg-white/15"
+            >
+              <span className="material-symbols-outlined text-[20px]">info</span>
+              Chi tiết
             </Link>
           </div>
         </div>
-      </div>
 
-      {/* CHUYỂN SLIDE (THUMBNAILS) */}
-      <div className="absolute bottom-6 right-6 md:right-12 z-20 flex gap-3 hidden md:flex">
-        {movies.map((m, i) => (
-          <button 
-            key={i} 
-            onClick={() => setCurrentIndex(i)}
-            className={`w-32 aspect-video rounded-lg overflow-hidden border-2 transition-all duration-500 ${i === currentIndex ? 'border-yellow-500 scale-110 shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10' : 'border-white/20 hover:border-white/50 opacity-60 hover:opacity-100'}`}
-          >
-            <img 
-              src={m.image} 
-              alt={m.title} 
-              onError={(e) => {
-                e.currentTarget.src = "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=600&auto=format&fit=crop";
-              }}
-              className="w-full h-full object-cover" 
-            />
-          </button>
-        ))}
+        {/* Chỉ báo slide */}
+        {movies.length > 1 && (
+          <div className="mt-8 flex gap-1.5" role="tablist" aria-label="Chọn phim nổi bật">
+            {movies.map((m, i) => (
+              <button
+                key={`${m.id}-${i}`}
+                role="tab"
+                aria-selected={i === safeIndex}
+                aria-label={`Phim ${i + 1}: ${m.title || m.name}`}
+                onClick={() => setCurrentIndex(i)}
+                className="group/dot flex h-6 items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+              >
+                <span className={`block h-1 rounded-full transition-all duration-300 ${i === safeIndex ? "w-8 bg-fg" : "w-4 bg-white/30 group-hover/dot:bg-white/50"}`} />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -16,6 +16,10 @@ export default function DevToolsGuard() {
 
     const isMobile = isTouchOrMobile();
 
+    // Điện thoại / máy tính bảng / laptop cảm ứng: KHÔNG chặn gì cả.
+    // Chặn chuột phải trên cảm ứng = chặn nhấn giữ, làm hỏng trải nghiệm; mà DevTools trên mobile cũng không mở kiểu F12.
+    if (isMobile) return;
+
     // 1. Ghi đè console để bảo vệ API và đường dẫn không bị soi
     const noop = () => {};
     ['log', 'debug', 'info', 'warn', 'table', 'trace', 'dir'].forEach((method) => {
@@ -73,12 +77,17 @@ export default function DevToolsGuard() {
     // Tuyệt đối không chạy trên điện thoại vì thanh địa chỉ/xoay màn hình/fullscreen làm lệch kích thước
     const checkWindowSize = () => {
       if (isMobile) return;
+      // WebView / trình duyệt nhúng (app TV, app mobile) thường trả outerWidth = 0 -> không đo được, bỏ qua
+      if (!window.outerWidth || !window.outerHeight) return;
 
       const threshold = 180;
       const widthThreshold = window.outerWidth - window.innerWidth > threshold;
       const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-      
-      if (widthThreshold || heightThreshold) {
+
+      // Chỉ coi là DevTools khi CHỈ MỘT chiều bị hụt (DevTools dock 1 cạnh).
+      // Nếu cả 2 chiều đều hụt thì gần như chắc chắn là người dùng đang phóng to trình duyệt (Ctrl +)
+      // -> trước đây người dùng zoom 125%+ bị khoá màn hình oan.
+      if (widthThreshold !== heightThreshold) {
         triggerBlackout();
       } else {
         // Tự động khôi phục nếu người dùng đã đóng DevTools trên PC

@@ -4,15 +4,21 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useNotification } from "../context/NotificationContext";
 import { useAuth } from "../context/AuthContext";
 
-export default function AdminTrending() {
+const ADMIN_UID = "qD9qHFwiucgQOj6bXHoCIuHuoWv1";
+
+// Kiểm tra quyền TRƯỚC khi gọi bất kỳ hook nào của trang (tránh lỗi "Rendered more hooks than during the previous render")
+export default function TrendingManageGuard() {
+  const { user } = useAuth();
+  if (!user || user.uid !== ADMIN_UID) {
+    return <div className="min-h-screen bg-canvas flex items-center justify-center text-white text-2xl font-bold">⛔ Không có quyền truy cập</div>;
+  }
+  return <AdminTrending />;
+}
+
+function AdminTrending() {
   const { showToast } = useNotification();
   const { user } = useAuth();
   const [trendingList, setTrendingList] = useState([]);
-
-  // Kiểm tra quyền Admin
-  if (!user || user.uid !== "qD9qHFwiucgQOj6bXHoCIuHuoWv1") {
-    return <div className="min-h-screen bg-black flex items-center justify-center text-white text-2xl font-bold">⛔ Không có quyền truy cập</div>;
-  }
   const [isLoading, setIsLoading] = useState(false);
 
   // Tham chiếu dùng cho tính năng Kéo thả (Drag & Drop)
@@ -39,9 +45,12 @@ export default function AdminTrending() {
   const handleAutoFetch = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/cron-trending");
+      const idToken = await user.getIdToken();
+      const res = await fetch("/api/cron-trending", {
+        headers: { Authorization: `Bearer ${idToken}` }
+      });
       const data = await res.json();
-      
+
       if (data.success) {
         showToast(data.message, "success");
         setTrendingList(data.movies);
@@ -56,16 +65,29 @@ export default function AdminTrending() {
   };
 
   // Hàm xóa phim khỏi Top Trending
+  const saveList = async (list) => {
+    try {
+      await setDoc(doc(db, "admin_settings", "top_trending"), { movies: list });
+    } catch (error) {
+      console.error("Lỗi lưu Top Trending:", error);
+      showToast("Không lưu được lên Firebase!", "error");
+    }
+  };
+
   const handleRemoveMovie = async (slugToRemove) => {
     const updatedList = trendingList.filter(movie => movie.slug !== slugToRemove);
     setTrendingList(updatedList);
-    
-    const docRef = doc(db, "admin_settings", "top_trending");
-    await setDoc(docRef, { movies: updatedList });
+    await saveList(updatedList);
   };
 
   // 🚀 HÀM XỬ LÝ KHI THẢ CHUỘT (Cập nhật vị trí)
   const handleSort = async () => {
+    // Thả ra ngoài danh sách hoặc thả lại đúng chỗ cũ -> bỏ qua
+    if (dragItem.current == null || dragOverItem.current == null || dragItem.current === dragOverItem.current) {
+      dragItem.current = null;
+      dragOverItem.current = null;
+      return;
+    }
     // Clone danh sách hiện tại
     let _trendingList = [...trendingList];
     
@@ -83,16 +105,15 @@ export default function AdminTrending() {
     setTrendingList(_trendingList);
     
     // Lưu thứ tự mới lên Firebase
-    const docRef = doc(db, "admin_settings", "top_trending");
-    await setDoc(docRef, { movies: _trendingList });
+    await saveList(_trendingList);
   };
 
   return (
-    <div className="min-h-screen bg-black text-white p-6">
-      <h1 className="text-3xl font-black mb-6 uppercase text-yellow-500">Quản lý Top Trending</h1>
+    <div className="min-h-screen bg-canvas text-white p-6 pt-28 pb-32">
+      <h1 className="text-xl font-semibold mb-6 text-fg">Quản lý Top Trending</h1>
       
       {/* KHU VỰC ĐỒNG BỘ TỰ ĐỘNG TỪ TMDB */}
-      <div className="bg-white/10 p-6 rounded-2xl mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="bg-card border border-line p-6 rounded-2xl mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-white">Đồng Bộ TMDB Tự Động</h2>
           <p className="text-sm text-zinc-400 mt-1">
@@ -103,7 +124,7 @@ export default function AdminTrending() {
         <button 
           onClick={handleAutoFetch}
           disabled={isLoading}
-          className="bg-yellow-500 text-black font-black px-6 py-3 rounded-xl hover:bg-yellow-400 transition-all disabled:opacity-50 h-fit whitespace-nowrap flex items-center gap-2"
+          className="btn-primary font-semibold px-6 py-3 rounded-xl transition-all disabled:opacity-50 h-fit whitespace-nowrap flex items-center gap-2"
         >
           {isLoading ? "⏳ Đang quét TMDB..." : "🔄 Làm mới ngay"}
         </button>
@@ -115,11 +136,11 @@ export default function AdminTrending() {
           <div 
             key={movie.slug} // Dùng slug làm key thay vì index để React render lại chuẩn khi kéo
             draggable
-            onDragStart={(e) => (dragItem.current = index)}
-            onDragEnter={(e) => (dragOverItem.current = index)}
+            onDragStart={() => (dragItem.current = index)}
+            onDragEnter={() => (dragOverItem.current = index)}
             onDragEnd={handleSort}
             onDragOver={(e) => e.preventDefault()} // Bắt buộc phải có để cho phép thả chuột
-            className="relative bg-white/5 rounded-xl overflow-hidden border border-white/10 group cursor-grab active:cursor-grabbing hover:border-yellow-500/50 transition-colors"
+            className="relative bg-white/5 rounded-xl overflow-hidden border border-white/10 group cursor-grab active:cursor-grabbing hover:border-line-strong transition-colors"
           >
             {/* Ảnh Phim */}
             <img src={movie.thumb_url?.startsWith('http') ? movie.thumb_url : `https://phimimg.com/${movie.thumb_url}`} alt={movie.name} className="w-full aspect-[2/3] object-cover pointer-events-none" />

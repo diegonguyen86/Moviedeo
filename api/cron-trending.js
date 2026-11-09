@@ -1,25 +1,28 @@
-import admin from 'firebase-admin';
+import admin, { ADMIN_UID, getUidFromRequest } from './_firebaseAdmin.js';
 
-// Khởi tạo quyền Admin Firebase
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    })
-  });
-}
+const TMDB_KEY = process.env.TMDB_KEY || process.env.VITE_TMDB_KEY;
 
-const db = admin.firestore();
-const TMDB_KEY = process.env.TMDB_KEY;
-const KKPHIM_SEARCH_API = 'https://phimapi.com/v1/api/tim-kiem?keyword=';
+// Chỉ cho phép: (1) Vercel Cron, (2) Admin đang đăng nhập bấm "Làm mới ngay".
+// Trước đây ai cũng gọi được /api/cron-trending để ghi đè danh sách Trending.
+const isAuthorized = async (req) => {
+  const authHeader = req.headers?.authorization || '';
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true;
+  if (!cronSecret && (req.headers?.['user-agent'] || '').includes('vercel-cron')) return true;
+  const uid = await getUidFromRequest(req);
+  return uid === ADMIN_UID;
+};
 
 export default async function handler(req, res) {
   // Tránh bị Vercel cache lại kết quả API
   res.setHeader('Cache-Control', 'no-store, max-age=0');
 
+  if (!(await isAuthorized(req))) {
+    return res.status(401).json({ success: false, message: 'Không có quyền thực hiện.' });
+  }
+
   try {
+    const db = admin.firestore();
     let allTmdbMovies = [];
     // Lấy 2 trang đầu tiên từ TMDB (40 phim) để có đủ hàng dự phòng (trừ hao KKPhim thiếu)
     for (let page = 1; page <= 2; page++) {

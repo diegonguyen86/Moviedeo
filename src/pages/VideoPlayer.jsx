@@ -1,14 +1,30 @@
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams, Navigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import Hls from "hls.js"; 
+import Hls from "hls.js";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { doc, setDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
 import CommentSection from "../components/CommentSection";
+import { PlayIcon, PauseIcon, Back10Icon, Fwd10Icon, VolumeIcon, EpisodesIcon, SpeedIcon, SubtitlesIcon, FullscreenIcon, ExitFullscreenIcon, NextIcon } from "../components/PlayerIcons";
 import { apiGetRelatedSeasons, apiGetPhimDetail, apiGetPhimTheoTheLoai } from "../api/api";
 
-export default function VideoPlayer() {
+const toFullImageUrl = (url) => {
+  if (!url) return "";
+  return url.startsWith("http") ? url : `https://phimimg.com/${url}`;
+};
+
+// Trang /play nằm ngoài Layout nên phải tự chặn người chưa đăng nhập / chưa được duyệt.
+// (Trước đây chỉ có comment "tự bảo vệ" nhưng thực tế ai mở link /play/... cũng xem được.)
+export default function VideoPlayerGuard() {
+  const { user, isApproved, hasPassword } = useAuth();
+  if (!user || !isApproved || !hasPassword) {
+    return <Navigate to="/" replace />;
+  }
+  return <VideoPlayer />;
+}
+
+function VideoPlayer() {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams(); 
@@ -19,6 +35,7 @@ export default function VideoPlayer() {
   const videoRef = useRef(null);
   const playerWrapperRef = useRef(null);
   const controlsTimeoutRef = useRef(null);
+  const controlsShownAtRef = useRef(0);
   const progressBarRef = useRef(null);
 
   const [activeServerIdx, setActiveServerIdx] = useState(currentServerIndex || 0);
@@ -124,11 +141,7 @@ export default function VideoPlayer() {
           if (!isMounted) return;
           if (res && res.movie) {
             setCurrentMovieName(res.movie.name);
-            setCurrentPosterUrl(
-              res.movie.poster_url?.startsWith("http")
-                ? res.movie.poster_url
-                : `https://phimimg.com/${res.movie.poster_url}`
-            );
+            setCurrentPosterUrl(toFullImageUrl(res.movie.poster_url));
             const servers = res.episodes || [];
             setCurrentAllServers(servers);
             const eps = servers[0]?.server_data || servers[0]?.items || [];
@@ -182,15 +195,20 @@ export default function VideoPlayer() {
     };
   }, [currentSlug]);
 
-  // Fetch related seasons once
+  // Lấy danh sách các phần liên quan (dùng currentMovieName để vẫn chạy khi F5 / mở link trực tiếp)
+  const seasonsBaseNameRef = useRef(null);
   useEffect(() => {
-    if (movieName) {
-      // Find base name or just pass it
-      apiGetRelatedSeasons(movieName, "").then(seasons => {
-        setRelatedSeasons(seasons);
-      });
-    }
-  }, [movieName]);
+    if (!currentMovieName) return;
+    // Đã có danh sách chứa phim hiện tại (vừa đổi phần) thì không cần tìm lại
+    if (seasonsBaseNameRef.current && relatedSeasons.some(s => s.id === currentSlug)) return;
+    seasonsBaseNameRef.current = currentMovieName;
+    let isMounted = true;
+    apiGetRelatedSeasons(currentMovieName, "")
+      .then(seasons => { if (isMounted) setRelatedSeasons(seasons); })
+      .catch(() => {});
+    return () => { isMounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentMovieName]);
 
   const changeSeason = async (seasonSlug) => {
     if (seasonSlug === currentSlug || isLoadingSeason) return;
@@ -200,16 +218,19 @@ export default function VideoPlayer() {
       if (res && res.movie) {
         saveToFirebase(); // save current progress
         
-        setCurrentMovieName(res.movie.name);
-        setCurrentPosterUrl(res.movie.poster_url?.startsWith("http") ? res.movie.poster_url : `https://phimimg.com/${res.movie.poster_url}`);
-        setCurrentAllServers(res.episodes || []);
-        setCurrentSlug(seasonSlug);
-        
         const newServers = res.episodes || [];
         const newEps = newServers[0]?.server_data || newServers[0]?.items || [];
         const firstEp = newEps[0];
-        
+
         if (firstEp) {
+          // Chỉ đổi thông tin phim khi phần mới thực sự có tập để phát
+          setCurrentMovieName(res.movie.name);
+          setCurrentPosterUrl(toFullImageUrl(res.movie.poster_url));
+          setCurrentAllServers(newServers);
+          setCurrentSlug(seasonSlug);
+          hasSkippedAdRef.current = false;
+          canScanAdRef.current = true;
+
           const nVideo = firstEp.link_m3u8 || firstEp.m3u8 || "";
           const nEmbed = firstEp.link_embed || firstEp.embed || "";
           
@@ -231,7 +252,7 @@ export default function VideoPlayer() {
               epName: firstEp.name,
               allServers: res.episodes || [],
               currentServerIndex: 0,
-              posterUrl: res.movie.poster_url,
+              posterUrl: toFullImageUrl(res.movie.poster_url),
               cloudProgress: null
             }
           });
@@ -245,10 +266,13 @@ export default function VideoPlayer() {
   };
 
   const saveToFirebase = async () => {
-    if (!user || !currentMovieName) return;
+    if (!user || !currentMovieName || !currentSlug) return;
     try {
       const currentProgress = videoRef.current?.currentTime || currentTime;
-      
+      // Chưa xem giây nào (vd: vừa mở trang đã thoát, hoặc đang dùng server dự phòng iframe)
+      // -> không ghi đè tiến trình cũ trên Firebase về 0
+      if (!currentProgress && unsavedWatchTimeRef.current < 1) return;
+
       let epToSave = currentEpName;
       let progressToSave = currentProgress;
       
@@ -345,6 +369,9 @@ export default function VideoPlayer() {
     setCurrentTime(0);
 
     let retryCount = 0;
+    let networkRetry = 0;
+    let mediaRetry = 0;
+    let disposed = false;
 
     const onLoadedMetadata = () => {
       video.currentTime = savedTime ? parseFloat(savedTime) : 0;
@@ -368,7 +395,7 @@ export default function VideoPlayer() {
         video.src = safeVideoUrl;
         video.load();
         video.currentTime = recoverTime;
-      } else {
+      } else if (currentEmbed) {
         setUseIframe(true);
       }
     };
@@ -408,10 +435,29 @@ export default function VideoPlayer() {
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad();
+              // Trước đây thử lại VÔ HẠN -> mạng 4G yếu / link hỏng là quay vòng "Đang tải..." mãi.
+              // Giờ thử tối đa 4 lần (cách nhau 1.5s), sau đó tự chuyển sang server dự phòng.
+              if (networkRetry < 4) {
+                networkRetry++;
+                setTimeout(() => { try { if (hls && !disposed) hls.startLoad(); } catch {} }, 1500);
+              } else {
+                hls.destroy();
+                hls = null;
+                if (currentEmbed) setUseIframe(true);
+              }
               break;
             case Hls.ErrorTypes.MEDIA_ERROR:
-              hls.recoverMediaError();
+              if (mediaRetry < 2) {
+                mediaRetry++;
+                hls.recoverMediaError();
+              } else if (retryCount < 3) {
+                retryCount++;
+                initHls();
+              } else {
+                hls.destroy();
+                hls = null;
+                if (currentEmbed) setUseIframe(true);
+              }
               break;
             default:
               if (retryCount < 3) {
@@ -419,7 +465,8 @@ export default function VideoPlayer() {
                 initHls(); // Khởi tạo lại HLS thay vì bỏ cuộc ngay
               } else {
                 hls.destroy();
-                setUseIframe(true);
+                hls = null;
+                if (currentEmbed) setUseIframe(true);
               }
               break;
           }
@@ -438,7 +485,8 @@ export default function VideoPlayer() {
       } else {
         wasHidden = true;
         // TẮT MÀN HÌNH / ẨN WEB: Lập tức lưu tiến trình lên Firebase và LocalStorage
-        saveToFirebase();
+        // Dùng ref để luôn gọi bản saveToFirebase mới nhất (tránh closure cũ với duration = 0)
+        saveProgressRef.current();
         if (video) {
           wasPlayingBeforeHidden = !video.paused;
           localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, video.currentTime);
@@ -450,16 +498,32 @@ export default function VideoPlayer() {
     // Xóa sự kiện focus vì nó gây lỗi re-init liên tục khi người dùng click chuột
     // window.addEventListener("focus", handleVisibilityChange);
 
-    if (Hls.isSupported()) {
-      initHls();
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    // iPhone / iPad / Safari: ưu tiên trình phát HLS gốc của Apple (ổn định, ít tốn pin, không phụ thuộc MediaSource).
+    // hls.js trên iOS đời mới vẫn "isSupported" nhưng hay lỗi -> trước đây iPhone hay không load được phim.
+    const ua = navigator.userAgent;
+    const isAppleWebKit = /iPhone|iPad|iPod/i.test(ua) ||
+      (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) ||
+      (/Safari/i.test(ua) && !/Chrome|Chromium|CriOS|FxiOS|Edg|Android/i.test(ua));
+    const canPlayNativeHls = !!video.canPlayType("application/vnd.apple.mpegurl");
+
+    if (isAppleWebKit && canPlayNativeHls) {
       video.src = safeVideoUrl;
       video.addEventListener("loadedmetadata", onLoadedMetadata);
       video.addEventListener("error", onError);
+    } else if (Hls.isSupported()) {
+      initHls();
+    } else if (canPlayNativeHls) {
+      video.src = safeVideoUrl;
+      video.addEventListener("loadedmetadata", onLoadedMetadata);
+      video.addEventListener("error", onError);
+    } else if (currentEmbed) {
+      // Trình duyệt không phát được HLS -> dùng server dự phòng luôn
+      setUseIframe(true);
     }
 
-    return () => { 
-      if (hls) hls.destroy(); 
+    return () => {
+      disposed = true;
+      if (hls) hls.destroy();
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("error", onError);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -759,6 +823,12 @@ export default function VideoPlayer() {
 
   const toggleControls = (e) => {
     e?.stopPropagation();
+    // Điều khiển vừa được bật bởi chính cử chỉ này (mousemove ngay trước click) -> giữ nguyên, không tắt đi
+    if (Date.now() - controlsShownAtRef.current < 500) {
+      controlsShownAtRef.current = 0;
+      handleUserActivity();
+      return;
+    }
     setShowControls((prev) => {
       const willShow = !prev;
       if (willShow) {
@@ -800,7 +870,8 @@ export default function VideoPlayer() {
   }, [isPlaying, useIframe, showSettings, showEpisodes, showLangMenu, isAutoNexting]);
 
   const handleSwitchEpisode = (ep) => {
-    saveToFirebase(); 
+    if (!ep) return;
+    saveToFirebase();
     setActiveCloudProgress(null); 
     hasSkippedAdRef.current = false; // Reset cờ skip quảng cáo khi chuyển tập
     canScanAdRef.current = true;
@@ -832,23 +903,35 @@ export default function VideoPlayer() {
   };
 
   const handleSwitchLanguage = (idx) => {
-    setActiveServerIdx(idx);
-    const newServerEpisodes = currentAllServers[idx].server_data || currentAllServers[idx].items || [];
+    const newServerEpisodes = currentAllServers?.[idx]?.server_data || currentAllServers?.[idx]?.items || [];
     const equivalentEp = newServerEpisodes.find(e => e.name === currentEpName) || newServerEpisodes[0];
-    handleSwitchEpisode(equivalentEp);
     setShowLangMenu(false);
+    if (!equivalentEp) return; // Server này không có tập nào -> giữ nguyên server hiện tại
+    setActiveServerIdx(idx);
+    handleSwitchEpisode(equivalentEp);
+    navigate(location.pathname, {
+      replace: true,
+      state: { ...location.state, currentServerIndex: idx, videoUrl: equivalentEp.link_m3u8 || equivalentEp.m3u8 || "", embedFallback: equivalentEp.link_embed || equivalentEp.embed || "", epName: equivalentEp.name, cloudProgress: null }
+    });
   };
+
+  // Khuôn nút điều khiển: tròn 40px, icon 24px, rê thì nền mờ (mọi nút cùng một cỡ)
+  const CTRL = "flex size-10 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/15 hover:text-white";
+  // Khuôn menu bật lên từ thanh điều khiển (phiên bản, tốc độ)
+  const MENU = "animate-fade-in absolute bottom-full right-0 z-50 mb-3 flex w-44 flex-col gap-0.5 rounded-xl border border-white/10 bg-raised/95 p-1.5 shadow-2xl";
 
   const renderEpisodeName = (name) => {
     if (!name) return "";
-    return `Tập ${String(name).replace(/tập/gi, "").replace(/:/g, "").trim()}`;
+    const clean = String(name).replace(/tập/gi, "").replace(/:/g, "").trim();
+    return /^\d+$/.test(clean) ? `Tập ${clean}` : clean; // "Full", "Trailer" giữ nguyên
+
   };
 
   const displayTime = isDragging ? seekTime : currentTime;
   const progressPercent = duration > 0 ? (displayTime / duration) * 100 : 0;
 
   return (
-    <main className="relative min-h-screen bg-[#050505] text-white pt-6 md:pt-12 pb-20 font-sans overflow-hidden select-none">
+    <main className="relative min-h-screen bg-canvas text-white pt-6 md:pt-12 pb-20 font-sans overflow-hidden select-none">
       
       {/* AMBIENT ÁNH SÁNG */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -859,17 +942,19 @@ export default function VideoPlayer() {
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
 
-      <div className="relative z-20 max-w-[1260px] mx-auto px-2 md:px-4 mb-4 md:mb-6 flex items-center justify-between gap-4">
-        <button 
-          onClick={() => { saveToFirebase(); navigate(-1); }} 
-          className="flex items-center gap-1 md:gap-2 px-3 py-2 md:px-5 md:py-2.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl md:rounded-2xl font-black transition-all text-[10px] md:text-xs tracking-widest backdrop-blur-xl shadow-[0_0_15px_rgba(255,255,255,0.05)] text-white hover:shadow-[0_0_20px_rgba(255,255,255,0.2)] shrink-0"
+      {/* Đầu trang: nút quay lại + tên phim, tập (đọc từ trái sang như mọi app xem phim) */}
+      <div className="relative z-20 mx-auto mb-4 flex max-w-[1260px] items-center gap-3 px-3 md:mb-5 md:px-4">
+        <button
+          onClick={() => { saveToFirebase(); navigate(-1); }}
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+          aria-label="Quay lại"
+          title="Quay lại"
         >
-          <span className="material-symbols-outlined text-sm md:text-lg">arrow_back</span>
-          <span className="hidden sm:block">QUAY LẠI</span>
+          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </button>
-        <div className="flex flex-col items-end drop-shadow-2xl max-w-[70%] sm:max-w-none">
-          <h2 className="text-base md:text-2xl font-black uppercase tracking-tighter text-white truncate w-full text-right">{currentMovieName}</h2>
-          <span className="text-white font-bold text-[10px] md:text-sm tracking-widest bg-white/10 border border-white/10 px-2 py-0.5 md:px-3 md:py-1 rounded-md backdrop-blur-md mt-1">{renderEpisodeName(currentEpName)}</span>
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-semibold text-white md:text-xl">{currentMovieName}</h1>
+          {currentEpName && <p className="text-sm text-white/60">{renderEpisodeName(currentEpName)}</p>}
         </div>
       </div>
 
@@ -878,12 +963,17 @@ export default function VideoPlayer() {
         {/* --- KHUNG PHÁT VIDEO CHÍNH --- */}
         <div 
           ref={playerWrapperRef}
-          className={`relative w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.9)] border border-white/10 group ${!showControls && isPlaying && !isAutoNexting ? 'cursor-none' : ''}`}
-          onMouseMove={(e) => { 
+          className={`relative w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 group ${!showControls && isPlaying && !isAutoNexting ? 'cursor-none' : ''}`}
+          // Chỉ chuột thật mới được "rê để hiện điều khiển".
+          // Trên điện thoại mỗi cú chạm sinh ra mousemove giả trước khi click -> trước đây mousemove bật điều khiển lên,
+          // rồi click lập tức tắt đi => chạm vào video không bao giờ hiện được nút.
+          onPointerMove={(e) => {
+            if (e.pointerType !== "mouse") return;
             if (e.movementX === 0 && e.movementY === 0) return;
-            handleUserActivity(); 
+            if (!showControls) controlsShownAtRef.current = Date.now();
+            handleUserActivity();
           }}
-          onMouseLeave={() => { if (isPlaying && !showEpisodes && !showLangMenu && !showSettings && !isAutoNexting) setShowControls(false); }}
+          onPointerLeave={(e) => { if (e.pointerType === "mouse" && isPlaying && !showEpisodes && !showLangMenu && !showSettings && !isAutoNexting) setShowControls(false); }}
         >
           {useIframe ? (
             <iframe src={currentEmbed?.replace("http://", "https://")} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
@@ -897,7 +987,6 @@ export default function VideoPlayer() {
                 x5-playsinline="true"
                 preload="auto"
                 crossOrigin="anonymous"
-                poster={currentPosterUrl}
                 className="w-full h-full object-contain cursor-pointer"
                 onClick={handlePlayerTap}
                 onTimeUpdate={handleTimeUpdate}
@@ -923,11 +1012,22 @@ export default function VideoPlayer() {
                 }}
               />
 
-                            {/* HIỆU ỨNG BUFFERING KHI MẠNG MOBILE CHẬM */}
+              {/* ẢNH POSTER: không dùng thuộc tính poster của <video> vì video có crossOrigin (để quét quảng cáo)
+                  khiến poster bị tải kiểu CORS -> phimimg.com chặn -> trước khi phát chỉ thấy khung đen */}
+              {currentPosterUrl && !isPlaying && currentTime < 1 && (
+                <img
+                  src={currentPosterUrl}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover pointer-events-none opacity-70"
+                />
+              )}
+
+              {/* HIỆU ỨNG BUFFERING KHI MẠNG MOBILE CHẬM */}
               {isBuffering && isPlaying && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30 bg-black/30 backdrop-blur-[2px]">
-                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-yellow-500/20 border-t-yellow-500 animate-spin shadow-[0_0_20px_rgba(234,179,8,0.5)]"></div>
-                  <span className="text-[11px] font-bold text-yellow-400/80 mt-2 tracking-widest uppercase">Đang tải...</span>
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-white/20 border-t-white animate-spin"></div>
+                  <span className="text-[11px] font-bold text-white/80 mt-2 tracking-widest uppercase">Đang tải...</span>
                 </div>
               )}
 
@@ -935,11 +1035,11 @@ export default function VideoPlayer() {
               {isAutoNexting && (
                 <div className="absolute inset-0 bg-black/90 flex flex-col items-center justify-center z-40 backdrop-blur-sm pointer-events-auto">
                   <LoadingLogo className="w-20 h-20 md:w-24 md:h-24 mb-4 md:mb-6" />
-                  <h3 className="text-lg md:text-2xl font-black uppercase tracking-widest text-white mb-2">Tập tiếp theo</h3>
+                  <h3 className="text-lg md:text-2xl font-semibold uppercase tracking-widest text-white mb-2">Tập tiếp theo</h3>
                   <p className="text-sm md:text-base text-zinc-400 mb-6 md:mb-8 font-medium">Tập {nextEpisode?.name}</p>
                   
                   <div className="flex gap-3 md:gap-4">
-                    <button onClick={() => handleSwitchEpisode(nextEpisode)} className="px-6 md:px-8 py-2 md:py-3 text-xs md:text-sm bg-white text-black font-black rounded-lg md:rounded-xl hover:scale-105 transition-all">PHÁT NGAY</button>
+                    <button onClick={() => handleSwitchEpisode(nextEpisode)} className="px-6 md:px-8 py-2 md:py-3 text-xs md:text-sm bg-white text-black font-semibold rounded-lg md:rounded-xl hover:scale-105 transition-all">PHÁT NGAY</button>
                     <button onClick={() => { setIsAutoNexting(false); setIsPlaying(false); }} className="px-6 md:px-8 py-2 md:py-3 text-xs md:text-sm bg-white/10 text-white font-bold rounded-lg md:rounded-xl hover:bg-white/20 transition-all border border-white/20">HỦY BỎ</button>
                   </div>
                 </div>
@@ -951,11 +1051,11 @@ export default function VideoPlayer() {
                   {/* Header đề xuất */}
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="flex items-center gap-1.5 text-yellow-400 text-xs md:text-sm font-black uppercase tracking-wider mb-1">
+                      <div className="flex items-center gap-1.5 text-white text-xs md:text-sm font-semibold uppercase tracking-wider mb-1">
                         <span className="material-symbols-outlined text-base md:text-lg">auto_awesome</span>
                         <span>Đề xuất tiếp theo</span>
                       </div>
-                      <h3 className="text-base md:text-xl lg:text-2xl font-black text-white uppercase tracking-tight">
+                      <h3 className="text-base md:text-xl lg:text-2xl font-semibold text-white uppercase tracking-tight">
                         Cùng thể loại {recommendCategoryName ? `"${recommendCategoryName}"` : ""}
                       </h3>
                     </div>
@@ -1002,7 +1102,7 @@ export default function VideoPlayer() {
                               }}
                               className="group/rec cursor-pointer flex flex-col"
                             >
-                              <div className="relative aspect-[2/3] rounded-lg md:rounded-xl overflow-hidden border border-white/10 group-hover/rec:border-yellow-500/80 transition-all duration-300 transform group-hover/rec:scale-105 shadow-lg group-hover/rec:shadow-[0_0_20px_rgba(234,179,8,0.3)]">
+                              <div className="relative aspect-[2/3] rounded-lg md:rounded-xl overflow-hidden border border-white/10 group-hover/rec:border-white/80 transition-all duration-300 transform group-hover/rec:scale-105 shadow-lg">
                                 <img
                                   src={poster}
                                   alt={movie.name}
@@ -1010,12 +1110,12 @@ export default function VideoPlayer() {
                                   loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover/rec:opacity-100 transition-opacity flex items-center justify-center">
-                                  <div className="w-10 h-10 rounded-full bg-yellow-500 text-black flex items-center justify-center shadow-lg transform group-hover/rec:scale-110 transition-transform">
+                                  <div className="w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-lg transform group-hover/rec:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
                                   </div>
                                 </div>
                                 {movie.quality && (
-                                  <span className="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-yellow-400 text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded">
+                                  <span className="absolute top-1 right-1 bg-black/80 backdrop-blur-md text-white text-[8px] md:text-[9px] font-semibold px-1.5 py-0.5 rounded">
                                     {movie.quality}
                                   </span>
                                 )}
@@ -1025,7 +1125,7 @@ export default function VideoPlayer() {
                                   </span>
                                 )}
                               </div>
-                              <h4 className="text-white text-[11px] md:text-xs lg:text-sm font-bold truncate mt-1.5 group-hover/rec:text-yellow-400 transition-colors">
+                              <h4 className="text-white text-[11px] md:text-xs lg:text-sm font-bold truncate mt-1.5 group-hover/rec:text-white transition-colors">
                                 {movie.name}
                               </h4>
                               <p className="text-zinc-500 text-[9px] md:text-[10px] truncate">
@@ -1051,7 +1151,7 @@ export default function VideoPlayer() {
                         saveToFirebase();
                         navigate("/");
                       }}
-                      className="hover:text-yellow-400 transition-colors font-medium"
+                      className="hover:text-white transition-colors font-medium"
                     >
                       Về Trang Chủ →
                     </button>
@@ -1082,44 +1182,32 @@ export default function VideoPlayer() {
               >
                 {/* CỤM NÚT TRUNG TÂM */}
                 {!isAutoNexting && (
-                  <div className={`flex items-center justify-center gap-6 md:gap-20 transition-transform duration-300 ${!isPlaying || showControls ? 'scale-100' : 'scale-90'}`}>
-                    
-                    {/* Lùi 10s */}
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleSkip(-10); handleUserActivity(); }} 
-                      className="text-white hover:text-yellow-400 hover:scale-110 transition-all drop-shadow-lg p-2 md:p-4"
+                  <div className={`-mt-6 flex items-center justify-center gap-6 transition-transform duration-300 md:mt-0 md:gap-12 ${!isPlaying || showControls ? 'scale-100' : 'scale-95'}`}>
+                    {/* Lùi 10s: icon trắng to, nền tròn mờ chỉ hiện khi rê / chạm */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSkip(-10); handleUserActivity(); }}
+                      className="flex size-12 items-center justify-center rounded-full text-[30px] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)] transition-colors hover:bg-white/15 active:bg-white/25 md:size-16 md:text-[38px]"
+                      aria-label="Lùi 10 giây"
                     >
-                      <span className="material-symbols-outlined text-4xl md:text-[48px]">replay_10</span>
+                      <Back10Icon />
                     </button>
 
-                    {/* Play/Pause */}
-                    <div className="flex flex-col items-center">
-                      <button 
-                        className="relative w-16 h-16 md:w-20 md:h-20 bg-white/10 border border-white/40 text-white rounded-full flex items-center justify-center backdrop-blur-xl hover:bg-white hover:text-black hover:scale-110 active:scale-95 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] group/play"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePlay();
-                          handleUserActivity();
-                        }}
-                      >
-                        {!isPlaying && <div className="absolute inset-0 rounded-full animate-ping opacity-25 bg-yellow-400 group-hover/play:bg-black"></div>}
-                        <span className="material-symbols-outlined text-4xl md:text-5xl drop-shadow-md z-10" style={{ fontVariationSettings: "'FILL' 1", marginLeft: isPlaying ? '0' : '4px' }}>
-                          {isPlaying ? 'pause' : 'play_arrow'}
-                        </span>
-                      </button>
-                      {!isPlaying && (
-                        <span className="md:hidden text-[10px] font-black text-yellow-400 bg-black/80 border border-yellow-500/40 px-2.5 py-0.5 rounded-full mt-2 tracking-wider uppercase shadow-md animate-pulse">
-                          Chạm để phát
-                        </span>
-                      )}
-                    </div>
+                    {/* Play / Pause: tròn kính mờ, icon tô đặc. Nổi nhất khung mà không loá như đĩa trắng đặc */}
+                    <button
+                      className="flex size-16 items-center justify-center rounded-full bg-black/45 text-[30px] text-white ring-1 ring-white/25 backdrop-blur-md transition-[transform,background-color] hover:scale-105 hover:bg-black/60 active:scale-95 md:size-20 md:text-[38px]"
+                      onClick={(e) => { e.stopPropagation(); togglePlay(); handleUserActivity(); }}
+                      aria-label={isPlaying ? "Tạm dừng" : "Phát"}
+                    >
+                      {isPlaying ? <PauseIcon /> : <PlayIcon className="translate-x-[2px]" />}
+                    </button>
 
                     {/* Tiến 10s */}
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleSkip(10); handleUserActivity(); }} 
-                      className="text-white hover:text-yellow-400 hover:scale-110 transition-all drop-shadow-lg p-2 md:p-4"
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleSkip(10); handleUserActivity(); }}
+                      className="flex size-12 items-center justify-center rounded-full text-[30px] text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)] transition-colors hover:bg-white/15 active:bg-white/25 md:size-16 md:text-[38px]"
+                      aria-label="Tới 10 giây"
                     >
-                      <span className="material-symbols-outlined text-4xl md:text-[48px]">forward_10</span>
+                      <Fwd10Icon />
                     </button>
                   </div>
                 )}
@@ -1127,11 +1215,11 @@ export default function VideoPlayer() {
               </div>
 
               {/* PANEL CHỌN TẬP */}
-              <div className={`absolute top-0 right-0 bottom-0 w-[80%] sm:w-[350px] bg-black/70 backdrop-blur-3xl border-l border-white/10 z-40 flex flex-col transition-transform duration-300 ease-in-out ${showEpisodes ? 'translate-x-0' : 'translate-x-full'}`}>
-                <div className="p-4 md:p-6 flex justify-between items-center border-b border-white/10 bg-gradient-to-b from-black/60 to-transparent">
-                  <h3 className="text-white font-black text-base md:text-xl tracking-tighter uppercase drop-shadow-md">Danh sách tập</h3>
-                  <button onClick={() => setShowEpisodes(false)} className="text-zinc-400 hover:text-white transition-colors hover:rotate-90 transform duration-300">
-                    <span className="material-symbols-outlined text-2xl md:text-3xl">close</span>
+              <div className={`absolute top-0 right-0 bottom-0 z-40 flex w-[80%] flex-col border-l border-white/10 bg-raised/95 transition-transform duration-300 ease-in-out supports-[backdrop-filter]:bg-raised/85 supports-[backdrop-filter]:backdrop-blur-xl sm:w-[340px] ${showEpisodes ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                  <h3 className="text-base font-semibold text-white">Danh sách tập</h3>
+                  <button onClick={() => setShowEpisodes(false)} className="flex size-9 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white" aria-label="Đóng danh sách tập">
+                    <span className="material-symbols-outlined text-[22px]">close</span>
                   </button>
                 </div>
                 
@@ -1147,7 +1235,7 @@ export default function VideoPlayer() {
                             key={season.id}
                             onClick={() => changeSeason(season.id)}
                             disabled={isLoadingSeason}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isActive ? 'bg-red-600 border-red-500 text-white shadow-[0_0_10px_rgba(220,38,38,0.5)]' : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white'} ${isLoadingSeason ? 'opacity-50' : 'opacity-100'}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${isActive ? 'bg-brand border-brand text-white' : 'bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white'} ${isLoadingSeason ? 'opacity-50' : 'opacity-100'}`}
                           >
                             {season.label || `Phần ${season.seasonNumber}`}
                           </button>
@@ -1163,94 +1251,93 @@ export default function VideoPlayer() {
                       <LoadingLogo className="w-12 h-12" />
                     </div>
                   )}
-                  {currentEpisodes.map((ep) => (
-                    <button 
-                      key={ep.slug} 
+                  {currentEpisodes.map((ep, idx) => (
+                    <button
+                      key={`${ep.slug || ep.name}-${idx}`}
                       onClick={() => handleSwitchEpisode(ep)}
-                      className={`w-full flex items-center justify-between px-4 py-3 md:px-5 md:py-4 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm transition-all duration-300 border ${
-                        ep.name === currentEpName 
-                          ? "bg-white/20 border-white/40 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]" 
-                          : "bg-white/5 border-white/5 text-zinc-400 hover:bg-white/10 hover:text-white hover:scale-[1.02]"
+                      aria-current={ep.name === currentEpName ? "true" : undefined}
+                      className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-sm transition-colors ${
+                        ep.name === currentEpName
+                          ? "bg-brand/15 font-medium text-white ring-1 ring-brand/50"
+                          : "bg-white/[0.04] text-white/70 hover:bg-white/10 hover:text-white"
                       }`}
                     >
                       <span>{renderEpisodeName(ep.name)}</span>
-                      {ep.name === currentEpName && <span className="material-symbols-outlined text-base md:text-[20px] animate-pulse drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">play_circle</span>}
+                      {ep.name === currentEpName && <span className="material-symbols-outlined text-[20px] text-brand" style={{ fontVariationSettings: "'FILL' 1" }}>equalizer</span>}
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* BOTTOM BAR */}
-              <div className={`absolute bottom-0 left-0 right-0 pt-24 pb-4 px-4 md:px-6 bg-gradient-to-t from-black via-black/80 to-transparent z-30 transition-opacity duration-300 flex flex-col justify-end ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+              {/* LỖI MOBILE CŨ: khung này có pt-24 trong suốt nhưng vẫn "bắt" chạm, trên màn hình điện thoại (khung video cao ~210px)
+                  nó phủ lên cả nút Play / Tua ở giữa -> bấm không ăn, video không phát được.
+                  Giờ chính khung luôn pointer-events-none, chỉ các hàng điều khiển bên trong mới nhận chạm. */}
+              <div className={`absolute bottom-0 left-0 right-0 pt-10 md:pt-24 pb-2 md:pb-4 px-3 md:px-6 bg-gradient-to-t from-black via-black/80 to-transparent z-30 transition-opacity duration-300 flex flex-col justify-end pointer-events-none ${showControls || !isPlaying ? 'opacity-100 [&>*]:pointer-events-auto' : 'opacity-0'}`}>
                 
                 {/* ĐÃ BỎ NÚT SKIP QUẢNG CÁO DO CÓ AUTO-SKIP */}
 
                 <div 
                   ref={progressBarRef}
-                  className="w-full h-1 md:h-1 hover:h-2 md:hover:h-2 bg-white/20 rounded-full cursor-pointer relative group/progress mb-3 md:mb-5 flex items-center transition-all duration-200" 
+                  className="group/progress relative mb-2 flex h-1 w-full cursor-pointer items-center rounded-full bg-white/25 transition-[height] duration-200 hover:h-1.5 md:mb-3"
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
                 >
                   <div className="absolute -inset-y-4 inset-x-0 bg-transparent z-10"></div> 
-                  <div className="h-full bg-white rounded-full relative pointer-events-none shadow-[0_0_15px_rgba(255,255,255,0.8)]" style={{ width: `${progressPercent}%` }}>
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,1)] scale-0 group-hover/progress:scale-100 transition-transform"></div>
+                  <div className="pointer-events-none relative h-full rounded-full bg-gradient-to-r from-brand to-accent-to" style={{ width: `${progressPercent}%` }}>
+                    <div className={`absolute right-0 top-1/2 size-3.5 translate-x-1/2 -translate-y-1/2 rounded-full bg-white transition-transform md:scale-0 md:group-hover/progress:scale-100 ${isDragging ? 'md:scale-100' : ''}`}></div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 md:gap-6">
-                    <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className="text-white hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-3xl md:text-[36px]" style={{ fontVariationSettings: "'FILL' 1" }}>{isPlaying ? 'pause_circle' : 'play_circle'}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-0.5 md:gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); togglePlay(); }} className={CTRL} aria-label={isPlaying ? "Tạm dừng" : "Phát"} title={isPlaying ? "Tạm dừng (K)" : "Phát (K)"}>
+                      {isPlaying ? <PauseIcon className="text-[22px]" /> : <PlayIcon className="text-[22px]" />}
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleSkip(-10); }} className={`${CTRL} hidden sm:flex`} aria-label="Lùi 10 giây" title="Lùi 10 giây (J)">
+                      <Back10Icon className="text-[24px]" />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); handleSkip(10); }} className={`${CTRL} hidden sm:flex`} aria-label="Tới 10 giây" title="Tới 10 giây (L)">
+                      <Fwd10Icon className="text-[24px]" />
                     </button>
 
-                    <button onClick={(e) => { e.stopPropagation(); handleSkip(-10); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hidden sm:block hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-[28px] md:text-3xl">replay_10</span>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); handleSkip(10); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hidden sm:block hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-[28px] md:text-3xl">forward_10</span>
-                    </button>
-
-                    <div className="flex items-center gap-2 group/volume relative hidden md:flex ml-2">
-                      <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none">
-                        <span className="material-symbols-outlined text-[28px]">{isMuted || volume === 0 ? 'volume_off' : volume > 0.5 ? 'volume_up' : 'volume_down'}</span>
+                    <div className="group/volume hidden items-center md:flex">
+                      <button onClick={(e) => { e.stopPropagation(); toggleMute(); }} className={CTRL} aria-label={isMuted ? "Bật tiếng" : "Tắt tiếng"} title="Âm lượng (M)">
+                        <VolumeIcon className="text-[24px]" muted={isMuted || volume === 0} level={volume} />
                       </button>
                       <input
                         type="range" min="0" max="1" step="0.05"
                         value={isMuted ? 0 : volume}
                         onClick={(e) => e.stopPropagation()}
                         onChange={handleVolumeChange}
-                        className="w-0 overflow-hidden group-hover/volume:w-24 transition-all duration-300 accent-white cursor-pointer h-1.5 bg-white/30 rounded-full appearance-none"
+                        aria-label="Âm lượng"
+                        className="h-1 w-0 cursor-pointer appearance-none overflow-hidden rounded-full bg-white/30 accent-white transition-all duration-300 group-hover/volume:mr-2 group-hover/volume:w-20"
                       />
                     </div>
 
-                    <div className="h-5 w-px bg-white/20 hidden md:block mx-2"></div>
-
-                    <span className="text-[10px] md:text-[14px] font-semibold text-white/90 tracking-wide ml-1 md:ml-0">
-                      {formatTime(displayTime)} <span className="mx-0.5 text-white/40">/</span> {formatTime(duration)}
+                    <span className="ml-1.5 whitespace-nowrap text-xs tabular-nums text-white/80 md:ml-2 md:text-sm">
+                      {formatTime(displayTime)} <span className="text-white/40">/ {formatTime(duration)}</span>
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 md:gap-5 relative">
-
-
+                  <div className="relative flex shrink-0 items-center gap-0.5 md:gap-1">
                     {currentAllServers?.length > 1 && (
                       <div className="relative">
-                        <button onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); setShowSettings(false); setShowEpisodes(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200 ${showLangMenu ? 'drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Ngôn ngữ / Phiên bản">
-                          <span className="material-symbols-outlined text-[22px] md:text-[28px]">subtitles</span>
+                        <button onClick={(e) => { e.stopPropagation(); setShowLangMenu(!showLangMenu); setShowSettings(false); setShowEpisodes(false); }} className={`${CTRL} ${showLangMenu ? 'bg-white/15 text-white' : ''}`} aria-label="Phiên bản" title="Phiên bản (Vietsub / Thuyết minh)">
+                          <SubtitlesIcon className="text-[24px]" />
                         </button>
-                        
                         {showLangMenu && (
-                          <div className="absolute bottom-full right-0 mb-4 w-40 md:w-48 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 py-2 origin-bottom transition-all">
-                            <span className="px-3 md:px-4 py-2 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-white/5 mb-1">Phiên bản</span>
+                          <div className={MENU}>
+                            <span className="px-3 pb-1.5 pt-1 text-xs text-white/50">Phiên bản</span>
                             {currentAllServers.map((server, index) => (
-                              <button 
-                                key={index} 
+                              <button
+                                key={index}
                                 onClick={(e) => { e.stopPropagation(); handleSwitchLanguage(index); }}
-                                className={`px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-bold text-left transition-colors flex items-center justify-between ${activeServerIdx === index ? 'text-white bg-white/20' : 'text-zinc-300 hover:bg-white/10 hover:text-white'}`}
+                                className={`flex h-10 items-center justify-between rounded-lg px-3 text-left text-sm transition-colors ${activeServerIdx === index ? 'bg-white/10 font-medium text-white' : 'text-white/75 hover:bg-white/10 hover:text-white'}`}
                               >
                                 {server.server_name}
-                                {activeServerIdx === index && <span className="material-symbols-outlined text-[14px] md:text-[16px] drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">check</span>}
+                                {activeServerIdx === index && <span className="material-symbols-outlined text-[18px]">check</span>}
                               </button>
                             ))}
                           </div>
@@ -1258,34 +1345,35 @@ export default function VideoPlayer() {
                       </div>
                     )}
 
-                    <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowSettings(false); setShowLangMenu(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200 ${showEpisodes ? 'drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Danh sách tập">
-                      <span className="material-symbols-outlined text-[22px] md:text-[28px]">video_library</span>
+                    <button onClick={(e) => { e.stopPropagation(); setShowEpisodes(!showEpisodes); setShowSettings(false); setShowLangMenu(false); }} className={`${CTRL} ${showEpisodes ? 'bg-white/15 text-white' : ''}`} aria-label="Danh sách tập" title="Danh sách tập">
+                      <EpisodesIcon className="text-[24px]" />
                     </button>
 
                     <div className="relative">
-                      <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowLangMenu(false); }} className={`text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:rotate-90 transform duration-300 ${showSettings ? 'rotate-90 drop-shadow-[0_0_8px_rgba(255,255,255,1)]' : ''}`} title="Cài đặt">
-                        <span className="material-symbols-outlined text-[22px] md:text-[28px]">settings</span>
+                      <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowLangMenu(false); }} className={`${CTRL} ${showSettings ? 'bg-white/15 text-white' : ''}`} aria-label="Tốc độ phát" title="Tốc độ phát">
+                        {playbackRate !== 1
+                          ? <span className="text-sm font-semibold tabular-nums">{playbackRate}x</span>
+                          : <SpeedIcon className="text-[24px]" />}
                       </button>
-                      
                       {showSettings && (
-                        <div className="absolute bottom-full right-0 mb-4 w-32 md:w-36 bg-black/60 backdrop-blur-3xl border border-white/10 rounded-xl md:rounded-2xl shadow-2xl overflow-hidden flex flex-col z-50 py-2 origin-bottom transition-all">
-                          <span className="px-3 md:px-4 py-2 text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-widest border-b border-white/5 mb-1">Tốc độ</span>
-                          {[0.5, 1, 1.5, 2].map((rate) => (
-                            <button 
-                              key={rate} 
+                        <div className={MENU}>
+                          <span className="px-3 pb-1.5 pt-1 text-xs text-white/50">Tốc độ</span>
+                          {[0.5, 1, 1.25, 1.5, 2].map((rate) => (
+                            <button
+                              key={rate}
                               onClick={(e) => { e.stopPropagation(); changeSpeed(rate); }}
-                              className={`px-3 md:px-4 py-2 md:py-2 text-xs md:text-sm font-bold text-left transition-colors flex items-center justify-between ${playbackRate === rate ? 'text-white bg-white/20' : 'text-zinc-300 hover:bg-white/10 hover:text-white'}`}
+                              className={`flex h-10 items-center justify-between rounded-lg px-3 text-left text-sm transition-colors ${playbackRate === rate ? 'bg-white/10 font-medium text-white' : 'text-white/75 hover:bg-white/10 hover:text-white'}`}
                             >
-                              {rate === 1 ? 'Chuẩn' : `${rate}x`}
-                              {playbackRate === rate && <span className="material-symbols-outlined text-[14px] md:text-[16px] drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">check</span>}
+                              {rate === 1 ? 'Bình thường' : `${rate}x`}
+                              {playbackRate === rate && <span className="material-symbols-outlined text-[18px]">check</span>}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
 
-                    <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className="text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-all focus:outline-none hover:scale-110 transform duration-200">
-                      <span className="material-symbols-outlined text-[24px] md:text-[30px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
+                    <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className={CTRL} aria-label={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"} title="Toàn màn hình (F)">
+                      {isFullscreen ? <ExitFullscreenIcon className="text-[24px]" /> : <FullscreenIcon className="text-[24px]" />}
                     </button>
                   </div>
                 </div>
@@ -1293,15 +1381,15 @@ export default function VideoPlayer() {
 
               {/* THÔNG BÁO TỰ ĐỘNG BỎ QUA QUẢNG CÁO (KÈM NÚT HOÀN TÁC) */}
               {adNotice && (
-                <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-yellow-500/60 text-yellow-400 pl-4 pr-3 py-2 rounded-full shadow-[0_0_30px_rgba(234,179,8,0.4)] flex items-center gap-3 text-xs md:text-sm font-black animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
+                <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-white/60 text-white pl-4 pr-3 py-2 rounded-full flex items-center gap-3 text-xs md:text-sm font-semibold animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
                   <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px] md:text-[20px] text-yellow-400 animate-pulse">bolt</span>
+                    <span className="material-symbols-outlined text-[18px] md:text-[20px] text-white animate-pulse">bolt</span>
                     <span>{typeof adNotice === 'object' ? adNotice.msg : adNotice}</span>
                   </div>
                   {typeof adNotice === 'object' && adNotice.canUndo && (
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleUndoSkip(); }}
-                      className="bg-yellow-500 hover:bg-yellow-400 text-black px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all shadow-md active:scale-95 ml-1"
+                      className="bg-white hover:bg-white text-black px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all shadow-md active:scale-95 ml-1"
                       title="Quay lại đoạn vừa tua"
                     >
                       Hoàn tác
@@ -1314,10 +1402,10 @@ export default function VideoPlayer() {
               {!isAutoNexting && nextEpisode && duration > 0 && (duration - currentTime <= 300) && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleSwitchEpisode(nextEpisode); }} 
-                  className={`absolute right-4 bottom-20 md:right-8 md:bottom-28 flex items-center gap-2 bg-black/60 border border-white/20 text-white px-4 py-2.5 md:px-6 md:py-3 rounded-full backdrop-blur-xl hover:bg-yellow-500 hover:text-black hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)] z-40 group ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+                  className={`absolute bottom-20 right-3 z-40 flex h-10 items-center gap-1.5 rounded-full bg-white px-4 text-sm font-semibold text-black transition-[opacity,transform] hover:scale-105 md:bottom-24 md:right-6 ${showControls || !isPlaying ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
                 >
-                  <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider">Tập tiếp theo</span>
-                  <span className="material-symbols-outlined text-xl md:text-2xl group-hover:translate-x-1 transition-transform">skip_next</span>
+                  <NextIcon className="text-[18px]" />
+                  Tập tiếp theo
                 </button>
               )}
             </>
@@ -1325,25 +1413,32 @@ export default function VideoPlayer() {
         </div>
 
         {/* --- THANH "CONTROL CENTER" --- */}
-        <div className="mt-4 md:mt-8 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 bg-white/5 border border-white/10 rounded-xl md:rounded-[1.5rem] p-3 md:p-6 backdrop-blur-2xl shadow-2xl relative z-10">
-          
-          <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto">
-            <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 rounded-full flex items-center justify-center border border-white/20 shrink-0 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-              <span className="material-symbols-outlined text-white text-xl md:text-2xl animate-pulse">router</span>
-            </div>
+        {/* Nguồn phát: chọn server chính (HLS) hay dự phòng (nhúng) */}
+        <div className="relative z-10 mt-4 flex flex-col gap-3 rounded-2xl border border-line bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between md:mt-6">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-cat-2/15 text-cat-2" aria-hidden="true">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>dns</span>
+            </span>
             <div>
-              <h3 className="text-white font-black uppercase tracking-widest text-xs md:text-sm drop-shadow-md">Nguồn Phát</h3>
-              <p className="text-zinc-400 text-[10px] md:text-xs mt-0.5">Nếu bị giật lag, hãy thử đổi Server khác nhé!</p>
+              <p className="text-sm font-medium text-white">Nguồn phát: {useIframe ? "Dự phòng" : "Chính"}</p>
+              <p className="text-xs text-white/55">Phim giật hoặc không chạy thì đổi nguồn khác.</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
-            <button 
-              onClick={() => setUseIframe(!useIframe)} 
-              className={`w-full md:w-auto px-4 py-2.5 md:px-6 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-bold transition-all flex items-center justify-center gap-2 border shadow-lg backdrop-blur-md ${useIframe ? 'bg-white/20 border-white/40 text-white shadow-[0_0_20px_rgba(255,255,255,0.15)]' : 'bg-black/40 border-white/20 text-zinc-300 hover:text-white hover:bg-white/10'}`}
+          <div className="flex items-center">
+            <button
+              onClick={() => {
+                // Không có link tương ứng thì đổi qua sẽ ra màn hình đen -> bỏ qua
+                if (useIframe && !currentVideo) return;
+                if (!useIframe && !currentEmbed) return;
+                if (!useIframe) saveToFirebase();
+                setUseIframe(!useIframe);
+              }}
+              disabled={(useIframe && !currentVideo) || (!useIframe && !currentEmbed)}
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-line-strong px-4 text-sm font-medium text-white transition-colors hover:bg-white/5 disabled:opacity-40 sm:w-auto"
             >
-              <span className="material-symbols-outlined text-base md:text-[20px]">{useIframe ? "cloud_done" : "dns"}</span>
-              {useIframe ? "Đang dùng: Dự Phòng (Đổi về Chính)" : "Đang dùng: Server Chính (Đổi qua Dự Phòng)"}
+              <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+              {useIframe ? "Đổi về nguồn chính" : "Đổi sang nguồn dự phòng"}
             </button>
           </div>
         </div>

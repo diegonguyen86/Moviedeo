@@ -1,19 +1,4 @@
-import admin from 'firebase-admin';
-
-// Khởi tạo Firebase Admin SDK nếu chưa có
-if (!admin.apps.length) {
-  try {
-    // Vercel Environment Variable: FIREBASE_SERVICE_ACCOUNT
-    // Đây phải là chuỗi JSON stringify của file Service Account
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-    
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
-    });
-  } catch (error) {
-    console.error('Lỗi khởi tạo Firebase Admin:', error);
-  }
-}
+import admin from './_firebaseAdmin.js';
 
 export default async function handler(req, res) {
   // CORS configuration
@@ -42,16 +27,23 @@ export default async function handler(req, res) {
     }
 
     if (!admin.apps.length) {
-       return res.status(500).json({ error: 'Firebase Admin not initialized. Please set FIREBASE_SERVICE_ACCOUNT in Vercel env.' });
+       return res.status(500).json({ error: 'Firebase Admin not initialized. Please set Firebase Admin credentials in Vercel env.' });
     }
 
     // 1. Xác thực idToken được gửi lên từ client (điện thoại)
     const decodedToken = await admin.auth().verifyIdToken(idToken);
     const uid = decodedToken.uid;
 
-    // 2. Kiểm tra xem session code có tồn tại không
     const db = admin.firestore();
-    const sessionRef = db.collection('tv_auth_sessions').doc(code.toUpperCase());
+
+    // Tài khoản chưa được Admin duyệt thì không được đăng nhập TV
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists || userDoc.data().isApproved !== true) {
+      return res.status(403).json({ error: 'Tài khoản của bạn chưa được duyệt.' });
+    }
+
+    // 2. Kiểm tra xem session code có tồn tại không
+    const sessionRef = db.collection('tv_auth_sessions').doc(String(code).trim().toUpperCase());
     const sessionDoc = await sessionRef.get();
 
     if (!sessionDoc.exists) {

@@ -14,24 +14,24 @@ export default function TVLogin() {
   const [errorMessage, setErrorMessage] = useState('');
 
   // Nếu người dùng chưa đăng nhập web, chuyển họ về trang chủ để đăng nhập trước
+  // AuthProvider chỉ render trang này sau khi đã biết trạng thái đăng nhập, nên kiểm tra luôn
   useEffect(() => {
-    if (user === null) {
-      // Auth context usually starts undefined, then sets user or null
-      // We assume user is null if not logged in
-      const timer = setTimeout(() => {
-        if (!auth.currentUser) {
-          sessionStorage.setItem('tv_pending_code', code || initialCode);
-          alert("Vui lòng đăng nhập trên điện thoại/web trước khi cấp quyền cho TV.");
-          navigate('/');
-        }
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (!user) {
+      if (code || initialCode) sessionStorage.setItem('tv_pending_code', code || initialCode);
+      alert("Vui lòng đăng nhập trên điện thoại/web trước khi cấp quyền cho TV.");
+      navigate('/', { replace: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   const handleApprove = async () => {
     if (!code || code.length < 6) {
+      setStatus('error');
       setErrorMessage("Mã kết nối không hợp lệ");
+      return;
+    }
+    if (!auth.currentUser) {
+      navigate('/', { replace: true });
       return;
     }
 
@@ -53,7 +53,7 @@ export default function TVLogin() {
         })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (res.ok) {
         setStatus('success');
@@ -64,95 +64,79 @@ export default function TVLogin() {
       }
     } catch (error) {
       setStatus('error');
-      setErrorMessage("Không thể kết nối đến máy chủ");
+      setErrorMessage("Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[url('https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1925&auto=format&fit=crop')] bg-cover bg-center text-white flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Background mờ ảo cho glassmorphism */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-0"></div>
-      
-      <div className="relative z-10 bg-white/5 backdrop-blur-xl border border-white/20 p-8 rounded-3xl max-w-md w-full text-center shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-        <h2 className="text-3xl font-black mb-2 text-white uppercase tracking-widest drop-shadow-md">Phim Hay Quá Trời TV</h2>
-        <p className="text-zinc-400 mb-8">Đăng nhập cực nhanh trên Smart TV của bạn</p>
+    <main className="flex min-h-[100dvh] items-center justify-center bg-canvas px-5 py-12">
+      <div className="w-full max-w-sm">
+        <img src={`${import.meta.env.BASE_URL}icon.png`} alt="Phim Hay Quá Trời" className="mb-6 size-12 object-contain" />
 
         {status === 'success' ? (
-          <div className="flex flex-col items-center animate-fade-in">
-            <div className="w-20 h-20 bg-green-500/20 border border-green-500/30 text-green-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(34,197,94,0.2)]">
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-            </div>
-            <h3 className="text-2xl font-bold mb-2">Thành công!</h3>
-            <p className="text-zinc-400 mb-6">TV của bạn đã được đăng nhập. Hãy kiểm tra màn hình TV.</p>
-            <button 
+          <div role="status">
+            <span className="material-symbols-outlined mb-3 text-[40px] text-emerald-400">check_circle</span>
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">TV đã đăng nhập</h1>
+            <p className="mt-2 text-[15px] text-fg-2">Nhìn lên màn hình TV, phim đã sẵn sàng.</p>
+            <button
               onClick={() => navigate('/')}
-              className="bg-white/20 border border-white/30 backdrop-blur-md hover:bg-white/30 text-white font-bold py-3 px-8 rounded-xl w-full transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
+              className="mt-8 flex h-12 w-full items-center justify-center rounded-xl border border-line-strong text-[15px] font-medium text-fg transition-colors hover:bg-white/5"
             >
-              Quay lại Trang Chủ
+              Về trang chủ
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center">
-            <div className="w-24 h-24 bg-white/10 text-white rounded-full flex items-center justify-center mb-8 border border-white/20 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-               <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-            </div>
-            
-            <p className="text-zinc-300 font-medium mb-6 drop-shadow-md">Nhập mã hiển thị trên TV của bạn:</p>
-            
-            <div className="relative w-full mb-2 flex justify-center gap-2 sm:gap-4">
+          <>
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">Đăng nhập trên TV</h1>
+            <p className="mt-2 text-[15px] text-fg-2">Nhập mã 6 ký tự đang hiện trên màn hình TV.</p>
+
+            {/* Ô nhập mã: 6 ô hiển thị, một input thật phủ lên trên để gõ / dán */}
+            <label htmlFor="tv-code" className="sr-only">Mã trên TV</label>
+            <div className="relative mt-6 grid grid-cols-6 gap-2">
               {[0, 1, 2, 3, 4, 5].map((index) => {
                 const char = code[index] || '';
                 const isActive = code.length === index || (code.length === 6 && index === 5);
                 return (
-                  <div 
-                    key={index} 
-                    className={`w-12 h-16 sm:w-14 sm:h-20 flex items-center justify-center text-3xl sm:text-4xl font-black uppercase rounded-xl transition-all duration-300 backdrop-blur-md
-                      ${char ? 'bg-white/20 text-white border border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.2)] scale-110' : 'bg-white/5 border border-white/10 text-zinc-500'}
-                      ${isActive && !char ? 'border-2 border-white/50 bg-white/10 shadow-[0_0_15px_rgba(255,255,255,0.1)]' : ''}
-                    `}
+                  <div
+                    key={index}
+                    aria-hidden="true"
+                    className={`flex aspect-[4/5] items-center justify-center rounded-xl border bg-card text-2xl font-semibold uppercase text-fg transition-colors ${
+                      isActive ? 'border-white/50 ring-2 ring-white/10' : char ? 'border-line-strong' : 'border-line'
+                    }`}
                   >
                     {char}
                   </div>
                 );
               })}
-              
-              {/* Thẻ input thật bị ẩn đi, nhưng vẫn bắt sự kiện gõ phím */}
-              <input 
-                type="text" 
+              <input
+                id="tv-code"
+                type="text"
+                inputMode="text"
                 maxLength={6}
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-text z-10"
+                onChange={(e) => { setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); if (status === 'error') setStatus('idle'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' && code.length === 6) handleApprove(); }}
+                className="absolute inset-0 h-full w-full cursor-text opacity-0"
                 autoFocus
-                autoComplete="off"
+                autoComplete="one-time-code"
                 spellCheck="false"
               />
             </div>
-            
-            {status === 'error' && (
-              <p className="text-error text-sm font-medium mt-4 mb-2 w-full text-center drop-shadow-md">{errorMessage}</p>
-            )}
 
-            <button 
+            {status === 'error' && <p role="alert" className="mt-3 text-sm text-red-400">{errorMessage}</p>}
+
+            <button
               onClick={handleApprove}
               disabled={status === 'loading' || code.length < 6}
-              className={`mt-6 w-full py-4 rounded-2xl font-bold text-lg transition-all flex justify-center items-center backdrop-blur-md border border-white/20 ${code.length === 6 ? 'bg-white/20 hover:bg-white/30 text-white shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95' : 'bg-white/5 text-zinc-500 cursor-not-allowed border-white/5'}`}
+              className="btn-primary mt-6 flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold disabled:opacity-40"
             >
-              {status === 'loading' ? (
-                <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                'XÁC NHẬN'
-              )}
+              {status === 'loading' && <span className="material-symbols-outlined animate-spin text-[20px] motion-reduce:animate-none">progress_activity</span>}
+              Xác nhận
             </button>
-            <p className="text-zinc-500 text-xs mt-4">
-              Bằng cách xác nhận, TV sẽ đăng nhập dưới tài khoản {user?.email || 'của bạn'}.
-            </p>
-          </div>
+            <p className="mt-4 text-xs text-fg-3">TV sẽ đăng nhập bằng tài khoản {user?.email || 'của bạn'}.</p>
+          </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

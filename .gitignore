@@ -1,0 +1,17 @@
+# Thư viện & bản build (Vercel tự build lại, không cần đưa lên git)
+node_modules/
+dist/
+
+# Biến môi trường / khoá bí mật
+.env
+.env.*
+!.env.example
+.vercel/
+
+# Lịch sử tự động của extension "Local History" trong VS Code
+.history/
+
+# File rác của hệ điều hành / editor
+.DS_Store
+Thumbs.db
+*.log

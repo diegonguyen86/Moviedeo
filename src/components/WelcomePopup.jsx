@@ -1,21 +1,21 @@
 import { useState, useEffect } from "react";
 
+// Lời chào hiện một lần mỗi phiên lướt web (sessionStorage): tắt tab mở lại thì hiện lại.
 export default function WelcomePopup() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Sử dụng sessionStorage thay vì localStorage. 
-    // Popup sẽ hiện 1 lần duy nhất cho mỗi "phiên" lướt web. 
-    // Nếu họ tắt tab và vào lại web, popup sẽ hiện lại.
-    const hasSeen = sessionStorage.getItem("has_seen_welcome_popup");
-
-    if (!hasSeen) {
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
+    if (sessionStorage.getItem("has_seen_welcome_popup")) return;
+    const timer = setTimeout(() => setIsOpen(true), 600);
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") handleClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isOpen]);
 
   const handleClose = () => {
     sessionStorage.setItem("has_seen_welcome_popup", "true");
@@ -25,39 +25,32 @@ export default function WelcomePopup() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm transition-opacity" onClick={handleClose}>
-      <div className="relative w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
-        
-        {/* Hình nền */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center opacity-40 mix-blend-screen"
-          style={{ backgroundImage: "url('/cute-bg.png')" }}
-        />
-        
-        {/* Lớp gradient làm tối để chữ dễ đọc */}
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-900/80 to-zinc-900/40" />
-
-        <div className="relative p-8 md:p-10 flex flex-col items-center text-center">
-          <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]">
-            <span className="material-symbols-outlined text-4xl text-primary animate-pulse">volunteer_activism</span>
-          </div>
-
-          <h2 className="text-3xl font-black text-white mb-4 tracking-tight">Chào các ní iu! 👋</h2>
-          
-          <div className="space-y-4 text-zinc-300 font-medium leading-relaxed mb-8">
-            <p className="text-lg">
-              Trang web được tạo ra <b className="text-white">phi lợi nhuận</b> và <b className="text-primary">hoàn toàn không hề cài bất kỳ quảng cáo nào</b>!
-            </p>
-            <div className="p-4 bg-white/5 rounded-2xl border border-white/10 italic text-sm text-zinc-400">
-              <span className="font-bold text-zinc-300">P/s:</span> Nếu có quảng cáo xuất hiện thì đó là từ nguồn phát phim gốc, web của tui không hề gắn 1 quảng cáo hay kiếm được đồng nào từ quảng cáo đâu nha 🥺 Chúc các ní xem phim vui vẻ!
-            </div>
-          </div>
-
-          <button 
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-4 sm:items-center" onClick={handleClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="welcome-title"
+        className="animate-fade-in w-full max-w-md overflow-hidden rounded-2xl border border-line bg-raised shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="relative h-28 overflow-hidden">
+          <img src="/cute-bg.jpg" alt="" className="h-full w-full object-cover opacity-60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-raised to-transparent" />
+        </div>
+        <div className="px-6 pb-6">
+          <h2 id="welcome-title" className="text-xl font-semibold tracking-tight text-fg">Chào các ní iu! 👋</h2>
+          <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
+            Web làm ra <span className="font-medium text-fg">phi lợi nhuận</span> và <span className="font-medium text-fg">không gắn bất kỳ quảng cáo nào</span>.
+          </p>
+          <p className="mt-3 rounded-xl bg-white/[0.05] px-3.5 py-3 text-sm leading-relaxed text-fg-2">
+            Nếu thấy quảng cáo trong phim thì đó là từ nguồn phát gốc, web của tui không kiếm được đồng nào từ đó đâu nha 🥺 Chúc các ní xem phim vui vẻ!
+          </p>
+          <button
             onClick={handleClose}
-            className="w-full sm:w-auto px-10 py-3 bg-white text-black hover:bg-zinc-200 rounded-xl font-bold transition-all shadow-xl active:scale-95"
+            autoFocus
+            className="mt-6 flex h-11 w-full items-center justify-center rounded-xl bg-fg text-[15px] font-semibold text-canvas transition-colors hover:bg-white"
           >
-            TUI ĐÃ HIỂU, ĐÓNG LẠI!
+            Đã hiểu
           </button>
         </div>
       </div>

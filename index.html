@@ -6,23 +6,30 @@
     <link rel="icon" type="image/png" href="/icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PHIM HAY QUÁ TRỜI - XEM PHIM ĐÃ ĐỜI</title>
+    <!-- Mở sẵn kết nối tới máy chủ ảnh phim + API phim: ảnh banner / poster về nhanh hơn ở lần tải đầu -->
+    <link href="https://phimimg.com" rel="preconnect"/>
+    <link href="https://phimapi.com" rel="preconnect" crossorigin/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <!-- Font icon: chỉ tải đúng biến thể đang dùng (cỡ 24, đậm 400, rỗng/đặc) -> 1.1MB còn ~450KB.
+         display=block: chưa tải xong thì ẩn icon, tránh hiện chữ "play_arrow", "search"... xấu xí lúc mở web -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0..1,0&display=block" rel="stylesheet"/>
     <style>
-      /* Chống bôi đen toàn bộ website */
-      * {
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-      }
-      input, textarea {
-        -webkit-user-select: text !important;
-        -moz-user-select: text !important;
-        -ms-user-select: text !important;
-        user-select: text !important;
+      /* Chống bôi đen toàn bộ website - CHỈ trên máy tính có chuột (điện thoại vẫn chạm/giữ bình thường) */
+      @media (hover: hover) and (pointer: fine) {
+        * {
+          -webkit-user-select: none !important;
+          -moz-user-select: none !important;
+          -ms-user-select: none !important;
+          user-select: none !important;
+        }
+        input, textarea {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
+          user-select: text !important;
+        }
       }
       .material-symbols-outlined {
         font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
@@ -30,7 +37,11 @@
     </style>
     <script>
       (function() {
-        // Chặn chuột phải & phím F12 ngay lập tức từ cấp độ HTML
+        // Chặn chuột phải & phím F12 ngay lập tức từ cấp độ HTML - CHỈ trên máy tính có chuột.
+        // Trên điện thoại "chuột phải" chính là thao tác nhấn giữ -> chặn sẽ làm hỏng trải nghiệm cảm ứng.
+        var isDesktop = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+          && !('ontouchstart' in window) && !(navigator.maxTouchPoints > 0);
+        if (!isDesktop) return;
         document.addEventListener('contextmenu', function(e) { e.preventDefault(); }, true);
         document.addEventListener('keydown', function(e) {
           if (

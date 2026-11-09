@@ -1,55 +1,137 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-/* CHỐNG BÔI ĐEN TOÀN BỘ WEBSITE */
-* {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
+/* =====================================================================
+   TOKEN GIAO DIỆN (DESIGN.md). Đổi thương hiệu thì chỉ đổi ở đây:
+   - Màu nhấn duy nhất: --color-brand (đỏ thương hiệu). Dùng cho hành động chính
+     (Xem, Gửi, Đăng nhập), tiến độ xem, mục đang chọn của trình phát.
+   - Font: --font-sans.
+   Nền tối là phong cách của dự án (P10): bề mặt sáng dần theo tầng
+   canvas -> card -> raised, tách khối bằng viền trắng mờ.
+   ===================================================================== */
+@theme {
+  --color-brand: #e50914;
+  --color-brand-hover: #f6121d;
+
+  /* Sắc: Vivid (evon P17) — DESIGN.md mục "Sắc".
+     - Gradient nhấn: --color-brand -> --color-accent-to, CHỈ cho nút chính + một khối hero mỗi màn.
+     - Sắc phân loại (bản tối): một loại dữ liệu một sắc cố định trên mọi màn, chỉ cho icon / chấm / thanh,
+       không cho chữ. Tránh đỏ (thương hiệu + xoá), hổ phách, xanh lá (trạng thái). */
+  --color-accent-to: #db2777;  /* pink-600 ~333°, chữ trắng đạt ~4.5:1 */
+  --color-cat-1: #60a5fa;      /* xanh dương: Xem tiếp / lịch sử / Định dạng */
+  --color-cat-2: #2dd4bf;      /* xanh ngọc: Phim chiếu rạp / Thể loại */
+  --color-cat-3: #a78bfa;      /* tím: Quốc gia */
+  --color-cat-4: #e879f9;      /* hồng tím: Năm */
+
+  --color-canvas: #0b0b0e;   /* nền trang */
+  --color-card: #15151a;     /* card, khối */
+  --color-raised: #1e1e25;   /* lớp nổi: menu, modal, dropdown */
+  --color-line: rgb(255 255 255 / 0.08);        /* đường tóc: viền card, vạch chia */
+  --color-line-strong: rgb(255 255 255 / 0.16); /* viền ô nhập, nút viền */
+
+  --color-fg: #f4f4f5;       /* chữ chính */
+  --color-fg-2: #a1a1aa;     /* chữ phụ */
+  --color-fg-3: #8a8a94;     /* nhãn, chú thích (vẫn đạt tương phản ~5.5:1 trên canvas) */
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --animate-progress-slide: progress-slide 1.2s ease-in-out infinite;
+  @keyframes progress-slide {
+    from { translate: -100% 0; }
+    to { translate: 300% 0; }
+  }
 }
 
-/* Cho phép bôi đen & gõ chữ trong ô tìm kiếm / nhập liệu */
-input, textarea {
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-  user-select: text;
+:root {
+  --foreground: #f4f4f5;
+  color-scheme: dark;
 }
 
-@layer base {
-  body {
-    @apply bg-background text-text-primary font-body-md min-h-[100dvh] overflow-x-hidden;
+/* CHỐNG BÔI ĐEN TOÀN BỘ WEBSITE - chỉ áp dụng trên máy tính có chuột.
+   Trên điện thoại để mặc định cho thao tác chạm / nhấn giữ hoạt động tự nhiên. */
+@media (hover: hover) and (pointer: fine) {
+  * {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
   }
+
+  /* Cho phép bôi đen & gõ chữ trong ô tìm kiếm / nhập liệu */
+  input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+}
+
+/* Điện thoại: chỉ tắt menu nhấn-giữ trên ẢNH (tránh bật "Lưu ảnh" khi lướt), chữ & link vẫn bình thường */
+img {
+  -webkit-touch-callout: none;
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-fg font-sans min-h-[100dvh] overflow-x-hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ===== THANH CUỘN TỰ ẨN (evon I18): trong suốt khi đứng yên, hiện mờ khi rê ===== */
+* { --scrollbar-thumb: transparent; }
+*:hover { --scrollbar-thumb: color-mix(in srgb, var(--foreground) 16%, transparent); }
+.is-scrolling { --scrollbar-thumb: color-mix(in srgb, var(--foreground) 28%, transparent); }
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--foreground) 40%, transparent); }
+@supports not selector(::-webkit-scrollbar) {
+  * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  *:hover { scrollbar-color: color-mix(in srgb, var(--foreground) 18%, transparent) transparent; }
 }
 
 @layer utilities {
-  .hide-scrollbar::-webkit-scrollbar {
-      display: none;
+  /* Ẩn hẳn thanh cuộn: chỉ cho hàng chip / băng chuyền cuộn ngang */
+  .scrollbar-clean { scrollbar-width: none; }
+  .scrollbar-clean::-webkit-scrollbar { display: none; }
+  /* Giữ tên cũ để các chỗ đang dùng không vỡ */
+  .hide-scrollbar { scrollbar-width: none; }
+  .hide-scrollbar::-webkit-scrollbar { display: none; }
+  .custom-scrollbar { scrollbar-width: auto; }
+
+  /* Nút chính (Vivid, evon P9/P17): gradient đỏ thương hiệu -> hồng. Gradient không transition được
+     nên hover bằng độ sáng. Chỉ dùng cho MỘT nút chính mỗi vùng. */
+  .btn-primary {
+    background-image: linear-gradient(to right, var(--color-brand), var(--color-accent-to));
+    color: #fff;
+    transition: filter 150ms ease;
   }
-  .hide-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn-primary:active { filter: brightness(0.95); }
+
+  /* Khối hero (Vivid): viền gradient 1px, nền vẫn là card */
+  .hero-border {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--color-card), var(--color-card)) padding-box,
+      linear-gradient(to right, var(--color-brand), var(--color-accent-to)) border-box;
   }
-  
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
+
+  /* Vệt khung chờ (skeleton): lớp phủ sáng mờ, không phải lỗ đen (evon loading.md) */
+  .skeleton {
+    background-color: rgb(255 255 255 / 0.06);
+    animation: skeleton-pulse 1.6s ease-in-out infinite;
   }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
   }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--color-outline-variant, #444);
-    border-radius: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: var(--color-primary, #1e90ff);
-  }
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
 }
 
 @keyframes fade-in-down {

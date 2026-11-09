@@ -1,12 +1,13 @@
-import { Link, useNavigate } from "react-router-dom";
+﻿import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { apiGetPhimDetail } from "../api/api";
 import { useWatchlist } from "../hooks/useWatchlist";
 import { useNotification } from "../context/NotificationContext";
-import LoadingLogo from "./LoadingLogo";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { deleteDoc, doc } from "firebase/firestore";
+
+const FALLBACK_POSTER = "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=500&auto=format&fit=crop";
 
 export default function MovieCard({ movie }) {
   const navigate = useNavigate();
@@ -104,102 +105,121 @@ export default function MovieCard({ movie }) {
               cloudProgress: movie.progress
             }
           });
+          return;
         }
       }
+      // Không lấy được tập để phát tiếp -> mở trang chi tiết phim thay vì đứng im
+      navigate(`/movie/${movie.id}`);
     } catch (error) {
-      navigate(movie.id ? `/movie/${movie.id}` : "#");
+      if (movie.id) navigate(`/movie/${movie.id}`);
     } finally {
       setIsResuming(false);
     }
   };
 
-  // 👇 Lớp bảo vệ số 2 (Quan trọng nhất): Chỉ gán link nếu có ID, không thì gán thành "#"
   const safeLink = movie.id ? `/movie/${movie.id}` : "#";
+  const badgeText = formatEpisodeText(movie.year);
+  const progressPercent = movie.isHistory
+    ? (movie.progress ? Math.min(Math.round((movie.progress / (movie.duration || 5400)) * 100), 100) : 3)
+    : 0;
+  const saved = !movie.isHistory && isSaved(movie.id);
+  // Dòng phụ dưới tên: phim đang xem thì nói tập, còn lại nói năm · chất lượng (thứ dùng để chọn phim)
+  const metaText = movie.isHistory
+    ? (badgeText && !/full/i.test(badgeText) ? `Đang xem ${badgeText.toLowerCase()}` : "Xem tiếp")
+    : [/^\d{4}$/.test(String(movie.year)) ? movie.year : null, movie.quality].filter(Boolean).join(" · ");
 
   return (
-    <Link 
-      to={safeLink} 
+    <Link
+      to={safeLink}
       onClick={movie.isHistory ? handleResume : undefined}
-      className={`group cursor-pointer block relative ${!movie.id ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`group block ${!movie.id ? "pointer-events-none opacity-50" : ""}`}
     >
-      {/* THIẾT KẾ CARD: Phẳng, không viền glass, bo góc sắc nét hơn */}
-      <div className="relative aspect-[2/3] rounded-md overflow-hidden mb-2 transition-all duration-300 transform group-hover:scale-[1.02] shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-        
-        {/* HIỆU ỨNG SKELETON KHI CHƯA TẢI XONG ẢNH */}
-        {!isImageLoaded && (
-          <div className="absolute inset-0 bg-zinc-800 animate-pulse"></div>
-        )}
+      <div className="relative aspect-[2/3] overflow-hidden rounded-lg bg-card ring-1 ring-white/10">
+        {/* Khung chờ ảnh */}
+        {!isImageLoaded && <div className="skeleton absolute inset-0" />}
 
-        <img 
-          alt={movie.title || "Unknown"} 
+        <img
+          alt={movie.title || ""}
           loading="lazy"
+          decoding="async"
           onLoad={() => setIsImageLoaded(true)}
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${isImageLoaded ? 'opacity-100' : 'opacity-0'}`} 
-          src={movie.image || "/fallback-image.jpg"} 
+          onError={(e) => {
+            // Ảnh lỗi: thử ảnh thumb, cuối cùng dùng ảnh dự phòng (tránh kẹt khung chờ mãi mãi)
+            const img = e.currentTarget;
+            const thumb = getFullImageUrl(movie.thumb_url);
+            if (thumb && img.src !== thumb && img.dataset.triedThumb !== "1") {
+              img.dataset.triedThumb = "1";
+              img.src = thumb;
+            } else if (img.src !== FALLBACK_POSTER) {
+              img.src = FALLBACK_POSTER;
+            } else {
+              setIsImageLoaded(true);
+            }
+          }}
+          className={`h-full w-full object-cover transition-[opacity,transform] duration-500 md:group-hover:scale-[1.04] ${isImageLoaded ? "opacity-100" : "opacity-0"}`}
+          src={movie.image || FALLBACK_POSTER}
         />
-        
-        {/* LỚP LOADING ĐỒNG BỘ TRẮNG */}
-        {isResuming && (
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center z-50">
-             <LoadingLogo className="w-12 h-12" />
-             <span className="text-[10px] text-white font-bold mt-3 animate-pulse tracking-widest uppercase">Đang nạp...</span>
-          </div>
+
+        {/* Nhãn tập / năm: một nhãn trung tính, không chuyển màu */}
+        {/* Chỉ hiện khi là thông tin tập (vd "Tập 12"); năm đã nằm ở dòng phụ dưới tên */}
+        {badgeText && !movie.isHistory && !/^\d{4}$/.test(badgeText) && (
+          <span className="absolute bottom-2 left-2 rounded-md bg-black/75 px-1.5 py-0.5 text-[11px] font-medium text-white">
+            {badgeText}
+          </span>
         )}
 
-        {/* 4K BADGE KÍNH MỜ */}
-        {movie.is4K && (
-          <div className="absolute top-2 right-2 bg-yellow-500 text-black px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
-            4K
-          </div>
-        )}
-
-        {/* NHÃN TẬP PHIM (BADGE GÓC DƯỚI TRÁI) NHƯ VIEFLIX */}
-        {movie.year && (
-          <div className="absolute bottom-2 left-2 bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-1.5 py-0.5 rounded-[3px] text-[10px] md:text-[11px] font-bold shadow-md z-30">
-            {formatEpisodeText(movie.year)}
-          </div>
-        )}
-
-        {/* LỚP PHỦ KHI HOVER VÀ NÚT PLAY */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center z-20">
-          <div className="relative w-12 h-12 rounded-full bg-yellow-500/90 text-black flex items-center justify-center transform scale-50 group-hover:scale-100 transition-all duration-300 shadow-[0_0_20px_rgba(234,179,8,0.4)]">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1", marginLeft: movie.isHistory ? '0' : '2px' }}>
-              {movie.isHistory ? "resume" : "play_arrow"}
-            </span>
-          </div>
-
-          {/* NÚT TÙY CHỌN */}
-          {movie.isHistory ? (
-            <button 
-              onClick={handleDeleteHistory}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center transform opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-red-600 z-30"
-            >
-              <span className="material-symbols-outlined text-[16px]">close</span>
-            </button>
-          ) : (
-            <button 
-              onClick={handleToggleWatchlist}
-              className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center transform opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-yellow-500 hover:text-black z-30"
-            >
-              <span className="material-symbols-outlined text-[18px]">
-                {isSaved(movie.id) ? "check" : "add"}
-              </span>
-            </button>
-          )}
+        {/* Lớp phủ rê chuột (chỉ máy tính, không chặn chạm) */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity duration-300 md:group-hover:opacity-100">
+          <span className="flex size-12 items-center justify-center rounded-full bg-white text-black">
+            <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+          </span>
         </div>
-        
-        {/* THANH PROGRESS LƠ LỬNG MÀU VÀNG CAM */}
+
+        {/* Nút phụ: luôn hiện trên điện thoại, rê mới hiện trên máy tính */}
+        {movie.isHistory ? (
+          <button
+            onClick={handleDeleteHistory}
+            aria-label="Xoá khỏi danh sách đang xem"
+            title="Xoá khỏi danh sách đang xem"
+            className="absolute right-1.5 top-1.5 flex size-8 items-center justify-center rounded-full bg-black/60 text-white transition-[opacity,background-color] hover:bg-black/85 md:opacity-0 md:group-hover:opacity-100"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        ) : (
+          <button
+            onClick={handleToggleWatchlist}
+            aria-label={saved ? "Bỏ khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
+            aria-pressed={saved}
+            title={saved ? "Bỏ khỏi yêu thích" : "Thêm vào yêu thích"}
+            // Chưa lưu: chỉ hiện khi rê chuột trên máy tính (điện thoại lưu ở trang chi tiết, tránh lưới đầy dấu "+")
+            className={`absolute right-1.5 top-1.5 size-8 items-center justify-center rounded-full bg-black/60 text-white transition-[opacity,background-color] hover:bg-black/85 ${saved ? "flex" : "hidden md:flex md:opacity-0 md:group-hover:opacity-100"}`}
+          >
+            <span className="material-symbols-outlined text-[18px]" style={saved ? { fontVariationSettings: "'FILL' 1" } : undefined}>
+              {saved ? "favorite" : "add"}
+            </span>
+          </button>
+        )}
+
+        {/* Tiến độ xem: màu nhấn thương hiệu */}
         {movie.isHistory && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/20 z-20 overflow-hidden">
-             <div className="h-full bg-gradient-to-r from-orange-500 to-yellow-500" style={{ width: `${movie.progress ? Math.min(Math.round((movie.progress / (movie.duration || 5400)) * 100), 100) : 5}%` }}></div>
+          <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20">
+            <div className="h-full bg-brand" style={{ width: `${progressPercent}%` }} />
+          </div>
+        )}
+
+        {/* Đang mở phim để xem tiếp */}
+        {isResuming && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <span className="material-symbols-outlined animate-spin text-[28px] text-white motion-reduce:animate-none">progress_activity</span>
+            <span className="sr-only" role="status">Đang mở phim</span>
           </div>
         )}
       </div>
-      
-      {/* THÔNG TIN PHIM */}
-      <h4 title={movie.title || "Đang tải..."} className="font-bold text-[13px] md:text-[14px] leading-snug text-zinc-100 group-hover:text-yellow-400 transition-colors line-clamp-2 mt-1">
-        {movie.title || "Đang tải..."}
+
+      <h4 title={movie.title || ""} className="mt-2.5 line-clamp-2 text-sm font-medium leading-snug text-fg transition-colors md:group-hover:text-white">
+        {movie.title || "Đang tải…"}
       </h4>
+      {metaText && <p className="mt-0.5 truncate text-xs text-fg-3">{metaText}</p>}
     </Link>
   );
 }

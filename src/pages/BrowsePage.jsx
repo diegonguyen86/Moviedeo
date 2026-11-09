@@ -1,17 +1,15 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import MovieCard from "../components/MovieCard";
 import {
   apiGetPhimTheoDanhSach,
   apiGetPhimTheoTheLoai,
   apiGetPhimTheoQuocGia,
   apiGetPhimTheoNam,
-  apiSearchPhim,
   apiGetPhimMoiCapNhat,
-  formatMovieItem,
-  deduplicateSeasons
+  formatMovieItem
 } from "../api/api";
-import LoadingLogo from "../components/LoadingLogo";
+import { PosterGridSkeleton } from "../components/Skeletons";
 
 const types = [
   { name: "Phim Chiếu Rạp", slug: "phim-chieu-rap", type: 'danh-sach' },
@@ -65,14 +63,45 @@ const countries = [
   { name: "Quốc Gia Khác", slug: "quoc-gia-khac", type: 'quoc-gia' }
 ];
 
-const years = Array.from({ length: 2026 - 2000 + 1 }, (_, i) => {
-  const year = 2026 - i;
+const CURRENT_YEAR = new Date().getFullYear();
+const years = Array.from({ length: CURRENT_YEAR - 2000 + 1 }, (_, i) => {
+  const year = CURRENT_YEAR - i;
   return { name: `Năm ${year}`, slug: year.toString(), type: 'nam' };
 });
 
+const isSameFilter = (a, b) => a?.slug === b?.slug && a?.type === b?.type;
+
+// Bốn nhóm lọc. API chỉ lọc được MỘT tiêu chí mỗi lần, nên mỗi lúc chỉ một chip được chọn.
+// Mỗi nhóm lọc một màu phân loại cố định (evon P17), khớp màu hàng phim ở trang chủ
+const FILTER_GROUPS = [
+  { key: "type", label: "Định dạng", items: types, icon: "movie", tone: "text-cat-1" },
+  { key: "genre", label: "Thể loại", items: categories, icon: "theater_comedy", tone: "text-cat-2" },
+  { key: "country", label: "Quốc gia", items: countries, icon: "public", tone: "text-cat-3" },
+  { key: "year", label: "Năm", items: years, icon: "calendar_month", tone: "text-cat-4" },
+];
+
+const groupOfFilter = (filter) =>
+  FILTER_GROUPS.find((g) => g.items.some((item) => isSameFilter(item, filter)))?.key || "type";
+
+// Chip lọc (evon small-controls): đang chọn nền sáng chữ tối (vai màu "mục đang chọn" của dự án), còn lại viền mảnh
+function FilterChip({ active, children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={active}
+      className={`h-9 shrink-0 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors ${
+        active
+          ? "bg-fg font-medium text-canvas"
+          : "border border-line-strong text-fg-2 hover:bg-white/5 hover:text-fg"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function BrowsePage() {
   const location = useLocation();
-  const navigate = useNavigate();
 
   const [activeFilter, setActiveFilter] = useState(() => {
     if (location.state) {
@@ -90,23 +119,24 @@ export default function BrowsePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  // Nhóm chip đang mở: theo bộ lọc đang chọn
+  const [openGroup, setOpenGroup] = useState(() => groupOfFilter(activeFilter));
+  useEffect(() => { if (activeFilter) setOpenGroup(groupOfFilter(activeFilter)); }, [activeFilter]);
+
+  // Bấm menu Header / "Xem tất cả" khi đang ở sẵn trang /search -> đổi bộ lọc theo state mới.
+  // Bấm nút "Kho phim" (không có state) -> về "Tất cả phim".
+  useEffect(() => {
+    const next = location.state
+      ? { name: location.state.title, slug: location.state.slug, type: location.state.type }
+      : null;
+    setActiveFilter(prev => (isSameFilter(prev, next) && !!prev === !!next ? prev : next));
+    setPage(1);
+    sessionStorage.removeItem("savedSearch");
+  }, [location.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (location.state) {
-      setActiveFilter({
-        name: location.state.title,
-        slug: location.state.slug,
-        type: location.state.type
-      });
-      sessionStorage.removeItem("savedSearch");
-    }
-  }, [location.state]); 
-
-  useEffect(() => { setPage(1); }, [activeFilter]);
-
-  useEffect(() => {
-    window.scrollTo(0, 0);
+    let isCurrent = true; // Bỏ qua kết quả trả về muộn khi người dùng đã bấm sang bộ lọc/trang khác
     const fetchMovies = async () => {
       setLoading(true);
       try {
@@ -124,36 +154,40 @@ export default function BrowsePage() {
         };
 
         const res = await fetchFilterPage(page);
+        if (!isCurrent) return;
 
-        let items = res?.data?.items || res?.items || [];
-        
-        // Không còn search trong BrowsePage nên không cần deduplicateSeasons ở đây nữa
-        // (hoặc nếu cần thì gọi deduplicateSeasons luôn)
-        
+        const items = res?.data?.items || res?.items || [];
         const apiTotalPages = res?.data?.params?.pagination?.totalPages || res?.pagination?.totalPages || 1;
 
-        setMovies(items.map(formatMovieItem));
-        setTotalPages(apiTotalPages);
+        // Loại phim trùng slug (API đôi khi trả trùng -> React báo lỗi key)
+        const seen = new Set();
+        const formatted = items.map(formatMovieItem).filter(m => m.id && !seen.has(m.id) && seen.add(m.id));
+
+        setMovies(formatted);
+        setTotalPages(Math.max(1, apiTotalPages));
+        setHasLoadedOnce(true);
 
       } catch (error) {
-        setMovies([]);
+        // Tải lần hai hỏng thì giữ danh sách cũ (evon loading.md); lần đầu hỏng thì hiện trạng thái rỗng
+        if (isCurrent && !hasLoadedOnce) setMovies([]);
       } finally {
-        setLoading(false);
+        if (isCurrent) setLoading(false);
       }
     };
 
     fetchMovies();
     window.scrollTo({ top: 0, behavior: "smooth" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { isCurrent = false; };
   }, [activeFilter, page]);
 
   const handleFilterClick = (filter) => {
-    if (activeFilter?.slug === filter.slug) {
+    // Đổi bộ lọc thì về trang 1 luôn (trước đây tải trang cũ của bộ lọc mới rồi mới tải lại trang 1)
+    setPage(1);
+    if (isSameFilter(activeFilter, filter)) {
       setActiveFilter(null);
     } else {
       setActiveFilter(filter);
-    }
-    if (window.innerWidth < 768) {
-      setIsMobileFilterOpen(false);
     }
   };
 
@@ -166,113 +200,121 @@ export default function BrowsePage() {
     return new Array(5).fill().map((_, idx) => start + idx + 1).filter(p => p <= totalPages);
   };
 
-  // 👇 ĐÃ FIX: Chuyển màu Thẻ Lọc sang Trắng/Kính Mờ
-  const FilterSection = ({ title, items }) => {
-    const isActiveGroup = items.some(item => item.slug === activeFilter?.slug);
-    const [isOpen, setIsOpen] = useState(isActiveGroup);
-    useEffect(() => { if (isActiveGroup) setIsOpen(true); }, [isActiveGroup]);
-
-    return (
-      <div className="mb-4 bg-white/5 border border-white/10 rounded-xl overflow-hidden transition-all duration-300 text-white backdrop-blur-md">
-        <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-3.5 bg-white/5 hover:bg-white/10 transition-colors">
-          <span className="font-bold text-[15px]">{title}</span>
-          <span className={`material-symbols-outlined transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}>expand_more</span>
-        </button>
-        {isOpen && (
-          <div className="p-4 border-t border-white/5 flex flex-wrap gap-2">
-            {items.map((item) => (
-              <button key={item.slug} onClick={() => handleFilterClick(item)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${activeFilter?.slug === item.slug
-                  ? "bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.4)]"
-                  : "bg-transparent border-white/20 text-zinc-400 hover:border-white/50 hover:text-white"}`}
-              >
-                {item.name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const currentGroup = FILTER_GROUPS.find((g) => g.key === openGroup) || FILTER_GROUPS[0];
+  const isFirstLoad = loading && !hasLoadedOnce;
+  const isReloading = loading && hasLoadedOnce;
 
   return (
-    <div className="pt-24 min-h-screen px-6 max-w-container-max mx-auto pb-20 bg-black">
-
-
-      <div className="flex flex-col md:flex-row gap-6 md:gap-8">
-        
-        {/* NÚT TẮT/MỞ BỘ LỌC TRÊN MOBILE */}
-        <div className="md:hidden w-full">
-          <button 
-            onClick={() => setIsMobileFilterOpen(!isMobileFilterOpen)}
-            className="w-full flex items-center justify-center gap-2 p-3.5 bg-white/10 border border-white/20 rounded-xl text-white font-bold hover:bg-white/20 transition-all backdrop-blur-md shadow-lg"
-          >
-            <span className="material-symbols-outlined">
-              {isMobileFilterOpen ? "close" : "filter_alt"}
-            </span>
-            {isMobileFilterOpen ? "Đóng Bộ Lọc" : "Mở Bộ Lọc Phim"}
-          </button>
-        </div>
-
-        {/* Sidebar Bộ Lọc */}
-        <aside className={`w-full md:w-1/4 lg:w-1/5 shrink-0 h-fit bg-white/5 border border-white/10 rounded-[2rem] p-5 backdrop-blur-2xl shadow-2xl md:sticky md:top-24 ${isMobileFilterOpen ? "block" : "hidden md:block"}`}>
-          <div className="flex items-center gap-2 mb-6 text-white font-black hidden md:flex drop-shadow-md">
-            <span className="material-symbols-outlined">filter_alt</span>
-            <span className="text-xl uppercase tracking-tighter">Bộ Lọc Phim</span>
-          </div>
-          <div className="max-h-[70vh] overflow-y-auto pr-2 pb-10 custom-scrollbar">
-            <FilterSection title="Định Dạng" items={types} />
-            <FilterSection title="Thể Loại" items={categories} />
-            <FilterSection title="Quốc Gia" items={countries} />
-            <FilterSection title="Năm Phát Hành" items={years} />
-          </div>
-        </aside>
-
-        {/* Movie Grid */}
-        <section className="flex-1 flex flex-col">
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-4">
-            <h2 className="text-2xl font-black text-white uppercase tracking-tighter drop-shadow-md">
-              {activeFilter ? activeFilter.name : `TẤT CẢ PHIM`}
-            </h2>
-            <span className="text-xs text-white/50 font-bold uppercase tracking-widest bg-white/5 px-3 py-1 rounded-md">Trang {page} / {totalPages}</span>
-          </div>
-
-          {loading ? (
-            <div className="flex-1 flex flex-col items-center justify-center py-32">
-              <LoadingLogo className="w-16 h-16" />
-              <div className="mt-4 text-white/50 font-bold uppercase tracking-widest animate-pulse">Đang lục kho phim...</div>
-            </div>
-          ) : movies.length > 0 ? (
-            <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 mb-10">
-                {movies.map((movie) => <MovieCard key={movie.id} movie={movie} />)}
-              </div>
-
-              {/* 👇 ĐÃ FIX: Phân trang (Pagination) chuẩn Kính Mờ Trắng */}
-              {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-2 mt-auto pt-8 flex-wrap">
-                  <button onClick={() => handlePageChange(page - 1)} disabled={page === 1} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/20 hover:border-white/30 disabled:opacity-30 transition-all flex items-center justify-center backdrop-blur-md">
-                    <span className="material-symbols-outlined">chevron_left</span>
-                  </button>
-                  {getPaginationGroup().map((p) => (
-                    <button key={p} onClick={() => handlePageChange(p)} className={`w-10 h-10 rounded-full font-bold transition-all backdrop-blur-md border ${page === p ? "bg-white text-black border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.4)]" : "bg-white/5 border-white/10 text-zinc-400 hover:text-white hover:border-white/30 hover:bg-white/10"}`}>
-                      {p}
-                    </button>
-                  ))}
-                  <button onClick={() => handlePageChange(page + 1)} disabled={page === totalPages} className="w-10 h-10 rounded-full bg-white/5 border border-white/10 text-white hover:bg-white/20 hover:border-white/30 disabled:opacity-30 transition-all flex items-center justify-center backdrop-blur-md">
-                    <span className="material-symbols-outlined">chevron_right</span>
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center py-32 bg-white/5 backdrop-blur-md rounded-[2rem] border border-white/10 shadow-xl">
-              <span className="material-symbols-outlined text-6xl mb-4 text-white/30 drop-shadow-md">movie_off</span>
-              <p className="text-white/60 font-bold uppercase tracking-widest text-center px-4">Kho phim hiện chưa có phim này, bạn quay lại sau nhé!</p>
-            </div>
-          )}
-        </section>
+    <main className="relative mx-auto min-h-screen max-w-container-max px-4 pb-20 pt-24 sm:px-6">
+      {/* Vệt loang màu thương hiệu ở đầu trang (Vivid) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 -z-0 h-72 bg-gradient-to-b from-brand/[0.12] via-accent-to/[0.04] to-transparent" aria-hidden="true" />
+      {/* Đầu trang: tên + trang */}
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <h1 className="text-xl font-semibold tracking-tight text-fg">{activeFilter ? activeFilter.name : "Tất cả phim"}</h1>
+        {hasLoadedOnce && totalPages > 1 && (
+          <span className="shrink-0 text-sm text-fg-3">Trang {page}/{totalPages}</span>
+        )}
       </div>
-    </div>
+
+      {/* Bộ lọc: chọn nhóm, rồi chọn chip. Hàng chip cuộn ngang ở điện thoại */}
+      {/* Chỉ dính đầu trang ở máy tính. Điện thoại màn thấp: dính thì header + thanh lọc chiếm ~1/4 màn, che poster */}
+      <div className="-mx-4 mb-6 border-b border-line px-4 pb-3 pt-1 sm:-mx-6 sm:px-6 md:sticky md:top-16 md:z-30 md:bg-canvas/90 md:supports-[backdrop-filter]:bg-canvas/75 md:supports-[backdrop-filter]:backdrop-blur-xl">
+        <div className="scrollbar-clean mb-3 flex gap-1 overflow-x-auto" role="tablist" aria-label="Nhóm bộ lọc">
+          {FILTER_GROUPS.map((group) => {
+            const selected = group.key === openGroup;
+            const hasActive = group.items.some((item) => isSameFilter(item, activeFilter));
+            return (
+              <button
+                key={group.key}
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setOpenGroup(group.key)}
+                className={`relative flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm transition-colors sm:px-3 ${selected ? "bg-white/[0.08] font-medium text-fg" : "text-fg-2 hover:bg-white/5 hover:text-fg"}`}
+              >
+                <span className={`material-symbols-outlined text-[18px] ${group.tone}`} style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">{group.icon}</span>
+                {group.label}
+                {hasActive && !selected && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand" aria-label="đang lọc" />}
+              </button>
+            );
+          })}
+          {activeFilter && (
+            <button onClick={() => { setPage(1); setActiveFilter(null); }} className="ml-auto flex h-9 items-center gap-1 rounded-lg px-2.5 text-sm text-fg-2 transition-colors hover:bg-white/5 hover:text-fg">
+              <span className="material-symbols-outlined text-[18px]">close</span>
+              <span className="hidden sm:inline">Bỏ lọc</span>
+            </button>
+          )}
+        </div>
+        <div className="scrollbar-clean -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+          {currentGroup.items.map((item) => (
+            <FilterChip key={`${item.type}-${item.slug}`} active={isSameFilter(item, activeFilter)} onClick={() => handleFilterClick(item)}>
+              {currentGroup.key === "year" ? item.slug : item.name}
+            </FilterChip>
+          ))}
+        </div>
+      </div>
+
+      {/* Danh sách phim */}
+      <section className="relative">
+        {/* Tải lần hai: giữ danh sách cũ + thanh mảnh trên đầu */}
+        {isReloading && (
+          <div className="absolute inset-x-0 -top-3 h-0.5 overflow-hidden rounded-full" aria-hidden="true">
+            <div className="h-full w-1/3 animate-progress-slide bg-brand motion-reduce:animate-pulse" />
+          </div>
+        )}
+        {isReloading && <span className="sr-only" role="status">Đang tải kết quả</span>}
+
+        {isFirstLoad ? (
+          <PosterGridSkeleton />
+        ) : movies.length > 0 ? (
+          <>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-6 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+              {movies.map((movie) => <MovieCard key={movie.id} movie={movie} />)}
+            </div>
+
+            {totalPages > 1 && (
+              <nav className="mt-12 flex items-center justify-center gap-1" aria-label="Phân trang">
+                <button
+                  onClick={() => handlePageChange(page - 1)}
+                  disabled={page === 1}
+                  className="flex size-10 items-center justify-center rounded-lg text-fg-2 transition-colors hover:bg-white/5 hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+                  aria-label="Trang trước"
+                >
+                  <span className="material-symbols-outlined">chevron_left</span>
+                </button>
+                {getPaginationGroup().map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => handlePageChange(p)}
+                    aria-current={page === p ? "page" : undefined}
+                    className={`flex size-10 items-center justify-center rounded-lg text-sm tabular-nums transition-colors ${page === p ? "bg-fg font-medium text-canvas" : "text-fg-2 hover:bg-white/5 hover:text-fg"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button
+                  onClick={() => handlePageChange(page + 1)}
+                  disabled={page === totalPages}
+                  className="flex size-10 items-center justify-center rounded-lg text-fg-2 transition-colors hover:bg-white/5 hover:text-fg disabled:pointer-events-none disabled:opacity-30"
+                  aria-label="Trang sau"
+                >
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+              </nav>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-line px-6 py-20 text-center">
+            <span className="material-symbols-outlined mb-3 text-[40px] text-fg-3">movie</span>
+            <p className="text-base font-medium text-fg">Chưa có phim nào ở mục này</p>
+            <p className="mt-1 text-sm text-fg-2">Thử chọn thể loại hoặc năm khác.</p>
+            {activeFilter && (
+              <button onClick={() => { setPage(1); setActiveFilter(null); }} className="mt-5 h-10 rounded-lg border border-line-strong px-4 text-sm font-medium text-fg transition-colors hover:bg-white/5">
+                Xem tất cả phim
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+    </main>
   );
 }

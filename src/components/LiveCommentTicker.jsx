@@ -5,15 +5,18 @@ import { collection, query, orderBy, limit, onSnapshot } from "firebase/firestor
 import { useAuth } from "../context/AuthContext";
 
 export default function LiveCommentTicker() {
-  const { getRankInfo } = useAuth();
+  const { getRankInfo, user, isApproved } = useAuth();
   const [comments, setComments] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const location = useLocation();
 
+  // Chỉ hiện cho thành viên đã được duyệt, và không hiện ở trang xem phim / trang đăng nhập TV
+  const isHidden = !user || !isApproved || location.pathname.startsWith("/play/") || location.pathname.startsWith("/tv");
+
   useEffect(() => {
-    // Ẩn ticker và ngừng query Firebase nếu đang ở trang xem phim (bảo vệ lưu lượng Firebase)
-    if (location.pathname.startsWith("/play/")) return;
+    // Ngừng query Firebase khi bị ẩn (bảo vệ lưu lượng Firebase)
+    if (isHidden) return;
 
     // Lắng nghe 5 bình luận mới nhất
     const q = query(
@@ -28,13 +31,15 @@ export default function LiveCommentTicker() {
         ...doc.data()
       }));
       setComments(data);
+    }, (err) => {
+      console.warn("Không tải được bình luận live:", err);
     });
 
     return () => unsubscribe();
-  }, [location.pathname]);
+  }, [isHidden]);
 
   useEffect(() => {
-    if (location.pathname.startsWith("/play/")) return;
+    if (isHidden) return;
 
     // Chuyển đổi bình luận mỗi 5 giây
     if (comments.length === 0 || isHovered) return;
@@ -44,10 +49,10 @@ export default function LiveCommentTicker() {
     }, 5000);
 
     return () => clearInterval(timer);
-  }, [comments.length, isHovered, location.pathname]);
+  }, [comments.length, isHovered, isHidden]);
 
   // ĐẶT SAU TẤT CẢ CÁC HOOK ĐỂ TRÁNH LỖI REACT ERROR 300
-  if (location.pathname.startsWith("/play/")) {
+  if (isHidden) {
     return null;
   }
 
@@ -59,44 +64,36 @@ export default function LiveCommentTicker() {
   if (!currentComment) return null;
 
   const rank = getRankInfo(currentComment.totalWatchSeconds || 0);
+  const avatar = currentComment.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentComment.displayName || "U")}&background=27272a&color=f4f4f5`;
 
   return (
-    <div 
-      className="fixed bottom-6 left-6 z-50 flex flex-col gap-2 transition-all duration-500 ease-in-out"
+    // Chỉ hiện trên máy tính: ở điện thoại khung cố định này đè lên nút của trang
+    <div
+      className="fixed bottom-5 left-5 z-40 hidden md:block"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <Link 
+      <Link
+        key={currentComment.id}
         to={`/movie/${currentComment.movieId}`}
-        className="group relative flex items-center gap-3 bg-black/60 backdrop-blur-xl border border-white/20 rounded-full py-1.5 pl-2 pr-4 shadow-[0_4px_30px_rgba(0,0,0,0.5)] hover:bg-white/10 hover:border-white/40 transition-all max-w-[320px] md:max-w-[400px] overflow-hidden"
+        className="animate-fade-in flex max-w-[360px] items-center gap-3 rounded-2xl border border-line bg-raised/95 py-2 pl-2 pr-4 shadow-2xl transition-colors hover:border-line-strong"
+        title="Bình luận mới nhất"
       >
-        <div className={`relative shrink-0 rounded-full border border-white/20 ${rank.border}`}>
-          <img 
-            src={currentComment.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentComment.displayName || 'U')}&background=random`} 
-            alt={currentComment.displayName} 
-            onError={(e) => {
-              e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentComment.displayName || 'U')}&background=random`;
-            }}
-            className="w-8 h-8 rounded-full object-cover" 
-          />
+        <img
+          src={avatar}
+          alt=""
+          onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentComment.displayName || "U")}&background=27272a&color=f4f4f5`; }}
+          className="size-9 shrink-0 rounded-full object-cover ring-1 ring-white/10"
+        />
+        <div className="min-w-0 leading-tight">
+          <p className="flex items-center gap-1.5 text-xs">
+            <span className="size-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+            <span className="truncate font-medium text-fg">{currentComment.displayName}</span>
+            <span className="shrink-0" title={rank.name}>{rank.icon}</span>
+            <span className="truncate text-fg-3">· {currentComment.movieName}</span>
+          </p>
+          <p className="mt-1 truncate text-sm text-fg-2">{currentComment.text}</p>
         </div>
-        
-        <div className="flex flex-col overflow-hidden leading-tight">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-[11px] text-white/90 truncate max-w-[100px]">
-              {currentComment.displayName}
-            </span>
-            <span className="text-[9px] text-white/50 uppercase truncate max-w-[120px]">
-              {currentComment.movieName}
-            </span>
-          </div>
-          <span className="text-xs text-white truncate font-medium mt-0.5">
-            "{currentComment.text}"
-          </span>
-        </div>
-
-        {/* Chấm tròn báo Live */}
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-black animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
       </Link>
     </div>
   );

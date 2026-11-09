@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { updatePassword } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
-import LoadingLogo from './LoadingLogo';
+import { auth } from '../firebase';
 
+// Người dùng Google cũ phải tạo mật khẩu để dùng được app điện thoại / TV (đăng nhập bằng email).
+// Theo evon layouts/form.md: một ô mật khẩu có nút xem lại, không có ô "nhập lại".
 export default function ForcePasswordSetup() {
   const { user, logout } = useAuth();
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -14,29 +16,23 @@ export default function ForcePasswordSetup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!password || password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError('Mật khẩu nhập lại không khớp.');
+      setError('Mật khẩu cần ít nhất 6 ký tự.');
       return;
     }
 
     setLoading(true);
     setError('');
     try {
-      await updatePassword(user, password);
+      await updatePassword(auth.currentUser || user, password);
       setSuccess(true);
-      // Khi updatePassword thành công, reload lại trang để AuthContext cập nhật providerData
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      // Tải lại trang để AuthContext cập nhật providerData
+      setTimeout(() => window.location.reload(), 1200);
     } catch (err) {
       console.error(err);
       if (err.code === 'auth/requires-recent-login') {
-        setError('Phiên đăng nhập đã cũ. Vui lòng tải lại trang, đăng nhập lại bằng Google rồi thử đặt mật khẩu lần nữa.');
+        setError('Phiên đăng nhập đã cũ. Đăng xuất, đăng nhập lại bằng Google rồi tạo mật khẩu lần nữa.');
       } else {
-        setError('Có lỗi xảy ra: ' + err.message);
+        setError('Chưa lưu được mật khẩu, thử lại sau.');
       }
     } finally {
       setLoading(false);
@@ -44,80 +40,72 @@ export default function ForcePasswordSetup() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md px-4">
-      <div className="w-full max-w-md bg-zinc-900 border border-white/20 rounded-2xl shadow-[0_0_50px_rgba(255,255,255,0.1)] p-6 md:p-8">
-        
-        <div className="text-center mb-6">
-          <span className="material-symbols-outlined text-5xl text-blue-500 mb-2 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]">
-            lock_person
-          </span>
-          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Bảo Mật Tài Khoản</h2>
-          <p className="text-zinc-400 text-sm mt-2">
-            Hệ thống đang chuyển sang đăng nhập 100% bằng Email. Vì bạn đang đăng nhập bằng Google, vui lòng **Tạo một Mật Khẩu** để có thể sử dụng được Mobile App và TV App nhé!
-          </p>
-        </div>
+    <main className="flex min-h-[100dvh] items-center justify-center bg-canvas px-5 py-12">
+      <div className="w-full max-w-sm">
+        <img src={`${import.meta.env.BASE_URL}icon.png`} alt="Phim Hay Quá Trời" className="mb-6 size-12 object-contain" />
 
         {success ? (
-          <div className="text-center py-6">
-            <span className="material-symbols-outlined text-6xl text-emerald-500 mb-4 animate-bounce">check_circle</span>
-            <h3 className="text-xl font-bold text-white mb-2">Thành Công!</h3>
-            <p className="text-zinc-400">Đang đưa bạn vào hệ thống...</p>
+          <div role="status">
+            <span className="material-symbols-outlined mb-3 text-[40px] text-emerald-400">check_circle</span>
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">Đã tạo mật khẩu</h1>
+            <p className="mt-2 text-[15px] text-fg-2">Đang đưa bạn vào web…</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/50 p-3 rounded-xl text-red-500 text-sm text-center">
-                {error}
+          <>
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">Tạo mật khẩu</h1>
+            <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
+              Bạn đang đăng nhập bằng Google. Tạo thêm mật khẩu cho <span className="font-medium text-fg">{user?.email}</span> để đăng nhập được app điện thoại và app TV.
+            </p>
+
+            <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+              <div>
+                <label htmlFor="new-password" className="mb-1.5 block text-sm font-medium text-fg">Mật khẩu mới</label>
+                <div className="relative">
+                  <input
+                    id="new-password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    autoFocus
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Ít nhất 6 ký tự"
+                    className="h-12 w-full rounded-xl border border-line-strong bg-card px-3.5 pr-12 text-[15px] text-fg placeholder:text-fg-3 transition-colors focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/10 disabled:opacity-60"
+                    disabled={loading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-1.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-fg-3 transition-colors hover:text-fg"
+                    aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                  </button>
+                </div>
               </div>
-            )}
-            
-            <div className="space-y-1">
-              <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider ml-1">Mật khẩu mới</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Ít nhất 6 ký tự"
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                disabled={loading}
-              />
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-zinc-400 text-xs font-bold uppercase tracking-wider ml-1">Nhập lại mật khẩu</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Nhập lại cho chắc"
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                disabled={loading}
-              />
-            </div>
+              {error && <p role="alert" className="text-sm text-red-400">{error}</p>}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all shadow-[0_0_20px_rgba(59,130,246,0.3)] active:scale-95 flex items-center justify-center gap-2 mt-2"
-            >
-              {loading ? (
-                <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-              ) : (
-                <>LƯU MẬT KHẨU <span className="material-symbols-outlined text-xl">arrow_forward</span></>
-              )}
-            </button>
-            
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary flex h-12 w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold disabled:opacity-70"
+              >
+                {loading && <span className="material-symbols-outlined animate-spin text-[20px] motion-reduce:animate-none">progress_activity</span>}
+                Lưu mật khẩu
+              </button>
+            </form>
+
             <button
               type="button"
               onClick={logout}
               disabled={loading}
-              className="w-full text-zinc-500 hover:text-white py-2 text-sm transition-colors mt-2"
+              className="mt-3 flex h-12 w-full items-center justify-center rounded-xl text-[15px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
             >
               Đăng xuất
             </button>
-          </form>
+          </>
         )}
       </div>
-    </div>
+    </main>
   );
 }

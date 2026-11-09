@@ -13,9 +13,15 @@ export default function CommentSection({ movieId, movieName }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [commentLimit, setCommentLimit] = useState(10);
 
+  // Sang phim khác thì reset số bình luận đang hiển thị
+  useEffect(() => {
+    setCommentLimit(10);
+    setLoading(true);
+  }, [movieId]);
+
   useEffect(() => {
     if (!movieId) return;
-    
+
     // Sử dụng subcollection để tránh lỗi Composite Index của Firebase
     const q = query(
       collection(db, "comments", movieId, "list"),
@@ -47,7 +53,11 @@ export default function CommentSection({ movieId, movieName }) {
       loginWithGoogle();
       return;
     }
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !movieId || isSubmitting) return;
+    if (newComment.trim().length > 1000) {
+      showToast("Bình luận tối đa 1000 ký tự nhé!", "error");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -79,8 +89,11 @@ export default function CommentSection({ movieId, movieName }) {
     }
   };
 
-  const handleDelete = async (commentId, comment) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xoá bình luận này?")) return;
+  const handleDelete = (commentId, comment) => {
+    showConfirm("Bạn có chắc chắn muốn xoá bình luận này?", () => deleteComment(commentId, comment));
+  };
+
+  const deleteComment = async (commentId, comment) => {
     try {
       // 1. Xoá khỏi bình luận của phim
       await deleteDoc(doc(db, "comments", movieId, "list", commentId));
@@ -124,122 +137,112 @@ export default function CommentSection({ movieId, movieName }) {
   };
 
   const currentUserRank = getRankInfo(userData?.totalWatchSeconds || 0);
+  const avatarOf = (name) => `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "U")}&background=27272a&color=f4f4f5`;
 
   return (
-    <div className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 md:p-6 backdrop-blur-md">
-      <h3 className="text-[18px] md:text-[22px] font-black text-white uppercase tracking-tighter mb-6 flex items-center gap-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.5)]">
-        <span className="material-symbols-outlined text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]">forum</span>
-        Bình luận
-      </h3>
+    <div className="w-full">
+      <h2 className="mb-4 text-lg font-semibold text-fg">
+        Bình luận {comments.length > 0 && <span className="ml-1 text-sm font-normal text-fg-3">{comments.length >= commentLimit ? `${commentLimit}+` : comments.length}</span>}
+      </h2>
 
-      {/* Ô NHẬP BÌNH LUẬN */}
-      <form onSubmit={handleSubmit} className="mb-8 flex gap-3 md:gap-4 items-start">
-        {user ? (
-          <div className={`relative shrink-0 rounded-full border-2 ${currentUserRank.border} ${currentUserRank.glow}`}>
-            <img src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email?.split('@')[0] || 'U')}&background=random`} alt="Avatar" className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" />
-            <div className={`absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-[8px] md:text-[10px] ${currentUserRank.color}`} title={currentUserRank.name}>
-              {currentUserRank.icon}
-            </div>
-          </div>
-        ) : (
-          <div className="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-            <span className="material-symbols-outlined text-zinc-400">person</span>
-          </div>
-        )}
-        
-        <div className="flex-1 flex flex-col gap-2">
+      {/* Ô nhập bình luận */}
+      <form onSubmit={handleSubmit} className="mb-8 flex items-start gap-3">
+        <img
+          src={user?.photoURL || avatarOf(user?.displayName || user?.email?.split("@")[0])}
+          alt=""
+          title={currentUserRank.name}
+          className="size-10 shrink-0 rounded-full object-cover ring-1 ring-white/10"
+        />
+        <div className="flex flex-1 flex-col gap-2">
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder={user ? "Bạn nghĩ gì về bộ phim này?" : "Đăng nhập để bình luận..."}
-            className="w-full bg-black/40 border border-white/10 rounded-xl md:rounded-2xl p-3 md:p-4 text-sm md:text-base text-white placeholder-zinc-500 focus:outline-none focus:border-red-500/50 focus:bg-black/60 transition-all resize-none min-h-[80px]"
+            placeholder={user ? "Bạn nghĩ gì về bộ phim này?" : "Đăng nhập để bình luận"}
+            maxLength={1000}
+            className="min-h-[88px] w-full resize-none rounded-xl border border-line-strong bg-card px-3.5 py-3 text-[15px] text-fg placeholder:text-fg-3 transition-colors focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/10"
           />
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-fg-3">{newComment.length > 800 ? `${newComment.length}/1000` : ""}</span>
             <button
               type="submit"
               disabled={isSubmitting || (user && !newComment.trim())}
-              className="px-6 py-2 bg-gradient-to-r from-[#e50914] to-[#b20710] text-white font-bold rounded-lg shadow-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2"
+              className="btn-primary flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-semibold disabled:pointer-events-none disabled:opacity-40"
             >
-              {isSubmitting ? (
-                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-              ) : (
-                <span className="material-symbols-outlined text-[20px]">send</span>
-              )}
-              {user ? "Gửi" : "Đăng nhập Google"}
+              <span className={`material-symbols-outlined text-[18px] ${isSubmitting ? "animate-spin motion-reduce:animate-none" : ""}`}>
+                {isSubmitting ? "progress_activity" : "send"}
+              </span>
+              {user ? "Gửi" : "Đăng nhập"}
             </button>
           </div>
         </div>
       </form>
 
-      {/* DANH SÁCH BÌNH LUẬN */}
-      <div className="space-y-6">
-        {loading ? (
-          <div className="text-center text-zinc-500 py-4 animate-pulse">Đang tải bình luận...</div>
-        ) : comments.length === 0 ? (
-          <div className="text-center text-zinc-500 py-8 border-t border-white/5">
-            Chưa có bình luận nào. Hãy là người đầu tiên!
-          </div>
-        ) : (
-          <>
+      {/* Danh sách bình luận */}
+      {loading ? (
+        <ul aria-busy="true" className="space-y-5">
+          {[0, 1, 2].map((i) => (
+            <li key={i} className="flex gap-3">
+              <div className="skeleton size-10 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className={`skeleton h-3 rounded-full ${["w-1/4", "w-1/3", "w-1/5"][i]}`} />
+                <div className={`skeleton h-3 rounded-full ${["w-3/4", "w-1/2", "w-2/3"][i]}`} />
+              </div>
+            </li>
+          ))}
+          <span className="sr-only" role="status">Đang tải bình luận</span>
+        </ul>
+      ) : comments.length === 0 ? (
+        <p className="border-t border-line py-8 text-center text-sm text-fg-2">Chưa có bình luận nào. Hãy là người đầu tiên!</p>
+      ) : (
+        <>
+          <ul className="divide-y divide-line">
             {comments.map((comment) => {
               const rank = getRankInfo(comment.totalWatchSeconds || 0);
+              const canDelete = user && (user.uid === comment.uid || user.uid === "qD9qHFwiucgQOj6bXHoCIuHuoWv1");
               return (
-                <div key={comment.id} className="flex gap-3 md:gap-4 group">
-                  <div className={`relative shrink-0 rounded-full border-2 h-fit ${rank.border}`}>
-                    <img 
-                      src={comment.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.displayName || 'U')}&background=random`} 
-                      alt={comment.displayName} 
-                      onError={(e) => {
-                        e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.displayName || 'U')}&background=random`;
-                      }}
-                      className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover" 
-                    />
-                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 md:w-5 md:h-5 rounded-full bg-black border border-white/20 flex items-center justify-center text-[8px] md:text-[10px] ${rank.color}`} title={rank.name}>
-                      {rank.icon}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 bg-black/30 border border-white/5 rounded-2xl rounded-tl-sm p-4 hover:bg-black/50 transition-colors">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="font-bold text-white text-sm">{comment.displayName}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border bg-black/50 ${rank.color} ${rank.border}`}>
-                        {rank.name}
-                      </span>
-                      <span className="text-xs text-zinc-500 ml-auto">{timeAgo(comment.createdAt)}</span>
-                      
-                      {/* Nút Xoá */}
-                      {user && (user.uid === comment.uid || user.uid === "qD9qHFwiucgQOj6bXHoCIuHuoWv1") && (
-                        <button 
+                <li key={comment.id} className="group flex gap-3 py-4 first:pt-0">
+                  <img
+                    src={comment.photoURL || avatarOf(comment.displayName)}
+                    alt=""
+                    onError={(e) => { e.currentTarget.src = avatarOf(comment.displayName); }}
+                    className="size-10 shrink-0 rounded-full object-cover ring-1 ring-white/10"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                      <span className="text-sm font-medium text-fg">{comment.displayName}</span>
+                      <span className={`text-xs ${rank.color}`} title="Danh hiệu theo giờ xem">{rank.icon} {rank.name}</span>
+                      <span className="text-xs text-fg-3">· {timeAgo(comment.createdAt)}</span>
+                      {canDelete && (
+                        <button
                           onClick={() => handleDelete(comment.id, comment)}
-                          className="ml-2 text-zinc-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          className="ml-auto flex size-8 items-center justify-center rounded-lg text-fg-3 transition-colors hover:bg-white/5 hover:text-fg md:opacity-0 md:group-hover:opacity-100"
+                          aria-label="Xoá bình luận"
                           title="Xoá bình luận"
                         >
-                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                       )}
                     </div>
-                    <p className="text-zinc-300 text-sm md:text-base leading-relaxed whitespace-pre-wrap">
-                      {comment.text}
-                    </p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-fg-2">{comment.text}</p>
                   </div>
-                </div>
+                </li>
               );
             })}
-            
-            {/* NÚT TẢI THÊM (Chỉ hiện nếu số lượng bình luận bằng với limit, nghĩa là có thể còn nữa) */}
-            {comments.length >= commentLimit && (
-              <div className="text-center pt-4">
-                <button 
-                  onClick={() => setCommentLimit(prev => prev + 10)}
-                  className="px-6 py-2 rounded-full bg-white/5 hover:bg-white/10 text-white text-sm font-bold border border-white/10 transition-all shadow-lg hover:shadow-[0_0_15px_rgba(255,255,255,0.1)]"
-                >
-                  Tải thêm bình luận
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          </ul>
+
+          {/* Còn nữa thì có nút tải thêm */}
+          {comments.length >= commentLimit && (
+            <div className="pt-2 text-center">
+              <button
+                onClick={() => setCommentLimit((prev) => prev + 10)}
+                className="h-10 rounded-lg border border-line-strong px-4 text-sm font-medium text-fg transition-colors hover:bg-white/5"
+              >
+                Xem thêm bình luận
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

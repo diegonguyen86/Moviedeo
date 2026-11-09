@@ -1,68 +1,65 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import { useAuth } from "../context/AuthContext";
-import { useState, useEffect } from "react";
-import AuthModal from "../components/AuthModal";
+import { useEffect, Suspense } from "react";
+import AuthForm from "../components/AuthModal";
+import LoadingLogo from "../components/LoadingLogo";
 import ForcePasswordSetup from "../components/ForcePasswordSetup";
 
 export default function Layout() {
   const { user, isApproved, logout, hasPassword } = useAuth();
-  
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const navigate = useNavigate();
+
+  // Người dùng mở link đăng nhập TV khi chưa đăng nhập web -> sau khi đăng nhập xong, đưa họ quay lại /tv
+  useEffect(() => {
+    if (user && isApproved && hasPassword && sessionStorage.getItem("tv_pending_code")) {
+      navigate("/tv", { replace: true });
+    }
+  }, [user, isApproved, hasPassword, navigate]);
 
   // 1. NẾU CHƯA ĐĂNG NHẬP: Bắt buộc đăng nhập
   if (!user) {
     return (
-      <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
-        
-        <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
-
-        <div className="max-w-md text-center space-y-8">
-          <h1 className="text-5xl font-black text-white uppercase tracking-tighter drop-shadow-md">PHIM HAY QUÁ TRỜI</h1>
-          <p className="text-zinc-500 font-medium italic">Vui lòng đăng nhập để trải nghiệm xem phim đỉnh cao!</p>
-          <button 
-            onClick={() => setShowAuthModal(true)}
-            className="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-2xl font-black transition-all shadow-[0_10px_40px_rgba(220,38,38,0.2)] active:scale-95 flex items-center justify-center gap-2"
-          >
-            ĐĂNG NHẬP / ĐĂNG KÝ
-          </button>
-        </div>
-      </div>
+      <main className="flex min-h-[100dvh] items-center justify-center bg-canvas px-5 py-12">
+        <AuthForm />
+      </main>
     );
   }
 
-  // 2. NẾU ĐÃ ĐĂNG NHẬP NHƯNG CHƯA ĐƯỢC DUYỆT: Hiện màn hình chờ + Nút Đăng xuất
+  // 2. NẾU ĐÃ ĐĂNG NHẬP NHƯNG CHƯA ĐƯỢC DUYỆT: màn chờ duyệt.
+  // Trạng thái duyệt cập nhật real-time (Firestore), nên admin duyệt xong là tự vào, không cần tải lại.
   if (user && !isApproved) {
     return (
-      <div className="h-screen bg-black flex flex-col items-center justify-center text-white px-6">
-        <div className="max-w-xl text-center space-y-6">
-          <span className="material-symbols-outlined text-8xl text-white animate-pulse">lock_person</span>
-          <h2 className="text-4xl font-black uppercase tracking-tighter text-white">DỪNG LẠI NÍ ƠI!</h2>
-          
-          <div className="space-y-2">
-            <p className="text-xl text-zinc-300 font-bold">Tài khoản của bạn đang chờ phê duyệt.</p>
-            <p className="text-zinc-500">Vì lý do bảo mật và tránh share tràn lan, vui lòng liên hệ Admin để được cấp quyền truy cập nhé!</p>
+      <main className="flex min-h-[100dvh] items-center justify-center bg-canvas px-5 py-12">
+        <div className="w-full max-w-sm">
+          <img src={`${import.meta.env.BASE_URL}icon.png`} alt="Phim Hay Quá Trời" className="mb-6 size-12 object-contain" />
+          <h1 className="text-2xl font-semibold tracking-tight text-fg">Đang chờ duyệt</h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-fg-2">
+            Tài khoản <span className="font-medium text-fg">{user.email}</span> đã được tạo. Admin đã nhận được thông báo, duyệt xong là bạn vào xem được ngay — trang này tự cập nhật.
+          </p>
+          <div className="mt-6 flex items-center gap-2.5 rounded-xl bg-white/[0.05] px-3.5 py-3 text-sm text-fg-2">
+            <span className="relative flex size-2.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-amber-400/60 motion-reduce:animate-none" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-amber-400" />
+            </span>
+            Đang chờ admin duyệt
           </div>
-
-          <div className="flex flex-col gap-4 mt-8">
-            {/* Nút kiểm tra lại */}
-            <button 
+          <div className="mt-8 flex flex-col gap-2">
+            <button
               onClick={() => window.location.reload()}
-              className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-xl font-bold transition-all uppercase text-sm border border-white/5"
+              className="flex h-12 items-center justify-center rounded-xl border border-line-strong text-[15px] font-medium text-fg transition-colors hover:bg-white/5"
             >
-              Tôi đã liên hệ, kiểm tra lại ngay
+              Kiểm tra lại
             </button>
-
-            {/* NÚT THOÁT HIỂM: Giải quyết vấn đề không thể Logout */}
-            <button 
+            <button
               onClick={logout}
-              className="text-zinc-500 hover:text-red-500 text-xs font-bold uppercase tracking-widest transition-all"
+              className="flex h-12 items-center justify-center rounded-xl text-[15px] font-medium text-red-400 transition-colors hover:bg-red-500/10"
             >
-              Sử dụng tài khoản khác (Đăng xuất)
+              Đăng xuất, dùng tài khoản khác
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
@@ -76,8 +73,15 @@ export default function Layout() {
     <>
       <Header />
       {/* Thêm div bọc để tránh nội dung bị Header che mất nếu Header là fixed */}
-      <div className="min-h-screen bg-black">
-        <Outlet />
+      <div className="min-h-screen bg-canvas">
+        {/* Suspense riêng cho phần nội dung: chuyển trang thì Header vẫn đứng yên, chỉ phần dưới hiện loading */}
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <LoadingLogo className="w-12 h-12" />
+          </div>
+        }>
+          <Outlet />
+        </Suspense>
       </div>
     </>
   );

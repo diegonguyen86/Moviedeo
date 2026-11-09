@@ -23,7 +23,8 @@ export default function TrailerModal({ isOpen, onClose, youtubeKey }) {
       >
         <button 
           onClick={onClose}
-          className="absolute top-3 right-3 md:top-4 md:right-4 z-20 w-10 h-10 flex items-center justify-center bg-black/70 hover:bg-red-600 text-white rounded-full transition-all border border-white/20 shadow-lg backdrop-blur-md"
+          className="absolute right-3 top-3 z-20 flex size-10 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90 md:right-4 md:top-4"
+          aria-label="Đóng trailer"
           title="Đóng trailer"
         >
           <span className="material-symbols-outlined">close</span>

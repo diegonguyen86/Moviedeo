@@ -47,28 +47,28 @@ export const NotificationProvider = ({ children }) => {
 
       {/* KHU VỰC HIỂN THỊ CONFIRM DIALOG */}
       {confirmDialog && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-[#111] border border-white/10 p-6 md:p-8 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)] max-w-sm w-full animate-in zoom-in-95 duration-200">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-3xl">help</span>
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Xác nhận</h3>
-              <p className="text-zinc-400 text-sm mb-8">{confirmDialog.message}</p>
-              <div className="flex gap-3 w-full">
-                <button 
-                  onClick={confirmDialog.onCancel}
-                  className="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-white/5 text-white hover:bg-white/10 transition-colors border border-white/10"
-                >
-                  HỦY BỎ
-                </button>
-                <button 
-                  onClick={confirmDialog.onConfirm}
-                  className="flex-1 py-3 px-4 rounded-xl font-bold text-sm bg-yellow-500 text-black hover:bg-yellow-400 transition-colors shadow-[0_0_15px_rgba(234,179,8,0.3)]"
-                >
-                  ĐỒNG Ý
-                </button>
-              </div>
+        // Hộp xác nhận: các chỗ đang dùng đều là xoá (lịch sử xem, bình luận) nên dùng kiểu nguy hiểm (evon I4: nền đỏ mờ)
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4" onClick={confirmDialog.onCancel}>
+          <div role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" className="w-full max-w-sm rounded-2xl border border-line bg-raised p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-red-500/15 text-red-400">
+              <span className="material-symbols-outlined text-[22px]">delete</span>
+            </div>
+            <h3 id="confirm-title" className="text-base font-semibold text-fg">{confirmDialog.message}</h3>
+            <p className="mt-1 text-sm text-fg-2">Thao tác này không hoàn tác được.</p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={confirmDialog.onCancel}
+                className="h-10 rounded-lg border border-line-strong px-4 text-sm font-medium text-fg transition-colors hover:bg-white/5"
+              >
+                Huỷ
+              </button>
+              <button
+                onClick={confirmDialog.onConfirm}
+                autoFocus
+                className="h-10 rounded-lg bg-red-500/15 px-4 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/25"
+              >
+                Xoá
+              </button>
             </div>
           </div>
         </div>
@@ -92,7 +92,7 @@ const ToastItem = ({ toast, onRemove }) => {
     switch(type) {
       case 'success': return <span className="material-symbols-outlined text-green-400">check_circle</span>;
       case 'error': return <span className="material-symbols-outlined text-red-400">error</span>;
-      default: return <span className="material-symbols-outlined text-blue-400">info</span>;
+      default: return <span className="material-symbols-outlined text-fg-2">info</span>;
     }
   };
 
@@ -100,16 +100,16 @@ const ToastItem = ({ toast, onRemove }) => {
     switch(type) {
       case 'success': return 'border-green-500/30';
       case 'error': return 'border-red-500/30';
-      default: return 'border-white/10';
+      default: return 'border-line';
     }
   };
 
   return (
-    <div className={`pointer-events-auto flex items-center gap-3 bg-black/80 backdrop-blur-xl border ${getBorderColor()} px-4 py-3 rounded-xl shadow-2xl animate-in slide-in-from-right-8 fade-in duration-300 min-w-[250px] max-w-[350px]`}>
+    <div role={type === 'error' ? 'alert' : 'status'} className={`animate-fade-in pointer-events-auto flex min-w-[260px] max-w-[360px] items-center gap-3 rounded-xl border bg-raised px-4 py-3 shadow-2xl ${getBorderColor()}`}>
       {getIcon()}
-      <p className="text-white text-sm font-medium flex-1 mr-2">{message}</p>
-      <button onClick={() => onRemove(id)} className="text-zinc-500 hover:text-white transition-colors">
-        <span className="material-symbols-outlined text-sm">close</span>
+      <p className="mr-1 flex-1 text-sm text-fg">{message}</p>
+      <button onClick={() => onRemove(id)} className="flex size-7 items-center justify-center rounded-md text-fg-3 transition-colors hover:bg-white/5 hover:text-fg" aria-label="Đóng thông báo">
+        <span className="material-symbols-outlined text-[18px]">close</span>
       </button>
     </div>
   );
