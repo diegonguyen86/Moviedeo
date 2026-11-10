@@ -83,25 +83,16 @@ function VideoPlayer() {
   // Trước đây soi màu đỏ trên khung hình + tua cố định 31,5s -> hay trượt hoặc tua lố.
   const [adBreaks, setAdBreaks] = useState([]); // [{ start, end }] (giây)
   const adBreaksRef = useRef([]);
-  const skippedAdsRef = useRef(new Set()); // chỉ số các đoạn đã tự bỏ qua (hoàn tác thì không bỏ qua lại)
-  const [adNotice, setAdNotice] = useState(null); // { msg, canUndo, index }
+  // Quảng cáo là cờ bạc -> KHÔNG cho xem lại: lần nào phát/tua/kéo vào đoạn đó cũng tự nhảy qua (không có nút hoàn tác)
+  const [adNotice, setAdNotice] = useState(null); // { msg }
   const adNoticeTimerRef = useRef(null);
 
-  const showAdNotice = (msg, canUndo = false, index = null) => {
-    setAdNotice({ msg, canUndo, index });
+  const showAdNotice = (msg) => {
+    setAdNotice({ msg });
     clearTimeout(adNoticeTimerRef.current);
     adNoticeTimerRef.current = setTimeout(() => {
       setAdNotice(null);
-    }, 6000);
-  };
-
-  const handleUndoSkip = () => {
-    const b = adBreaksRef.current[adNotice?.index];
-    if (videoRef.current && b) {
-      videoRef.current.currentTime = Math.max(0, b.start);
-    }
-    clearTimeout(adNoticeTimerRef.current);
-    setAdNotice(null);
+    }, 4000);
   };
 
   // STATE: AUTO-NEXT
@@ -582,7 +573,6 @@ function VideoPlayer() {
   useEffect(() => {
     let alive = true;
     adBreaksRef.current = [];
-    skippedAdsRef.current = new Set();
     setAdBreaks([]);
     setAdNotice(null);
     findAdBreaks(currentVideo).then((list) => {
@@ -593,18 +583,17 @@ function VideoPlayer() {
     return () => { alive = false; };
   }, [currentVideo]);
 
-  // Gọi trong onTimeUpdate: phát tới (hoặc mở "xem tiếp" rơi vào giữa) đoạn quảng cáo -> tua qua
+  // Gọi trong onTimeUpdate (chạy cả khi phát, tua, kéo thanh thời gian, mở "xem tiếp"):
+  // vị trí rơi vào đoạn quảng cáo -> nhảy tới cuối đoạn. Lần nào cũng bỏ qua, kể cả khi đang dừng.
+  // Trả về true nếu vừa nhảy.
   const checkAdSkip = (current) => {
     const video = videoRef.current;
-    if (!video || video.paused) return;
-    adBreaksRef.current.forEach((b, i) => {
-      if (skippedAdsRef.current.has(i)) return;
-      if (current >= b.start - 0.5 && current < b.end - 1) {
-        skippedAdsRef.current.add(i);
-        video.currentTime = b.end + 0.3;
-        showAdNotice(`⚡ Đã tự bỏ qua ${Math.round(b.end - b.start)} giây quảng cáo`, true, i);
-      }
-    });
+    if (!video) return false;
+    const b = adBreaksRef.current.find((ad) => current >= ad.start - 0.5 && current < ad.end);
+    if (!b) return false;
+    video.currentTime = b.end + 0.3;
+    showAdNotice(`Đã tự bỏ qua ${Math.round(b.end - b.start)} giây quảng cáo`);
+    return true;
   };
   const toggleMute = () => {
     if (videoRef.current) {
@@ -739,13 +728,13 @@ function VideoPlayer() {
   const handleTimeUpdate = () => {
     if (videoRef.current && !isDragging) {
       const current = videoRef.current.currentTime;
+      // Bỏ qua quảng cáo TRƯỚC khi cập nhật/lưu vị trí -> không bao giờ lưu "xem tiếp" ở giữa quảng cáo
+      if (checkAdSkip(current)) return;
       setCurrentTime(current);
       if (Math.abs(current - lastSavedTimeRef.current) >= 1) {
         localStorage.setItem(`progress_${currentSlug}_${currentEpName}`, current);
         lastSavedTimeRef.current = current;
       }
-
-      checkAdSkip(current);
     }
   };
 
@@ -1333,22 +1322,11 @@ function VideoPlayer() {
                 </div>
               </div>
 
-              {/* THÔNG BÁO TỰ ĐỘNG BỎ QUA QUẢNG CÁO (KÈM NÚT HOÀN TÁC) */}
+              {/* THÔNG BÁO TỰ ĐỘNG BỎ QUA QUẢNG CÁO (không có nút xem lại: quảng cáo cờ bạc) */}
               {adNotice && (
-                <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-white/60 text-white pl-4 pr-3 py-2 rounded-full flex items-center gap-3 text-xs md:text-sm font-semibold animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px] md:text-[20px] text-white animate-pulse">bolt</span>
-                    <span>{typeof adNotice === 'object' ? adNotice.msg : adNotice}</span>
-                  </div>
-                  {typeof adNotice === 'object' && adNotice.canUndo && (
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleUndoSkip(); }}
-                      className="bg-white hover:bg-white text-black px-2.5 py-1 rounded-full text-[10px] md:text-xs font-bold transition-all shadow-md active:scale-95 ml-1"
-                      title="Quay lại xem đoạn quảng cáo vừa bỏ qua"
-                    >
-                      Xem lại
-                    </button>
-                  )}
+                <div className="absolute top-4 md:top-6 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-white/60 text-white px-4 py-2 rounded-full flex items-center gap-2 text-xs md:text-sm font-semibold animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-none">
+                  <span className="material-symbols-outlined text-[18px] md:text-[20px] text-white animate-pulse">bolt</span>
+                  <span>{adNotice.msg}</span>
                 </div>
               )}
 
