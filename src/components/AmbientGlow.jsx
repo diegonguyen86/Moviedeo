@@ -8,17 +8,18 @@ import { useEffect, useRef } from "react";
 // 2 lớp sáng:
 //   - Lớp trong: ôm sát khung, đậm, màu cháy (saturate cao) -> viền sáng rực quanh video
 //   - Lớp ngoài: loang rộng, mờ nhiều, "thở" chậm (phồng/xẹp nhẹ) -> cả trang như có đèn hắt
-// + 1 dải phản chiếu mờ dưới đáy khung (như video đặt trên mặt bóng).
 //
-// - Rẻ: canvas 64x36, ~10 lần/giây, chỉ khi video đang phát và tab đang hiển thị.
+// - Rẻ: canvas 64x36, ~8 lần/giây, chỉ khi video đang phát và tab đang hiển thị.
 //   Lớp ngoài chép lại từ lớp trong (không đọc video 2 lần).
+//   Đo 11/2026 (Loki 1080p, màn 144Hz): bật hay tắt đều 144 khung/giây, 0 khung video rớt, RAM như nhau.
+//   Đã thử làm mờ ngay trên canvas (ctx.filter) để bỏ CSS blur -> ánh sáng bị vỡ ô, lộ viền chữ nhật: bỏ.
 // - Mượt: khung mới chồng lên khung cũ với độ trong 30% -> màu chuyển dần, không giật.
 // - Không cần CORS: chỉ VẼ video lên canvas để hiển thị (không đọc điểm ảnh).
 // =====================================================================
 
 const W = 64;
 const H = 36;
-const FRAME_MS = 100;
+const FRAME_MS = 120;
 const BLEND = 0.3;
 
 export default function AmbientGlow({ videoRef, active, isPlaying }) {

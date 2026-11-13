@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, doc, deleteDoc, where, getDocs } from "firebase/firestore";
 import { useNotification } from "../context/NotificationContext";
 
-export default function CommentSection({ movieId, movieName }) {
+// memo: trang xem phim vẽ lại ~4 lần/giây theo thời gian phát; bình luận chỉ cần vẽ lại khi đổi phim
+function CommentSection({ movieId, movieName }) {
   const { user, userData, getRankInfo, loginWithGoogle } = useAuth();
   const { showToast, showConfirm } = useNotification();
   const [comments, setComments] = useState([]);
@@ -246,3 +247,5 @@ export default function CommentSection({ movieId, movieName }) {
     </div>
   );
 }
+
+export default memo(CommentSection);

@@ -6,6 +6,7 @@ import { db } from "../firebase";
 import { doc, setDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
 import AmbientGlow from "../components/AmbientGlow";
+import FrameFill from "../components/FrameFill";
 import CommentSection from "../components/CommentSection";
 import { PlayIcon, PauseIcon, Back10Icon, Fwd10Icon, VolumeIcon, EpisodesIcon, SpeedIcon, SubtitlesIcon, FullscreenIcon, ExitFullscreenIcon, NextIcon } from "../components/PlayerIcons";
 import { apiGetRelatedSeasons, apiGetPhimDetail, apiGetPhimTheoTheLoai } from "../api/api";
@@ -69,6 +70,13 @@ function VideoPlayer() {
   const [seekTime, setSeekTime] = useState(0);
   const lastSavedTimeRef = useRef(0);
   const [duration, setDuration] = useState(0);
+  // Tỉ lệ thật của file video (chỉ để biết khung 16:9 có dư sọc hay không, KHÔNG đổi kích thước khung)
+  const [videoNatAspect, setVideoNatAspect] = useState(16 / 9);
+  const readNatAspect = (v) => {
+    if (!v?.videoWidth || !v?.videoHeight) return;
+    const r = v.videoWidth / v.videoHeight;
+    setVideoNatAspect(prev => (Math.abs(prev - r) > 0.005 ? r : prev));
+  };
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -881,6 +889,14 @@ function VideoPlayer() {
 
   };
 
+  // ---- SỌC ĐEN DO KHUNG HÌNH -> ÁNH SÁNG MỜ (đi theo nút "Ánh sáng nền") ----
+  // Phim khác tỉ lệ khung (khung 16:9 trong trang / tỉ lệ màn khi toàn màn hình) có vùng trống trên/dưới
+  // hoặc hai bên -> lớp FrameFill (bản mờ của chính cảnh phim) phía sau lộ ra. Khung khớp tỉ lệ thì không chạy.
+  // Sọc đen do nguồn chèn sẵn TRONG file thì để nguyên (giống Netflix).
+  const frameAspect = isFullscreen ? window.innerWidth / Math.max(1, window.innerHeight) : 16 / 9;
+  const hasFitBars = Math.abs(videoNatAspect - frameAspect) > 0.02;
+  const fillActive = ambientOn && !useIframe && hasFitBars;
+
   const displayTime = isDragging ? seekTime : currentTime;
   const progressPercent = duration > 0 ? (displayTime / duration) * 100 : 0;
 
@@ -959,7 +975,7 @@ function VideoPlayer() {
         {/* --- KHUNG PHÁT VIDEO CHÍNH --- */}
         <div
           ref={playerWrapperRef}
-          className={`relative z-[1] w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 group ${!showControls && isPlaying && !isAutoNexting ? 'cursor-none' : ''}`}
+          className={`relative z-[1] w-full aspect-video overflow-hidden group ${isFullscreen ? 'bg-black' : 'bg-black rounded-2xl md:rounded-[2rem] border border-white/10'} ${!showControls && isPlaying && !isAutoNexting ? 'cursor-none' : ''}`}
           // Chỉ chuột thật mới được "rê để hiện điều khiển".
           // Trên điện thoại mỗi cú chạm sinh ra mousemove giả trước khi click -> trước đây mousemove bật điều khiển lên,
           // rồi click lập tức tắt đi => chạm vào video không bao giờ hiện được nút.
@@ -975,6 +991,9 @@ function VideoPlayer() {
             <iframe src={currentEmbed?.replace("http://", "https://")} className="absolute inset-0 w-full h-full" frameBorder="0" allowFullScreen allow="autoplay" />
           ) : (
             <>
+              {/* Ánh sáng mờ lấp các dải sọc đen (nằm sau <video>) */}
+              <FrameFill videoRef={videoRef} active={fillActive} isPlaying={isPlaying} />
+
               {/* 👇 CẬP NHẬT MỚI: TÁCH BIỆT TRẢI NGHIỆM PC VÀ MOBILE QUA HARDWARE */}
               <video
                 ref={videoRef}
@@ -983,10 +1002,12 @@ function VideoPlayer() {
                 x5-playsinline="true"
                 preload="auto"
                 crossOrigin="anonymous"
-                className="w-full h-full object-contain cursor-pointer"
+                // Giống Netflix: khung cố định 16:9, phim khác tỉ lệ hiện đủ hình kèm sọc đen (không cắt hình)
+                className="relative w-full h-full object-contain cursor-pointer"
                 onClick={handlePlayerTap}
                 onTimeUpdate={handleTimeUpdate}
-                onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+                onLoadedMetadata={(e) => { setDuration(e.currentTarget.duration); readNatAspect(e.currentTarget); }}
+                onResize={(e) => readNatAspect(e.currentTarget)}
                 onPlay={() => { setIsPlaying(true); setIsBuffering(false); }}
                 onPause={() => setIsPlaying(false)}
                 onWaiting={() => setIsBuffering(true)}
