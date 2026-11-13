@@ -885,7 +885,7 @@ function VideoPlayer() {
   const progressPercent = duration > 0 ? (displayTime / duration) * 100 : 0;
 
   return (
-    <main className="relative min-h-screen bg-canvas text-white pt-6 md:pt-12 pb-20 font-sans overflow-hidden select-none">
+    <main className="relative min-h-screen bg-canvas text-white pt-3 md:pt-4 pb-16 font-sans overflow-hidden select-none">
       
       {/* AMBIENT ÁNH SÁNG */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
@@ -896,8 +896,17 @@ function VideoPlayer() {
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
 
-      {/* Đầu trang: nút quay lại + tên phim, tập (đọc từ trái sang như mọi app xem phim) */}
-      <div className="relative z-20 mx-auto mb-4 flex max-w-[1260px] items-center gap-3 px-3 md:mb-5 md:px-4">
+      {/* CỘT NỘI DUNG: khung phim to nhất có thể (tối đa 1600px) NHƯNG hàng trên + khung phim luôn vừa
+          1 màn hình (trước đây khung cố định 1260px, màn laptop phải cuộn mới thấy hết khung).
+          Chiều rộng = (chiều cao màn - hàng trên ~90px) x 16/9, không nhỏ hơn 360px. Điện thoại dọc vẫn full ngang.
+          Nguồn phát + bình luận nằm dưới, cuộn xuống mới tới. */}
+      <div
+        className="relative z-10 mx-auto w-full px-2 md:px-4"
+        style={{ maxWidth: "max(360px, min(1632px, calc((100dvh - 90px) * 16 / 9 + 32px)))" }}
+      >
+
+      {/* Đầu trang: quay lại + tên phim, tập | ánh sáng nền */}
+      <div className="relative z-20 mb-3 flex items-center gap-2 px-1 md:gap-3">
         <button
           onClick={() => { saveToFirebase(); navigate(-1); }}
           className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
@@ -938,8 +947,8 @@ function VideoPlayer() {
         )}
       </div>
 
-      <div className="relative z-10 max-w-[1260px] mx-auto px-2 md:px-4">
-        
+      <div className="relative">
+
         {/* ÁNH SÁNG NỀN THEO KHUNG HÌNH (nằm sau khung video, tắt khi toàn màn hình / phát qua iframe) */}
         <AmbientGlow
           videoRef={videoRef}
@@ -1410,6 +1419,8 @@ function VideoPlayer() {
           )}
         </div>
 
+      </div>
+
         {/* --- THANH "CONTROL CENTER" --- */}
         {/* Nguồn phát: chọn server chính (HLS) hay dự phòng (nhúng) */}
         <div className="relative z-10 mt-4 flex flex-col gap-3 rounded-2xl border border-line bg-card/80 p-4 sm:flex-row sm:items-center sm:justify-between md:mt-6">
@@ -1442,7 +1453,7 @@ function VideoPlayer() {
         </div>
 
         {/* --- BÌNH LUẬN NATIVE --- */}
-        <div className="mt-4 md:mt-8 relative z-10 max-w-5xl mx-auto">
+        <div className="relative z-10 mt-4 md:mt-8">
           <CommentSection movieId={currentSlug} movieName={currentMovieName} />
         </div>
 
