@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { doc, setDoc, getDoc, serverTimestamp, increment } from "firebase/firestore";
 import LoadingLogo from "../components/LoadingLogo";
+import AmbientGlow from "../components/AmbientGlow";
 import CommentSection from "../components/CommentSection";
 import { PlayIcon, PauseIcon, Back10Icon, Fwd10Icon, VolumeIcon, EpisodesIcon, SpeedIcon, SubtitlesIcon, FullscreenIcon, ExitFullscreenIcon, NextIcon } from "../components/PlayerIcons";
 import { apiGetRelatedSeasons, apiGetPhimDetail, apiGetPhimTheoTheLoai } from "../api/api";
@@ -73,6 +74,25 @@ function VideoPlayer() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [playbackRate, setPlaybackRate] = useState(1);
+  // Ánh sáng nền theo khung hình (chỉ khi không toàn màn hình). Nhớ lựa chọn trong máy.
+  // Chưa chọn bao giờ: máy mạnh -> bật; điện thoại / máy yếu (≤4 nhân CPU hoặc ≤4GB RAM) -> tắt cho mượt.
+  const [ambientOn, setAmbientOn] = useState(() => {
+    try {
+      const saved = localStorage.getItem("ambient_mode");
+      if (saved) return saved !== "off";
+    } catch { /* bỏ qua */ }
+    const cores = navigator.hardwareConcurrency || 8;
+    const memory = navigator.deviceMemory || 8;
+    const isPhone = window.matchMedia?.("(max-width: 767px)").matches;
+    return !(isPhone || cores <= 4 || memory <= 4);
+  });
+  const toggleAmbient = () => {
+    setAmbientOn((prev) => {
+      const next = !prev;
+      try { localStorage.setItem("ambient_mode", next ? "on" : "off"); } catch { /* bỏ qua */ }
+      return next;
+    });
+  };
   
   const [showSettings, setShowSettings] = useState(false);
   const [showEpisodes, setShowEpisodes] = useState(false);
@@ -870,7 +890,7 @@ function VideoPlayer() {
       {/* AMBIENT ÁNH SÁNG */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div 
-          className="absolute inset-0 bg-cover bg-center opacity-30 md:opacity-40 blur-2xl md:blur-[100px] scale-105 md:scale-110 saturate-150 transition-all duration-1000 transform-gpu will-change-transform" 
+          className={`absolute inset-0 bg-cover bg-center ${ambientOn && !useIframe ? 'opacity-15 md:opacity-20' : 'opacity-30 md:opacity-40'} blur-2xl md:blur-[100px] scale-105 md:scale-110 saturate-150 transition-all duration-1000 transform-gpu will-change-transform`}
           style={{ backgroundImage: `url(${currentPosterUrl})` }}
         ></div>
         <div className="absolute inset-0 bg-black/60"></div>
@@ -890,14 +910,47 @@ function VideoPlayer() {
           <h1 className="truncate text-base font-semibold text-white md:text-xl">{currentMovieName}</h1>
           {currentEpName && <p className="text-sm text-white/60">{renderEpisodeName(currentEpName)}</p>}
         </div>
+
+        {/* Bật/tắt ánh sáng nền (máy yếu tắt cho mượt). Ẩn khi phát qua iframe vì không áp dụng được */}
+        {!useIframe && (
+          <button
+            onClick={toggleAmbient}
+            role="switch"
+            aria-checked={ambientOn}
+            title={ambientOn ? "Tắt ánh sáng nền (máy yếu nên tắt cho mượt)" : "Bật ánh sáng nền theo màu phim"}
+            className={`group/amb ml-auto flex h-10 shrink-0 items-center gap-2 rounded-full border px-3 text-sm font-medium transition-all md:px-4 ${
+              ambientOn
+                ? 'border-white/25 bg-white/10 text-white shadow-[0_0_24px_-4px_rgba(229,9,20,0.55)]'
+                : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <span
+              className={`material-symbols-outlined text-[20px] transition-colors ${ambientOn ? 'text-amber-300' : ''}`}
+              style={ambientOn ? { fontVariationSettings: "'FILL' 1" } : undefined}
+            >
+              {ambientOn ? 'lightbulb' : 'light_off'}
+            </span>
+            <span className="hidden sm:inline">Ánh sáng nền</span>
+            <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${ambientOn ? 'bg-gradient-to-r from-brand to-accent-to' : 'bg-white/20'}`}>
+              <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-white shadow transition-transform ${ambientOn ? 'translate-x-4' : 'translate-x-0'}`} />
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="relative z-10 max-w-[1260px] mx-auto px-2 md:px-4">
         
+        {/* ÁNH SÁNG NỀN THEO KHUNG HÌNH (nằm sau khung video, tắt khi toàn màn hình / phát qua iframe) */}
+        <AmbientGlow
+          videoRef={videoRef}
+          isPlaying={isPlaying}
+          active={ambientOn && !isFullscreen && !useIframe}
+        />
+
         {/* --- KHUNG PHÁT VIDEO CHÍNH --- */}
-        <div 
+        <div
           ref={playerWrapperRef}
-          className={`relative w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 group ${!showControls && isPlaying && !isAutoNexting ? 'cursor-none' : ''}`}
+          className={`relative z-[1] w-full aspect-video bg-black/90 rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/10 group ${!showControls && isPlaying && !isAutoNexting ? 'cursor-none' : ''}`}
           // Chỉ chuột thật mới được "rê để hiện điều khiển".
           // Trên điện thoại mỗi cú chạm sinh ra mousemove giả trước khi click -> trước đây mousemove bật điều khiển lên,
           // rồi click lập tức tắt đi => chạm vào video không bao giờ hiện được nút.
@@ -1293,7 +1346,7 @@ function VideoPlayer() {
                     </button>
 
                     <div className="relative">
-                      <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowLangMenu(false); }} className={`${CTRL} ${showSettings ? 'bg-white/15 text-white' : ''}`} aria-label="Tốc độ phát" title="Tốc độ phát">
+                      <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); setShowEpisodes(false); setShowLangMenu(false); }} className={`${CTRL} ${showSettings ? 'bg-white/15 text-white' : ''}`} aria-label="Tốc độ và ánh sáng nền" title="Tốc độ và ánh sáng nền">
                         {playbackRate !== 1
                           ? <span className="text-sm font-semibold tabular-nums">{playbackRate}x</span>
                           : <SpeedIcon className="text-[24px]" />}
@@ -1311,6 +1364,19 @@ function VideoPlayer() {
                               {playbackRate === rate && <span className="material-symbols-outlined text-[18px]">check</span>}
                             </button>
                           ))}
+                          <div className="mx-2 my-1 h-px bg-white/10" />
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleAmbient(); }}
+                            role="switch"
+                            aria-checked={ambientOn}
+                            className="flex h-10 items-center justify-between rounded-lg px-3 text-left text-sm text-white/75 transition-colors hover:bg-white/10 hover:text-white"
+                            title="Quầng sáng quanh khung phim đổi màu theo cảnh (không áp dụng khi toàn màn hình)"
+                          >
+                            Ánh sáng nền
+                            <span className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${ambientOn ? 'bg-brand' : 'bg-white/20'}`}>
+                              <span className={`absolute left-0.5 top-0.5 size-4 rounded-full bg-white transition-transform ${ambientOn ? 'translate-x-4' : 'translate-x-0'}`} />
+                            </span>
+                          </button>
                         </div>
                       )}
                     </div>
