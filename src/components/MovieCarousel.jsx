@@ -10,7 +10,8 @@ const TONE_CLASS = {
   4: "bg-cat-4/15 text-cat-4",
 };
 
-export default function MovieCarousel({ title, movies, viewAllState, icon, tone }) {
+// ranked: hàng xếp hạng kiểu Netflix (Top 15) — số thứ tự to viền chữ đứng bên trái mỗi poster
+export default function MovieCarousel({ title, movies, viewAllState, icon, tone, ranked = false }) {
   const rowRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -109,9 +110,24 @@ export default function MovieCarousel({ title, movies, viewAllState, icon, tone 
           className={`scrollbar-clean -mx-4 flex snap-x gap-3 overflow-x-auto scroll-px-4 px-4 pb-1 sm:-mx-6 sm:scroll-px-6 sm:px-6 ${isDragging ? "cursor-grabbing select-none" : ""}`}
         >
           {movies.map((movie, index) => (
-            <div key={`${movie.id}-${index}`} className="w-[132px] shrink-0 snap-start sm:w-[156px] lg:w-[184px]">
-              <MovieCard movie={movie} />
-            </div>
+            ranked ? (
+              <div key={`${movie.id}-${index}`} className="flex shrink-0 snap-start items-end">
+                <span
+                  aria-hidden="true"
+                  className="-mr-3 select-none pb-14 text-[88px] font-black leading-none tracking-tighter text-canvas sm:-mr-4 sm:text-[112px] lg:text-[132px]"
+                  style={{ WebkitTextStroke: "2px rgba(255,255,255,0.55)" }}
+                >
+                  {index + 1}
+                </span>
+                <div className="relative z-[1] w-[112px] sm:w-[132px] lg:w-[156px]">
+                  <MovieCard movie={movie} />
+                </div>
+              </div>
+            ) : (
+              <div key={`${movie.id}-${index}`} className="w-[132px] shrink-0 snap-start sm:w-[156px] lg:w-[184px]">
+                <MovieCard movie={movie} />
+              </div>
+            )
           ))}
         </div>
 

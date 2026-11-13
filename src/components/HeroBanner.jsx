@@ -24,13 +24,13 @@ export default function HeroBanner({ movies = [] }) {
 
     (async () => {
       try {
-        const [logo, detailRes] = await Promise.all([
-          apiGetMovieLogo(movie.origin_name || movie.title || movie.name),
-          !movie.description && movie.id ? apiGetPhimDetail(movie.id) : Promise.resolve(null),
-        ]);
+        // Chi tiết phim (có sẵn trong bộ nhớ đệm) -> mô tả thật + mã TMDB để lấy ĐÚNG logo phim
+        const detailRes = movie.id ? await apiGetPhimDetail(movie.id) : null;
+        if (!isMounted) return;
+        if (!movie.description && detailRes?.movie?.content) setDescription(detailRes.movie.content.replace(/<[^>]*>?/gm, ""));
+        const logo = await apiGetMovieLogo(detailRes?.movie);
         if (!isMounted) return;
         if (logo) setLogoUrl(logo);
-        if (detailRes?.movie?.content) setDescription(detailRes.movie.content.replace(/<[^>]*>?/gm, ""));
       } catch {}
     })();
 

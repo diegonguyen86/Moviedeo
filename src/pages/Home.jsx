@@ -89,8 +89,14 @@ function Home() {
   const [loading, setLoading] = useState(!initialCache.hasCache);
 
   // --- STATE & AUTH ---
-  const [watchingHistory, setWatchingHistory] = useState([]);
-  const { user, isApproved } = useAuth(); 
+  const { user, isApproved } = useAuth();
+  // "Xem tiếp" lấy từ Firestore về chậm (~2-3s) rồi CHÈN lên trên, đẩy cả trang tụt xuống (đo CLS 0,29 = kém).
+  // Giờ: nhớ danh sách lần trước trong máy để hiện ngay; lần đầu chưa có thì giữ chỗ bằng khung chờ.
+  const historyCacheKey = user?.uid ? `home_history_${user.uid}` : null;
+  const [watchingHistory, setWatchingHistory] = useState(() => {
+    try { return historyCacheKey ? JSON.parse(localStorage.getItem(historyCacheKey) || "[]") : []; } catch { return []; }
+  });
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   // Lấy lịch sử xem phim từ Firebase (Real-time)
   useEffect(() => {
@@ -116,13 +122,17 @@ function Home() {
           };
         });
         setWatchingHistory(movies);
+        setHistoryLoaded(true);
+        try { localStorage.setItem(`home_history_${user.uid}`, JSON.stringify(movies)); } catch { /* đầy bộ nhớ */ }
       }, (err) => {
         console.warn("Không tải được lịch sử xem:", err);
+        setHistoryLoaded(true);
       });
 
       return () => unsubscribe();
     } else {
-      setWatchingHistory([]); 
+      setWatchingHistory([]);
+      setHistoryLoaded(true);
     }
   }, [user, isApproved]);
 
@@ -199,8 +209,13 @@ function Home() {
 
       <div className="mt-6 space-y-10 md:mt-8 md:space-y-12">
         {/* Xem tiếp: việc chính số 1, đứng ngay dưới banner */}
-        {watchingHistory.length > 0 && (
+        {watchingHistory.length > 0 ? (
           <MovieCarousel title="Xem tiếp" movies={watchingHistory} icon="history" tone={1} />
+        ) : (user && isApproved && !historyLoaded && <PosterRowSkeleton />)}
+
+        {/* Top 15 thịnh hành (danh sách admin/cron chọn, 5 phim đầu cũng đang chạy ở banner) */}
+        {adminTrending.length > 0 && (
+          <MovieCarousel title={`Top ${Math.min(15, adminTrending.length)} thịnh hành`} movies={adminTrending.slice(0, 15)} icon="trending_up" tone={4} ranked />
         )}
 
         {trending.length > 0 ? (

@@ -115,105 +115,127 @@ export const apiGetPhimTheoNam = (slug, page = 1) => safeGet(`/v1/api/nam/${slug
 export const apiSearchPhim = (keyword, page = 1) => safeGet(`/v1/api/tim-kiem?keyword=${encodeURIComponent(keyword)}&page=${page}`);
 export const apiSearchByTitle = (title) => safeGet(`/v1/api/tim-kiem?keyword=${encodeURIComponent(title)}&page=1`);
 
-const TMDB_KEY = import.meta.env.VITE_TMDB_KEY;
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-
-export const apiGetTMDBTrending = async () => {
-  const cacheKey = "tmdb_trending_day";
-  const cached = getCachedData(cacheKey);
-  if (cached) return cached;
-
-  try {
-    const res = await axios.get(`${TMDB_BASE_URL}/trending/movie/day?api_key=${TMDB_KEY}&language=vi-VN&region=VN`);
-    if (res.data) {
-      setCachedData(cacheKey, res.data);
-    }
-    return res.data;
-  } catch (error) { 
-    return { results: [] }; 
-  }
+// TMDB: gọi qua API trung gian /api/tmdb (khoá TMDB nằm ở server, không còn trong mã web)
+const tmdbGet = async (path, params = {}) => {
+  const qs = new URLSearchParams({ path, ...params });
+  const res = await fetch(`/api/tmdb?${qs.toString()}`);
+  if (!res.ok) throw new Error(`TMDB ${res.status}`);
+  return res.json();
 };
 
-export const apiGetMovieLogo = async (title) => {
-  if (!title) return null;
-  const cacheKey = `logo_${title.toLowerCase().trim()}`;
+/**
+ * Logo phim (ảnh tên phim trong suốt) cho banner trang chủ.
+ * movie: chi tiết phim từ PhimAPI (cần tmdb.id). Trước đây tìm theo TÊN -> dễ ra logo phim khác
+ * (cùng lỗi với trailer "Xóm Nhỏ" -> "Hamlet"); giờ chỉ dùng mã TMDB có sẵn, không có thì thôi.
+ */
+export const apiGetMovieLogo = async (movie) => {
+  const tmdb = movie?.tmdb;
+  if (!tmdb?.id || (tmdb.type !== "movie" && tmdb.type !== "tv")) return null;
+  const cacheKey = `logo_v2_${tmdb.type}_${tmdb.id}`;
   const cached = getCachedData(cacheKey);
-  if (cached !== null && cached !== undefined) return cached;
-
+  if (cached !== null && cached !== undefined) return cached || null;
   try {
-    const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`, { timeout: 4000 });
-    const tmdbId = searchRes.data.results?.[0]?.id;
-    const mediaType = searchRes.data.results?.[0]?.media_type || 'movie';
-    if (!tmdbId) {
-      setCachedData(cacheKey, "");
-      return null;
-    }
-    
-    const imageRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/images?api_key=${TMDB_KEY}`, { timeout: 4000 });
-    const logos = imageRes.data.logos;
-    if (!logos || logos.length === 0) {
-      setCachedData(cacheKey, "");
-      return null;
-    }
-    
-    const bestLogo = logos.find(l => l.iso_639_1 === 'en' || l.iso_639_1 === 'vi') || logos[0];
-    const logoUrl = `https://image.tmdb.org/t/p/w500${bestLogo.file_path}`;
-    setCachedData(cacheKey, logoUrl);
-    return logoUrl;
-  } catch (error) {
+    const data = await tmdbGet(`${tmdb.type}/${tmdb.id}/images`, { include_image_language: "vi,en,null" });
+    const logos = data.logos || [];
+    const best = logos.find((l) => l.iso_639_1 === "vi") || logos.find((l) => l.iso_639_1 === "en") || logos[0];
+    const url = best ? `https://image.tmdb.org/t/p/w500${best.file_path}` : "";
+    setCachedData(cacheKey, url);
+    return url || null;
+  } catch {
     return null;
   }
 };
 
-export const apiGetTrailer = async (slug, title) => {
-  const cacheKey = `trailer_${(slug || title || "").toLowerCase().trim()}`;
+// =====================================================================
+// TRAILER (sửa 11/2026)
+// Lỗi cũ: (1) PhimAPI không có trailer -> tìm TMDB theo TÊN rồi lấy kết quả đầu tiên => hay ra
+// trailer phim khác; (2) không kiểm tra video còn sống / còn cho nhúng.
+// Giờ, theo thứ tự, lấy video ĐẦU TIÊN còn phát được (kiểm tra qua YouTube oEmbed):
+//   1. Trailer do PhimAPI gắn sẵn (thường là bản Việt hoá / đúng phần)
+//   2. TMDB theo MÃ phim có sẵn trong dữ liệu (phim bộ: ưu tiên đúng PHẦN), chỉ lấy Trailer/Teaser,
+//      ưu tiên tiếng Việt > chính thức > mới nhất
+//   (KHÔNG tìm theo tên: "Xóm Nhỏ" có tên gốc "Hamlet" -> trùng cả năm mà ra trailer phim Hamlet của
+//    Universal. Thà báo chưa có trailer còn hơn mở nhầm phim.)
+// Không tìm được -> null (nút Trailer báo "chưa có trailer"), không bao giờ mở nhầm phim khác.
+// =====================================================================
+const youtubeIdOf = (url) => {
+  const m = String(url || "").match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+};
+
+// 200 = còn sống và cho nhúng; 401 = chủ kênh tắt nhúng; 404/400 = đã xoá / riêng tư
+const isYoutubePlayable = async (key) => {
+  try {
+    const res = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${key}`)}&format=json`);
+    return res.ok;
+  } catch {
+    return true; // mạng chặn oEmbed thì cứ thử phát
+  }
+};
+
+const pickTmdbTrailers = (videos = []) => {
+  const typeRank = { Trailer: 0, Teaser: 1 };
+  return videos
+    .filter((v) => v.site === "YouTube" && v.key && v.type in typeRank)
+    .sort((a, b) =>
+      (typeRank[a.type] - typeRank[b.type]) ||
+      ((b.iso_639_1 === "vi") - (a.iso_639_1 === "vi")) ||
+      ((b.official ? 1 : 0) - (a.official ? 1 : 0)) ||
+      (new Date(b.published_at || 0) - new Date(a.published_at || 0))
+    )
+    .map((v) => v.key);
+};
+
+const tmdbVideos = async (path) => {
+  try {
+    const data = await tmdbGet(`${path}/videos`, { include_video_language: "vi,en,null" });
+    return data.results || [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * movie: chi tiết phim từ PhimAPI (trailer_url, tmdb{id,type,season}, year, name, origin_name).
+ * Trả về mã video YouTube hoặc null.
+ */
+export const apiGetTrailer = async (slug, title, movie = null) => {
+  const cacheKey = `trailer_v3_${(slug || title || "").toLowerCase().trim()}`;
   const cached = getCachedData(cacheKey);
-  if (cached !== null && cached !== undefined) return cached;
+  if (cached !== null && cached !== undefined) return cached || null;
 
-  // 1. Thử lấy trailer chính chủ từ PhimAPI trước (đảm bảo sống 100%)
-  if (slug) {
-    try {
-      const res = await apiGetPhimDetail(slug);
-      const trailerUrl = res?.movie?.trailer_url;
-      if (trailerUrl && trailerUrl.includes('youtube.com/watch?v=')) {
-        const key = trailerUrl.split('v=')[1].split('&')[0];
-        setCachedData(cacheKey, key);
-        return key;
-      } else if (trailerUrl && trailerUrl.includes('youtu.be/')) {
-        const key = trailerUrl.split('youtu.be/')[1].split('?')[0];
-        setCachedData(cacheKey, key);
-        return key;
-      }
-    } catch (error) {}
+  let detail = movie;
+  if (!detail && slug) {
+    try { detail = (await apiGetPhimDetail(slug))?.movie || null; } catch { detail = null; }
+  }
+  void title; // giữ tham số cho tương thích, không còn tìm theo tên
+
+  const candidates = [];
+  const fromPhimApi = youtubeIdOf(detail?.trailer_url);
+  if (fromPhimApi) candidates.push(fromPhimApi);
+
+  const tmdb = detail?.tmdb;
+  if (tmdb?.id && (tmdb.type === "movie" || tmdb.type === "tv")) {
+    if (tmdb.type === "tv" && tmdb.season) {
+      candidates.push(...pickTmdbTrailers(await tmdbVideos(`tv/${tmdb.id}/season/${tmdb.season}`)));
+    }
+    candidates.push(...pickTmdbTrailers(await tmdbVideos(`${tmdb.type}/${tmdb.id}`)));
   }
 
-  // 2. Nếu PhimAPI không có, quét bằng TMDB
-  if (title) {
-    try {
-      const searchRes = await axios.get(`${TMDB_BASE_URL}/search/multi?api_key=${TMDB_KEY}&query=${encodeURIComponent(title)}&language=vi-VN`, { timeout: 4000 });
-      const tmdbId = searchRes.data.results?.[0]?.id;
-      const mediaType = searchRes.data.results?.[0]?.media_type || 'movie';
-      if (!tmdbId) {
-        setCachedData(cacheKey, "");
-        return null;
-      }
-      
-      const videoRes = await axios.get(`${TMDB_BASE_URL}/${mediaType}/${tmdbId}/videos?api_key=${TMDB_KEY}`, { timeout: 4000 });
-      const videos = videoRes.data.results;
-      if (!videos || videos.length === 0) {
-        setCachedData(cacheKey, "");
-        return null;
-      }
-      
-      const trailer = videos.find(v => v.type === 'Trailer' && v.site === 'YouTube') || videos.find(v => v.site === 'YouTube');
-      const key = trailer ? trailer.key : null;
-      setCachedData(cacheKey, key || "");
+  const seen = new Set();
+  for (const key of candidates) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    if (seen.size > 5) break; // đủ rồi, không kiểm tra quá nhiều
+    if (await isYoutubePlayable(key)) {
+      setCachedData(cacheKey, key);
       return key;
-    } catch (error) {}
+    }
   }
-  
+  setCachedData(cacheKey, "");
   return null;
 };
+
 
 const getFullImageUrl = (url) => {
   if (!url) return "";
@@ -239,7 +261,7 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
   if (!movieName) return [];
   
   // 1. Tách tên gốc của phim (loại bỏ "Phần X", "Season X", "Mùa X", "SS X")
-  const seasonRegex = /(.+?)\s*(?:[\(\[-]?\s*(?:Phần|Season|Mùa|SS|S)\s*(\d+)[\)\]-]?)/i;
+  const seasonRegex = /(.+?)\s*(?:[([-]?\s*(?:Phần|Season|Mùa|SS|S)\s*(\d+)[)\]-]?)/i;
   const match = movieName.match(seasonRegex);
   
   let baseName = movieName;
@@ -251,7 +273,7 @@ export const apiGetRelatedSeasons = async (movieName, originalName) => {
   }
 
   // Dọn dẹp ký tự thừa ở đuôi (dấu hai chấm, gạch nối, ngoặc)
-  baseName = baseName.replace(/[:\-–—\(\)]+$/, '').trim();
+  baseName = baseName.replace(/[:\-–—()]+$/, '').trim();
   
   // 2. Tìm kiếm các phim liên quan theo baseName
   const searchRes = await apiSearchByTitle(baseName);

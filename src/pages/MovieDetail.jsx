@@ -64,6 +64,7 @@ export default function MovieDetail() {
   const [trailerKey, setTrailerKey] = useState(null);
   const [isTrailerOpen, setIsTrailerOpen] = useState(false);
   const [isTrailerLoading, setIsTrailerLoading] = useState(false);
+  const [noTrailer, setNoTrailer] = useState(false); // đã dò xong và phim này không có trailer
   const { addToWatchlist, removeFromWatchlist, isSaved } = useWatchlist();
   const showSkeleton = useDelayedLoading(loading);
 
@@ -73,15 +74,29 @@ export default function MovieDetail() {
       return;
     }
     setIsTrailerLoading(true);
-    const key = await apiGetTrailer(id, movieDetails.origin_name || movieDetails.name);
+    const key = await apiGetTrailer(id, movieDetails.origin_name || movieDetails.name, movieDetails);
     setIsTrailerLoading(false);
     if (key) {
       setTrailerKey(key);
       setIsTrailerOpen(true);
     } else {
+      setNoTrailer(true);
       showToast("Chưa tìm thấy trailer cho phim này", "error");
     }
   };
+
+  // Dò trailer ngay khi có thông tin phim (mất ~2s: hỏi TMDB + kiểm tra YouTube) -> bấm là mở liền,
+  // phim không có trailer thì nút hiện sẵn "Chưa có trailer"
+  useEffect(() => {
+    if (!movieDetails) return;
+    let alive = true;
+    apiGetTrailer(id, movieDetails.origin_name || movieDetails.name, movieDetails).then((key) => {
+      if (!alive) return;
+      if (key) setTrailerKey(key);
+      else setNoTrailer(true);
+    });
+    return () => { alive = false; };
+  }, [id, movieDetails]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -92,6 +107,7 @@ export default function MovieDetail() {
     setMovieServers([]);
     setRelatedSeasons([]);
     setTrailerKey(null);
+    setNoTrailer(false);
     setIsTrailerOpen(false);
     setIsDescExpanded(false);
     const fetchMovieData = async () => {
@@ -272,11 +288,11 @@ export default function MovieDetail() {
                       : "Xem tiếp")
                   : "Xem ngay"}
               </button>
-              <OutlineButton onClick={handleWatchTrailer} disabled={isTrailerLoading}>
+              <OutlineButton onClick={handleWatchTrailer} disabled={isTrailerLoading || noTrailer} title={noTrailer ? "Phim này chưa có trailer" : "Xem trailer"}>
                 <span className={`material-symbols-outlined text-[20px] ${isTrailerLoading ? "animate-spin motion-reduce:animate-none" : ""}`}>
-                  {isTrailerLoading ? "progress_activity" : "smart_display"}
+                  {isTrailerLoading ? "progress_activity" : noTrailer ? "videocam_off" : "smart_display"}
                 </span>
-                Trailer
+                {noTrailer ? "Chưa có trailer" : "Trailer"}
               </OutlineButton>
               <OutlineButton
                 onClick={() => (saved ? removeFromWatchlist(id) : addToWatchlist({ slug: id, name: movieDetails.name, thumb_url: getFullImageUrl(movieDetails.thumb_url), year: movieDetails.year }))}

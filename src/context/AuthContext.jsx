@@ -189,6 +189,10 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     writeSession(null);
+    // Xoá danh sách "Xem tiếp" lưu tạm trong máy (máy dùng chung thì người sau không thấy phim mình xem)
+    try {
+      Object.keys(localStorage).filter((k) => k.startsWith("home_history_")).forEach((k) => localStorage.removeItem(k));
+    } catch { /* bỏ qua */ }
     return signOut(auth);
   };
 

@@ -54,6 +54,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Mã này đã được sử dụng.' });
     }
 
+    // Mã quá 30 phút thì hết hạn (TV để màn đăng nhập quá lâu): tránh mã cũ bị dùng lại về sau
+    const createdAt = sessionDoc.data().createdAt?.toMillis?.() || 0;
+    if (!createdAt || Date.now() - createdAt > 30 * 60 * 1000) {
+      await sessionRef.delete().catch(() => {});
+      return res.status(410).json({ error: 'Mã đăng nhập đã hết hạn. Mở lại màn đăng nhập trên TV để lấy mã mới.' });
+    }
+
     // 3. Tạo Custom Token cho uid này
     const customToken = await admin.auth().createCustomToken(uid);
 
@@ -69,6 +76,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('TV Auth Error:', error);
-    return res.status(500).json({ error: 'Lỗi xác thực: ' + error.message });
+    return res.status(500).json({ error: 'Lỗi xác thực, thử lại sau.' }); // không trả chi tiết lỗi nội bộ ra ngoài
   }
 }

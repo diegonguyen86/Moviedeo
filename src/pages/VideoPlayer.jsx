@@ -646,6 +646,66 @@ function VideoPlayer() {
     setShowSettings(false);
   };
 
+  // Chỉnh âm lượng bằng phím (↑ ↓)
+  const setVolumeTo = (val) => {
+    const v = Math.max(0, Math.min(1, Math.round(val * 100) / 100));
+    setVolume(v);
+    setIsMuted(v === 0);
+    if (videoRef.current) {
+      videoRef.current.volume = v;
+      videoRef.current.muted = v === 0;
+    }
+    showOsd(v === 0 ? "volume_off" : "volume_up", `${Math.round(v * 100)}%`);
+  };
+
+  // Chữ nổi nhỏ giữa khung khi dùng phím tắt (âm lượng, tốc độ...)
+  const [osd, setOsd] = useState(null);
+  const osdTimerRef = useRef(null);
+  const showOsd = (icon, text) => {
+    setOsd({ icon, text });
+    clearTimeout(osdTimerRef.current);
+    osdTimerRef.current = setTimeout(() => setOsd(null), 900);
+  };
+
+  // ---- HÌNH TRONG HÌNH (PiP): phim nổi trong cửa sổ nhỏ, vẫn xem khi chuyển tab / làm việc khác ----
+  const [isPip, setIsPip] = useState(false);
+  const pipSupported = typeof document !== "undefined" && (
+    document.pictureInPictureEnabled ||
+    (typeof HTMLVideoElement !== "undefined" && "webkitSetPresentationMode" in HTMLVideoElement.prototype)
+  );
+  const togglePip = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+      } else if (video.requestPictureInPicture) {
+        if (isFullscreen) await toggleFullscreen();
+        await video.requestPictureInPicture();
+      } else if (video.webkitSetPresentationMode) {
+        // Safari cũ
+        video.webkitSetPresentationMode(video.webkitPresentationMode === "picture-in-picture" ? "inline" : "picture-in-picture");
+      }
+    } catch {
+      showOsd("error", "Trình duyệt chưa cho mở hình trong hình");
+    }
+  };
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const onEnter = () => setIsPip(true);
+    const onLeave = () => setIsPip(false);
+    const onWebkit = () => setIsPip(video.webkitPresentationMode === "picture-in-picture");
+    video.addEventListener("enterpictureinpicture", onEnter);
+    video.addEventListener("leavepictureinpicture", onLeave);
+    video.addEventListener("webkitpresentationmodechanged", onWebkit);
+    return () => {
+      video.removeEventListener("enterpictureinpicture", onEnter);
+      video.removeEventListener("leavepictureinpicture", onLeave);
+      video.removeEventListener("webkitpresentationmodechanged", onWebkit);
+    };
+  }, [useIframe]);
+
   const toggleFullscreen = async () => {
     const elem = playerWrapperRef.current;
     const video = videoRef.current;
@@ -746,7 +806,7 @@ function VideoPlayer() {
     if (e.buttons === 1 && isDragging) handlePointerUpdate(e); 
   };
 
-  const handlePointerUp = (e) => {
+  const handlePointerUp = () => {
     setIsDragging(false);
     if (videoRef.current) {
       videoRef.current.currentTime = seekTime;
@@ -812,26 +872,46 @@ function VideoPlayer() {
     return () => clearTimeout(controlsTimeoutRef.current);
   }, [isPlaying, showSettings, showEpisodes, showLangMenu, isAutoNexting]);
 
+  // PHÍM TẮT (giống YouTube). Handler mới mỗi lần vẽ (qua ref) -> luôn thấy đúng tập kế / âm lượng hiện tại.
+  //  Space/K phát-dừng · F toàn màn hình · M tắt tiếng · I hình trong hình · J/← lùi 10s · L/→ tới 10s
+  //  ↑/↓ âm lượng ±10% · N tập kế · 0–9 nhảy tới 0%–90% · Shift + > / < tăng / giảm tốc độ
+  const keyHandlerRef = useRef(null);
+  keyHandlerRef.current = (e) => {
+    if (useIframe) return;
+    // Không kích hoạt phím tắt nếu đang gõ trong input hoặc textarea (ví dụ: gõ bình luận)
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName) || e.target.isContentEditable) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const video = videoRef.current;
+    const key = e.key.toLowerCase();
+    let handled = true;
+    if (key === ' ' || key === 'k') togglePlay();
+    else if (key === 'f') toggleFullscreen();
+    else if (key === 'm') toggleMute();
+    else if (key === 'i' && pipSupported) togglePip();
+    else if (key === 'j' || e.code === 'ArrowLeft') handleSkip(-10);
+    else if (key === 'l' || e.code === 'ArrowRight') handleSkip(10);
+    else if (e.code === 'ArrowUp') setVolumeTo((isMuted ? 0 : volume) + 0.1);
+    else if (e.code === 'ArrowDown') setVolumeTo((isMuted ? 0 : volume) - 0.1);
+    else if (key === 'n' && nextEpisode) handleSwitchEpisode(nextEpisode);
+    else if (/^[0-9]$/.test(e.key) && video && duration > 0) video.currentTime = (duration * Number(e.key)) / 10;
+    else if (e.key === '>' || e.key === '<') {
+      const rates = [0.5, 1, 1.25, 1.5, 2];
+      const i = rates.indexOf(playbackRate);
+      const next = rates[Math.max(0, Math.min(rates.length - 1, (i === -1 ? 1 : i) + (e.key === '>' ? 1 : -1)))];
+      setPlaybackRate(next);
+      if (video) video.playbackRate = next;
+      showOsd("speed", next === 1 ? "Bình thường" : `${next}x`);
+    } else handled = false;
+    if (handled) {
+      e.preventDefault(); // không cuộn trang khi bấm Space / ↑ / ↓
+      handleUserActivity();
+    }
+  };
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (useIframe) return;
-      
-      // Không kích hoạt phím tắt nếu đang gõ trong input hoặc textarea (ví dụ: gõ bình luận)
-      if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable) {
-        return;
-      }
-
-      const key = e.key.toLowerCase();
-      handleUserActivity(); 
-      if (key === ' ' || key === 'k') { e.preventDefault(); togglePlay(); }
-      if (key === 'f') toggleFullscreen();
-      if (key === 'm') toggleMute();
-      if (key === 'j' || e.code === 'ArrowLeft') handleSkip(-10);
-      if (key === 'l' || e.code === 'ArrowRight') handleSkip(10);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, useIframe, showSettings, showEpisodes, showLangMenu, isAutoNexting]);
+    const onKey = (e) => keyHandlerRef.current?.(e);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleSwitchEpisode = (ep) => {
     if (!ep) return;
@@ -1411,6 +1491,17 @@ function VideoPlayer() {
                       )}
                     </div>
 
+                    {pipSupported && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); togglePip(); }}
+                        className={`${CTRL} hidden sm:flex ${isPip ? 'bg-white/15 text-white' : ''}`}
+                        aria-label={isPip ? "Thoát hình trong hình" : "Hình trong hình"}
+                        title="Hình trong hình (I): phim nổi trong cửa sổ nhỏ khi làm việc khác"
+                      >
+                        <span className="material-symbols-outlined text-[24px]">{isPip ? "picture_in_picture_off" : "picture_in_picture_alt"}</span>
+                      </button>
+                    )}
+
                     <button onClick={(e) => { e.stopPropagation(); toggleFullscreen(); }} className={CTRL} aria-label={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình"} title="Toàn màn hình (F)">
                       {isFullscreen ? <ExitFullscreenIcon className="text-[24px]" /> : <FullscreenIcon className="text-[24px]" />}
                     </button>
@@ -1424,6 +1515,25 @@ function VideoPlayer() {
                   <span className="material-symbols-outlined text-[18px] md:text-[20px] text-white animate-pulse">bolt</span>
                   <span>{adNotice.msg}</span>
                 </div>
+              )}
+
+              {/* CHỮ NỔI KHI DÙNG PHÍM TẮT (âm lượng, tốc độ) */}
+              {osd && (
+                <div className="pointer-events-none absolute left-1/2 top-1/2 z-50 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-2xl bg-black/70 px-5 py-3 text-base font-semibold text-white">
+                  <span className="material-symbols-outlined text-[24px]">{osd.icon}</span>
+                  <span className="tabular-nums">{osd.text}</span>
+                </div>
+              )}
+
+              {/* ĐANG XEM Ở CỬA SỔ NHỎ (PiP) */}
+              {isPip && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); togglePip(); }}
+                  className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black/85 text-white/80 transition-colors hover:text-white"
+                >
+                  <span className="material-symbols-outlined text-[48px]">picture_in_picture_alt</span>
+                  <span className="text-sm">Đang phát ở cửa sổ nhỏ. Bấm để đưa phim về đây</span>
+                </button>
               )}
 
               {/* NÚT TẬP TIẾP THEO (ĐƯA RA NGOÀI ĐỂ KHÔNG BỊ BOTTOM BAR CHE MẤT, CHỈ HIỆN Ở 5 PHÚT CUỐI) */}

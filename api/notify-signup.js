@@ -31,6 +31,41 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, skipped: true });
     }
 
+    // CHỐNG SPAM: cấu hình Firebase là công khai -> ai cũng viết được script tạo tài khoản hàng loạt,
+    // mỗi tài khoản lại khiến bot nhắn Telegram. Giới hạn toàn hệ thống: tối đa 8 tin / giờ.
+    // Vượt mức thì chỉ gửi 1 tin cảnh báo cho cả giờ đó; tài khoản bị bỏ qua chưa được đánh dấu
+    // adminNotifiedAt nên giờ sau (khi người đó mở web lại) vẫn được báo bình thường.
+    const LIMIT_PER_HOUR = 8;
+    const hourKey = new Date().toISOString().slice(0, 13); // vd "2026-11-13T10"
+    const rateRef = db.collection('admin_meta').doc('signup_notify');
+    const rate = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(rateRef);
+      const cur = snap.exists && snap.data().hour === hourKey ? snap.data() : { hour: hourKey, count: 0, warned: false };
+      const next = { ...cur, count: cur.count + 1 };
+      const overLimit = cur.count >= LIMIT_PER_HOUR;
+      const sendWarning = overLimit && !cur.warned;
+      if (sendWarning) next.warned = true;
+      tx.set(rateRef, next);
+      return { overLimit, sendWarning, count: next.count };
+    });
+    if (rate.overLimit) {
+      if (rate.sendWarning) {
+        await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: CHAT_ID,
+            parse_mode: 'HTML',
+            text: `<b>⚠️ ĐĂNG KÝ BẤT THƯỜNG</b>
+
+Đã có hơn ${LIMIT_PER_HOUR} tài khoản mới trong 1 giờ. ` +
+              `Tạm ngưng báo từng người tới hết giờ này (có thể là spam). Ai thật sự đăng ký sẽ được báo lại sau.`,
+          }),
+        }).catch(() => {});
+      }
+      return res.status(429).json({ error: 'Too many signups, try later' });
+    }
+
     const name = data.displayName || (data.email || '').split('@')[0] || 'Ẩn danh';
     const proto = req.headers['x-forwarded-proto'] || 'https';
     const baseUrl = `${proto}://${req.headers.host}`;
